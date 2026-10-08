@@ -1,0 +1,1083 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://capellactl.dev/schema/capellactl-v1.json",
+  "title": "capellactl environment file (capella.yaml)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion"
+  ],
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "description": "File format version. Must be capellactl/v1.",
+      "x-mutability": "tool",
+      "const": "capellactl/v1"
+    },
+    "organizationId": {
+      "type": "string",
+      "description": "Capella organization ID. Usually ${CAPELLA_ORG_ID}; may come from a profile instead.",
+      "x-mutability": "key",
+      "examples": [
+        "${CAPELLA_ORG_ID}"
+      ]
+    },
+    "credentialsOutput": {
+      "type": "string",
+      "description": "Directory where Capella-generated passwords are saved (mode 0600).",
+      "x-mutability": "tool",
+      "default": "./.capellactl/credentials"
+    },
+    "projects": {
+      "type": "array",
+      "description": "Projects in the organization, each with its clusters.",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "description": "A project and everything in it.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Pin the project by ID (needed only when several projects share the name).",
+            "x-mutability": "key"
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name (up to 128 characters). Identifies the project in the organization.",
+            "x-mutability": "key",
+            "x-api": "name (Create/Update Project)",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "description": {
+            "type": "string",
+            "description": "Project description (up to 256 characters).",
+            "x-mutability": "updatable",
+            "x-api": "description (Create/Update Project)",
+            "maxLength": 256
+          },
+          "clusters": {
+            "type": "array",
+            "description": "Clusters in this project.",
+            "items": {
+              "$ref": "#/$defs/cluster"
+            }
+          }
+        }
+      }
+    },
+    "project": {
+      "type": "object",
+      "description": "The project (single-project form, still accepted; new files use projects:).",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Pin the project by ID (needed only when several projects share the name).",
+          "x-mutability": "key"
+        },
+        "name": {
+          "type": "string",
+          "description": "Project name (up to 128 characters). Identifies the project in the organization.",
+          "x-mutability": "key",
+          "x-api": "name (Create/Update Project)",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "description": {
+          "type": "string",
+          "description": "Project description (up to 256 characters).",
+          "x-mutability": "updatable",
+          "x-api": "description (Create/Update Project)",
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "clusters": {
+      "type": "array",
+      "description": "Clusters of the project (single-project form; prefer projects[].clusters).",
+      "items": {
+        "$ref": "#/$defs/cluster"
+      }
+    }
+  },
+  "$defs": {
+    "cluster": {
+      "type": "object",
+      "description": "A Capella cluster: provisioned (default) or free tier.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Pin this cluster by ID (needed only when several clusters share the name).",
+          "x-mutability": "key"
+        },
+        "name": {
+          "type": "string",
+          "description": "Cluster name (up to 256 characters). Identifies the cluster in the project.",
+          "x-mutability": "key",
+          "x-api": "name (Create/Update Cluster)",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "tier": {
+          "type": "string",
+          "enum": [
+            "provisioned",
+            "free"
+          ],
+          "default": "provisioned",
+          "x-mutability": "immutable",
+          "description": "provisioned (default; sized by serviceGroups) or free (1 node: data, index, query, search; one per organization; fixed regions).",
+          "x-api": "POST \u2026/clusters or POST \u2026/clusters/freeTier"
+        },
+        "description": {
+          "type": "string",
+          "description": "Cluster description (up to 1024 characters).",
+          "x-mutability": "updatable",
+          "x-api": "description (Create/Update Cluster)",
+          "maxLength": 1024
+        },
+        "configurationType": {
+          "type": "string",
+          "description": "multiNode (high availability) or singleNode (1 node, development).",
+          "x-mutability": "immutable",
+          "x-api": "configurationType (Create Cluster)",
+          "enum": [
+            "multiNode",
+            "singleNode"
+          ],
+          "default": "multiNode"
+        },
+        "cloudProvider": {
+          "type": "object",
+          "description": "Where the cluster runs.",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "description": "Cloud provider.",
+              "x-mutability": "immutable",
+              "x-api": "cloudProvider.type (Create Cluster)",
+              "enum": [
+                "aws",
+                "gcp",
+                "azure"
+              ]
+            },
+            "region": {
+              "type": "string",
+              "description": "Provider region, for example us-east-1.",
+              "x-mutability": "immutable",
+              "x-api": "cloudProvider.region (Create Cluster)",
+              "examples": [
+                "us-east-1"
+              ]
+            },
+            "cidr": {
+              "type": "string",
+              "description": "CIDR block for the cluster network; must not overlap other clusters in the project.",
+              "x-mutability": "immutable",
+              "x-api": "cloudProvider.cidr (Create Cluster)",
+              "examples": [
+                "10.10.0.0/24"
+              ]
+            }
+          },
+          "required": [
+            "type",
+            "region"
+          ]
+        },
+        "couchbaseServer": {
+          "type": "object",
+          "description": "Couchbase Server version.",
+          "additionalProperties": false,
+          "properties": {
+            "version": {
+              "type": "string",
+              "description": "Couchbase Server version; omit for the Capella default.",
+              "x-mutability": "immutable",
+              "x-api": "couchbaseServer.version (Create Cluster)",
+              "examples": [
+                "8.0"
+              ]
+            }
+          }
+        },
+        "availability": {
+          "type": "object",
+          "description": "Availability zones.",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "description": "single or multi availability zone.",
+              "x-mutability": "immutable",
+              "x-api": "availability.type (Create Cluster)",
+              "enum": [
+                "single",
+                "multi"
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        "support": {
+          "type": "object",
+          "description": "Support plan.",
+          "additionalProperties": false,
+          "properties": {
+            "plan": {
+              "type": "string",
+              "description": "Support plan.",
+              "x-mutability": "updatable",
+              "x-api": "support.plan (Create/Update Cluster)",
+              "enum": [
+                "basic",
+                "developer pro",
+                "enterprise",
+                "Basic",
+                "Developer Pro",
+                "Enterprise"
+              ]
+            },
+            "timezone": {
+              "type": "string",
+              "description": "Support timezone (ignored for basic).",
+              "x-mutability": "updatable",
+              "x-api": "support.timezone (Create/Update Cluster)",
+              "enum": [
+                "ET",
+                "GMT",
+                "IST",
+                "PT"
+              ]
+            }
+          },
+          "required": [
+            "plan"
+          ]
+        },
+        "serviceGroups": {
+          "type": "array",
+          "description": "Node groups. Scaling = changing these.",
+          "items": {
+            "type": "object",
+            "description": "A set of nodes that share size and services.",
+            "additionalProperties": false,
+            "properties": {
+              "node": {
+                "type": "object",
+                "description": "Node size: compute and disk.",
+                "additionalProperties": false,
+                "properties": {
+                  "compute": {
+                    "type": "object",
+                    "description": "Compute size per node. Supported CPU/RAM pairs depend on provider and region.",
+                    "additionalProperties": false,
+                    "properties": {
+                      "cpu": {
+                        "type": "integer",
+                        "description": "vCPUs per node.",
+                        "x-mutability": "updatable",
+                        "x-api": "serviceGroups[].node.compute.cpu (Create/Update Cluster)",
+                        "minimum": 1,
+                        "examples": [
+                          4
+                        ]
+                      },
+                      "ram": {
+                        "type": "integer",
+                        "description": "RAM per node in GB.",
+                        "x-mutability": "updatable",
+                        "x-api": "serviceGroups[].node.compute.ram (Create/Update Cluster)",
+                        "minimum": 1,
+                        "examples": [
+                          16
+                        ]
+                      }
+                    },
+                    "required": [
+                      "cpu",
+                      "ram"
+                    ]
+                  },
+                  "disk": {
+                    "type": "object",
+                    "description": "Disk for every node in the group.",
+                    "additionalProperties": false,
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "description": "Disk type. AWS: gp3, io2. Azure: P6, P10, P15, P20, P30, P40, P50, P60, Ultra. GCP: pd-ssd.",
+                        "x-mutability": "updatable",
+                        "x-api": "serviceGroups[].node.disk.type (Create/Update Cluster)",
+                        "enum": [
+                          "gp3",
+                          "io2",
+                          "P6",
+                          "P10",
+                          "P15",
+                          "P20",
+                          "P30",
+                          "P40",
+                          "P50",
+                          "P60",
+                          "Ultra",
+                          "pd-ssd"
+                        ]
+                      },
+                      "storage": {
+                        "type": "integer",
+                        "description": "Disk size in GB. AWS and GCP: at least 50. Azure: only for Ultra disks. Cannot be reduced.",
+                        "x-mutability": "updatable",
+                        "x-api": "serviceGroups[].node.disk.storage (Create/Update Cluster)",
+                        "minimum": 50,
+                        "examples": [
+                          50
+                        ]
+                      },
+                      "iops": {
+                        "type": "integer",
+                        "description": "Provisioned IOPS. Required for AWS; only for Azure Ultra disks.",
+                        "x-mutability": "updatable",
+                        "x-api": "serviceGroups[].node.disk.iops (Create/Update Cluster)",
+                        "examples": [
+                          3000
+                        ]
+                      },
+                      "autoExpansion": {
+                        "type": "boolean",
+                        "description": "Azure only: let disk storage expand automatically.",
+                        "x-mutability": "updatable",
+                        "x-api": "serviceGroups[].node.disk.autoExpansion (Create/Update Cluster)",
+                        "default": false
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ]
+                  }
+                },
+                "required": [
+                  "compute",
+                  "disk"
+                ]
+              },
+              "numOfNodes": {
+                "type": "integer",
+                "description": "Nodes in this group. First group of a multiNode cluster: 3\u201327; additional groups: 2\u201324; singleNode: 1.",
+                "x-mutability": "updatable",
+                "x-api": "serviceGroups[].numOfNodes (Create/Update Cluster)",
+                "minimum": 1,
+                "maximum": 27,
+                "examples": [
+                  3
+                ]
+              },
+              "services": {
+                "type": "array",
+                "description": "Couchbase services on these nodes. At least one group must run data. The sorted set identifies the group.",
+                "x-mutability": "updatable",
+                "x-api": "serviceGroups[].services (Create/Update Cluster)",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "data",
+                    "index",
+                    "query",
+                    "search",
+                    "analytics",
+                    "eventing"
+                  ]
+                },
+                "minItems": 1,
+                "uniqueItems": true,
+                "examples": [
+                  [
+                    "data",
+                    "index",
+                    "query"
+                  ]
+                ]
+              }
+            },
+            "required": [
+              "node",
+              "numOfNodes",
+              "services"
+            ]
+          },
+          "minItems": 1
+        },
+        "zones": {
+          "type": "array",
+          "description": "Single-AZ only: one availability zone.",
+          "x-mutability": "immutable",
+          "x-api": "zones (Create Cluster)",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 1
+        },
+        "cmekId": {
+          "type": "string",
+          "description": "ID of an existing customer-managed encryption key.",
+          "x-mutability": "immutable",
+          "x-api": "cmekId (Create Cluster)"
+        },
+        "enablePrivateDNSResolution": {
+          "type": "boolean",
+          "description": "Public DNS names that resolve to private addresses.",
+          "x-mutability": "immutable",
+          "x-api": "enablePrivateDNSResolution (Create Cluster)"
+        },
+        "deletionProtection": {
+          "type": "boolean",
+          "description": "Block deletion of the cluster and its buckets; omit to leave unchanged.",
+          "x-mutability": "updatable",
+          "x-api": "deletionProtection (Update Deletion Protection)"
+        },
+        "allowAnyIp": {
+          "type": "boolean",
+          "description": "Required to allow 0.0.0.0/0 in allowedCidrs.",
+          "x-mutability": "tool",
+          "default": false
+        },
+        "allowedCidrs": {
+          "type": "array",
+          "description": "IP ranges allowed to connect.",
+          "items": {
+            "type": "object",
+            "description": "One allowed CIDR.",
+            "additionalProperties": false,
+            "properties": {
+              "cidr": {
+                "type": "string",
+                "description": "Trusted CIDR block, for example 203.0.113.10/32. A bare IP means /32. Identifies the entry.",
+                "x-mutability": "key",
+                "x-api": "cidr (Create Allowed CIDR)",
+                "examples": [
+                  "203.0.113.10/32"
+                ]
+              },
+              "comment": {
+                "type": "string",
+                "description": "Short description. Changing it re-creates the entry (the API has no update).",
+                "x-mutability": "replace",
+                "x-api": "comment (Create Allowed CIDR)"
+              },
+              "expiresAt": {
+                "type": "string",
+                "description": "RFC 3339 expiry time; omit for a permanent entry. Changing it re-creates the entry.",
+                "x-mutability": "replace",
+                "x-api": "expiresAt (Create Allowed CIDR)",
+                "examples": [
+                  "2026-12-31T23:59:59Z"
+                ]
+              }
+            },
+            "required": [
+              "cidr"
+            ]
+          }
+        },
+        "hibernation": {
+          "type": "object",
+          "description": "Weekly on/off schedule: Capella turns the cluster off outside the on-windows.",
+          "additionalProperties": false,
+          "properties": {
+            "timezone": {
+              "type": "string",
+              "description": "Timezone for the schedule (one of the API's supported values).",
+              "x-mutability": "updatable",
+              "x-api": "timezone (On/Off Schedule)",
+              "enum": [
+                "Pacific/Midway",
+                "US/Hawaii",
+                "US/Alaska",
+                "US/Pacific",
+                "US/Mountain",
+                "US/Central",
+                "US/Eastern",
+                "America/Puerto_Rico",
+                "Canada/Newfoundland",
+                "America/Argentina/Buenos_Aires",
+                "Atlantic/Cape_Verde",
+                "Europe/London",
+                "Europe/Amsterdam",
+                "Europe/Athens",
+                "Africa/Nairobi",
+                "Asia/Tehran",
+                "Indian/Mauritius",
+                "Asia/Karachi",
+                "Asia/Calcutta",
+                "Asia/Dhaka",
+                "Asia/Bangkok",
+                "Asia/Hong_Kong",
+                "Asia/Tokyo",
+                "Australia/North",
+                "Australia/Sydney",
+                "Pacific/Ponape",
+                "Antarctica/South_Pole"
+              ],
+              "examples": [
+                "US/Pacific"
+              ]
+            },
+            "weekdays": {
+              "description": "Monday\u2013Friday: 'on', 'off', or an on-window 'HH:MM-HH:MM'.",
+              "x-mutability": "updatable",
+              "x-api": "days[] (On/Off Schedule)",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(on|off|\\d{2}:\\d{2}-\\d{2}:\\d{2})$"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "examples": [
+                "08:00-18:00",
+                "on",
+                "off"
+              ]
+            },
+            "weekend": {
+              "description": "Saturday and Sunday: 'on', 'off', or an on-window 'HH:MM-HH:MM'.",
+              "x-mutability": "updatable",
+              "x-api": "days[] (On/Off Schedule)",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(on|off|\\d{2}:\\d{2}-\\d{2}:\\d{2})$"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "examples": [
+                "08:00-18:00",
+                "on",
+                "off"
+              ]
+            },
+            "paused": {
+              "type": "boolean",
+              "description": "Pause (true) or resume (false) the schedule; omit to leave unchanged.",
+              "x-mutability": "updatable",
+              "x-api": "onOffSchedule/activationState"
+            },
+            "ensure": {
+              "type": "string",
+              "description": "present (default) or absent to delete the schedule.",
+              "x-mutability": "tool",
+              "enum": [
+                "present",
+                "absent"
+              ],
+              "default": "present"
+            },
+            "monday": {
+              "description": "Monday: 'on', 'off', or an on-window 'HH:MM-HH:MM' (minutes 00 or 30). Overrides weekdays/weekend.",
+              "x-mutability": "updatable",
+              "x-api": "days[] (On/Off Schedule)",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(on|off|\\d{2}:\\d{2}-\\d{2}:\\d{2})$"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "examples": [
+                "08:00-18:00",
+                "on",
+                "off"
+              ]
+            },
+            "tuesday": {
+              "description": "Tuesday: 'on', 'off', or an on-window 'HH:MM-HH:MM' (minutes 00 or 30). Overrides weekdays/weekend.",
+              "x-mutability": "updatable",
+              "x-api": "days[] (On/Off Schedule)",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(on|off|\\d{2}:\\d{2}-\\d{2}:\\d{2})$"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "examples": [
+                "08:00-18:00",
+                "on",
+                "off"
+              ]
+            },
+            "wednesday": {
+              "description": "Wednesday: 'on', 'off', or an on-window 'HH:MM-HH:MM' (minutes 00 or 30). Overrides weekdays/weekend.",
+              "x-mutability": "updatable",
+              "x-api": "days[] (On/Off Schedule)",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(on|off|\\d{2}:\\d{2}-\\d{2}:\\d{2})$"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "examples": [
+                "08:00-18:00",
+                "on",
+                "off"
+              ]
+            },
+            "thursday": {
+              "description": "Thursday: 'on', 'off', or an on-window 'HH:MM-HH:MM' (minutes 00 or 30). Overrides weekdays/weekend.",
+              "x-mutability": "updatable",
+              "x-api": "days[] (On/Off Schedule)",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(on|off|\\d{2}:\\d{2}-\\d{2}:\\d{2})$"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "examples": [
+                "08:00-18:00",
+                "on",
+                "off"
+              ]
+            },
+            "friday": {
+              "description": "Friday: 'on', 'off', or an on-window 'HH:MM-HH:MM' (minutes 00 or 30). Overrides weekdays/weekend.",
+              "x-mutability": "updatable",
+              "x-api": "days[] (On/Off Schedule)",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(on|off|\\d{2}:\\d{2}-\\d{2}:\\d{2})$"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "examples": [
+                "08:00-18:00",
+                "on",
+                "off"
+              ]
+            },
+            "saturday": {
+              "description": "Saturday: 'on', 'off', or an on-window 'HH:MM-HH:MM' (minutes 00 or 30). Overrides weekdays/weekend.",
+              "x-mutability": "updatable",
+              "x-api": "days[] (On/Off Schedule)",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(on|off|\\d{2}:\\d{2}-\\d{2}:\\d{2})$"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "examples": [
+                "08:00-18:00",
+                "on",
+                "off"
+              ]
+            },
+            "sunday": {
+              "description": "Sunday: 'on', 'off', or an on-window 'HH:MM-HH:MM' (minutes 00 or 30). Overrides weekdays/weekend.",
+              "x-mutability": "updatable",
+              "x-api": "days[] (On/Off Schedule)",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(on|off|\\d{2}:\\d{2}-\\d{2}:\\d{2})$"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "examples": [
+                "08:00-18:00",
+                "on",
+                "off"
+              ]
+            }
+          }
+        },
+        "buckets": {
+          "type": "array",
+          "description": "Buckets in this cluster.",
+          "items": {
+            "type": "object",
+            "description": "A bucket.",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Bucket name. Cannot be changed.",
+                "x-mutability": "key",
+                "x-api": "name (Create Bucket)",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "type": {
+                "type": "string",
+                "description": "couchbase (memory and disk) or ephemeral (memory only).",
+                "x-mutability": "immutable",
+                "x-api": "type (Create Bucket)",
+                "enum": [
+                  "couchbase",
+                  "ephemeral"
+                ],
+                "default": "couchbase"
+              },
+              "storageBackend": {
+                "type": "string",
+                "description": "Storage engine for couchbase buckets; not allowed for ephemeral.",
+                "x-mutability": "immutable",
+                "x-api": "storageBackend (Create Bucket)",
+                "enum": [
+                  "couchstore",
+                  "magma"
+                ]
+              },
+              "vbuckets": {
+                "type": "integer",
+                "description": "Number of vBuckets for magma buckets on server 8.0+.",
+                "x-mutability": "immutable",
+                "x-api": "vbuckets (Create Bucket)",
+                "enum": [
+                  128,
+                  1024
+                ]
+              },
+              "memoryAllocationInMb": {
+                "type": "integer",
+                "description": "Bucket memory quota in MiB.",
+                "x-mutability": "updatable",
+                "x-api": "memoryAllocationInMb (Create/Update Bucket)",
+                "minimum": 1,
+                "examples": [
+                  1024
+                ]
+              },
+              "bucketConflictResolution": {
+                "type": "string",
+                "description": "How XDCR conflicts are resolved: seqno or lww.",
+                "x-mutability": "immutable",
+                "x-api": "bucketConflictResolution (Create Bucket)",
+                "enum": [
+                  "seqno",
+                  "lww"
+                ],
+                "default": "seqno"
+              },
+              "durabilityLevel": {
+                "type": "string",
+                "description": "Minimum durability for writes.",
+                "x-mutability": "updatable",
+                "x-api": "durabilityLevel (Create/Update Bucket)",
+                "enum": [
+                  "none",
+                  "majority",
+                  "majorityAndPersistActive",
+                  "persistToMajority"
+                ],
+                "default": "none"
+              },
+              "replicas": {
+                "type": "integer",
+                "description": "Number of replicas: 1-3, or 0 on single-node clusters (default 1; 0 on single-node).",
+                "x-mutability": "updatable",
+                "x-api": "replicas (Create/Update Bucket)",
+                "enum": [
+                  0,
+                  1,
+                  2,
+                  3
+                ],
+                "default": 1
+              },
+              "flushEnabled": {
+                "type": "boolean",
+                "description": "Allow flushing all items. Keep false to avoid accidental data loss.",
+                "x-mutability": "updatable",
+                "x-api": "flushEnabled (Create/Update Bucket)",
+                "default": false
+              },
+              "timeToLiveInSeconds": {
+                "type": "integer",
+                "description": "Maximum TTL for items in seconds; 0 disables bucket TTL.",
+                "x-mutability": "updatable",
+                "x-api": "timeToLiveInSeconds (Create/Update Bucket)",
+                "minimum": 0,
+                "default": 0
+              },
+              "evictionPolicy": {
+                "type": "string",
+                "description": "couchbase buckets: fullEviction. ephemeral buckets: noEviction or nruEviction.",
+                "x-mutability": "immutable",
+                "x-api": "evictionPolicy (Create Bucket)",
+                "enum": [
+                  "fullEviction",
+                  "noEviction",
+                  "nruEviction"
+                ]
+              },
+              "priority": {
+                "type": "integer",
+                "description": "Recovery priority during failover (server 7.6+).",
+                "x-mutability": "updatable",
+                "x-api": "priority (Create/Update Bucket)",
+                "minimum": 0,
+                "default": 0
+              },
+              "enableCrossClusterVersioning": {
+                "type": "boolean",
+                "description": "Store XDCR versioning metadata (prerequisite for some XDCR features).",
+                "x-mutability": "updatable",
+                "x-api": "enableCrossClusterVersioning (Update Bucket)"
+              },
+              "scopes": {
+                "type": "array",
+                "description": "Scopes in this bucket.",
+                "items": {
+                  "type": "object",
+                  "description": "A scope.",
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "Scope name (1\u2013251 characters: A-Z a-z 0-9 _ - %; must not start with _ or %, except _default).",
+                      "x-mutability": "key",
+                      "x-api": "name (Create Scope)",
+                      "minLength": 1,
+                      "maxLength": 251
+                    },
+                    "collections": {
+                      "type": "array",
+                      "description": "Collections in this scope.",
+                      "items": {
+                        "type": "object",
+                        "description": "A collection.",
+                        "additionalProperties": false,
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "Collection name (1\u2013251 characters: A-Z a-z 0-9 _ - %; must not start with _ or %).",
+                            "x-mutability": "key",
+                            "x-api": "name (Create Collection)",
+                            "minLength": 1,
+                            "maxLength": 251
+                          },
+                          "maxTTL": {
+                            "type": "integer",
+                            "description": "Document expiry in seconds: -1 never expire, 0 use the bucket TTL, >0 seconds. Changeable on server 7.6.0+.",
+                            "x-mutability": "updatable",
+                            "x-api": "maxTTL (Create/Update Collection)",
+                            "minimum": -1
+                          }
+                        },
+                        "required": [
+                          "name"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "name"
+            ]
+          }
+        },
+        "databaseCredentials": {
+          "type": "array",
+          "description": "Application credentials.",
+          "items": {
+            "type": "object",
+            "description": "A basic database credential.",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Username (2\u2013128 characters, no spaces).",
+                "x-mutability": "key",
+                "x-api": "name (Create Database Credentials)",
+                "minLength": 2,
+                "maxLength": 128,
+                "pattern": "^\\S+$"
+              },
+              "password": {
+                "type": "string",
+                "description": "Must be ${VAR} or ${file:path}. Set on create; changed only with --rotate-password. Omit to let Capella generate one.",
+                "x-mutability": "rotate-only",
+                "x-api": "password (Create/Update Database Credentials)",
+                "examples": [
+                  "${ORDERS_APP_PASSWORD}"
+                ]
+              },
+              "access": {
+                "type": "array",
+                "description": "Access grants.",
+                "items": {
+                  "type": "object",
+                  "description": "One access grant.",
+                  "additionalProperties": false,
+                  "properties": {
+                    "privileges": {
+                      "type": "array",
+                      "description": "Basic credentials: read, write, data_reader, data_writer (read = data_reader, write = data_writer).",
+                      "x-mutability": "updatable",
+                      "x-api": "access[].privileges (Database Credentials)",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "read",
+                          "write",
+                          "data_reader",
+                          "data_writer"
+                        ]
+                      },
+                      "minItems": 1,
+                      "uniqueItems": true
+                    },
+                    "resources": {
+                      "type": "object",
+                      "description": "Where the privileges apply. Omit to grant access to ALL buckets.",
+                      "additionalProperties": false,
+                      "properties": {
+                        "buckets": {
+                          "type": "array",
+                          "description": "Buckets this access applies to.",
+                          "items": {
+                            "type": "object",
+                            "description": "Bucket-level access.",
+                            "additionalProperties": false,
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "description": "Bucket name.",
+                                "x-mutability": "updatable",
+                                "x-api": "access[].resources.buckets[].name (Database Credentials)"
+                              },
+                              "external": {
+                                "type": "boolean",
+                                "description": "The bucket is not defined in this file (skip the cross-reference check).",
+                                "x-mutability": "tool",
+                                "default": false
+                              },
+                              "scopes": {
+                                "type": "array",
+                                "description": "Scopes; omit for the whole bucket.",
+                                "items": {
+                                  "type": "object",
+                                  "description": "Scope-level access.",
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "name": {
+                                      "type": "string",
+                                      "description": "Scope name.",
+                                      "x-mutability": "updatable",
+                                      "x-api": "access[].resources.buckets[].scopes[].name (Database Credentials)"
+                                    },
+                                    "collections": {
+                                      "type": "array",
+                                      "description": "Collection names; omit for the whole scope.",
+                                      "x-mutability": "updatable",
+                                      "x-api": "access[].resources.buckets[].scopes[].collections",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "name"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "name"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "privileges"
+                  ]
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "name",
+              "access"
+            ]
+          }
+        }
+      },
+      "required": [
+        "name",
+        "cloudProvider"
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "required": [
+        "projects"
+      ],
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "project"
+            ]
+          },
+          {
+            "required": [
+              "clusters"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "required": [
+        "project"
+      ],
+      "not": {
+        "required": [
+          "projects"
+        ]
+      }
+    }
+  ]
+}

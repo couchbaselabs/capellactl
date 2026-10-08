@@ -1,0 +1,58 @@
+# capella.yaml: your Capella environment, written by `capellactl init` for organization Nova Corp (org-1).
+# Next: `capellactl validate`, `capellactl plan`, `capellactl apply`. Change it later with capellactl commands
+# (`cluster update|scale|protect`, `bucket …`, `cidr …`); `capellactl help config <field>` explains every field.
+# No secrets are written here: the API key stays in your keychain or CAPELLA_API_KEY, and passwords are
+# ${ENV_VAR} references read when you run apply.
+
+apiVersion: capellactl/v1
+organizationId: org-1
+# The Capella project (capellactl help config project).
+project:
+  name: nova-dev
+# Clusters of the project (capellactl help config clusters).
+clusters:
+  - name: nova-dev-01
+    # Immutable after creation: provider, region and network (capellactl help config clusters.cloudProvider).
+    cloudProvider: {type: aws, region: us-east-1, cidr: 10.0.0.0/24}
+    availability: {type: multi}
+    # Updatable in place (capellactl help config clusters.support).
+    support: {plan: developer pro, timezone: PT}
+    # Nodes and services; change with `capellactl cluster scale|update` (capellactl help config clusters.serviceGroups).
+    serviceGroups:
+      - node:
+          compute: {cpu: 4, ram: 16}
+          disk: {type: gp3, storage: 50, iops: 3000}
+        numOfNodes: 3
+        services: [data, index, query]
+    # true blocks deleting the cluster and its buckets (capellactl help config clusters.deletionProtection).
+    deletionProtection: true
+    # Capella turns the cluster off outside these on-windows (capellactl help config clusters.hibernation).
+    hibernation:
+      timezone: US/Pacific
+      weekdays: 08:00-18:00
+      weekend: 'off'
+    # IP ranges allowed to connect (capellactl help config clusters.allowedCidrs).
+    allowedCidrs:
+      - cidr: 203.0.113.10/32
+    # Buckets, scopes and collections (capellactl help config clusters.buckets).
+    buckets:
+      - name: orders
+        memoryAllocationInMb: 1024
+        storageBackend: magma
+        scopes:
+          - name: inventory
+            collections:
+              - name: items
+              - name: suppliers
+          - name: billing
+            collections:
+              - name: invoices
+    # Passwords come from the environment variables named here (capellactl help config clusters.databaseCredentials).
+    databaseCredentials:
+      - name: orders_app
+        password: ${ORDERS_APP_PASSWORD}
+        access:
+          - privileges: [data_reader, data_writer]
+            resources:
+              buckets:
+                - name: orders

@@ -1,0 +1,30 @@
+# Smallest useful environment: one project and one 3-node cluster.
+# Everything here is managed by the current build (see the command list in README.md).
+#
+#   capellactl validate && capellactl plan && capellactl apply
+
+apiVersion: capellactl/v1
+organizationId: ${CAPELLA_ORG_ID}          # or leave it to your profile (capellactl configure)
+
+project:
+  name: nova-dev                           # an existing project with this name is reused, not duplicated
+  description: Nova development environment
+
+clusters:
+  - name: nova-dev-01                      # an existing cluster with this name is managed, not duplicated
+    description: Nova development cluster
+    cloudProvider:
+      type: aws                            # aws | gcp | azure        (cannot change later)
+      region: us-east-1                    #                          (cannot change later)
+      cidr: 10.10.0.0/24                   # must not overlap other clusters in the project
+    availability:
+      type: multi                          # single | multi           (cannot change later)
+    support:
+      plan: developer pro                  # basic | developer pro | enterprise
+      timezone: PT
+    serviceGroups:
+      - node:
+          compute: { cpu: 4, ram: 16 }
+          disk: { type: gp3, storage: 50, iops: 3000 }
+        numOfNodes: 3                      # raise to scale out; lowering is blocked for now
+        services: [data, index, query]

@@ -1,0 +1,8 @@
+capellactl
+Copyright 2026 Couchbase, Inc.
+Author: Anuj Sahni, Principal Cloud & Solutions Architect
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product depends on third-party open-source packages, which are distributed
+under their own licences. They are listed in THIRD_PARTY_NOTICES.md.

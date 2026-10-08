@@ -1,0 +1,1717 @@
+{
+ "source": "https://docs.couchbase.com/cloud/management-api-reference/_attachments/openapi.external.generated.yaml",
+ "apiVersion": "v4.0",
+ "retrieved": "2026-10-06",
+ "operations": [
+  {
+   "tag": "CMEK",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/cloudAccounts",
+   "summary": "Get Cloud Accounts"
+  },
+  {
+   "tag": "Api Keys",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/apikeys",
+   "summary": "Create API Key"
+  },
+  {
+   "tag": "Api Keys",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/apikeys",
+   "summary": "List API keys"
+  },
+  {
+   "tag": "Api Keys",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/apikeys/{ApiKeyId}",
+   "summary": "Get API Key"
+  },
+  {
+   "tag": "Api Keys",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/apikeys/{ApiKeyId}",
+   "summary": "Delete API Key"
+  },
+  {
+   "tag": "Api Keys",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/apikeys/{ApiKeyId}/rotate",
+   "summary": "Rotate API Key"
+  },
+  {
+   "tag": "Projects",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects",
+   "summary": "Create Project"
+  },
+  {
+   "tag": "Projects",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects",
+   "summary": "List Project"
+  },
+  {
+   "tag": "Projects",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}",
+   "summary": "Get Project"
+  },
+  {
+   "tag": "Projects",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}",
+   "summary": "Update Project"
+  },
+  {
+   "tag": "Projects",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}",
+   "summary": "Delete Project"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier",
+   "summary": "Create Free Tier Cluster"
+  },
+  {
+   "tag": "Clusters",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters",
+   "summary": "Create Cluster"
+  },
+  {
+   "tag": "Clusters",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters",
+   "summary": "List Clusters"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}",
+   "summary": "Get Free Tier Cluster"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}",
+   "summary": "Update Free Tier Cluster"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}",
+   "summary": "Delete Free Tier Cluster"
+  },
+  {
+   "tag": "Clusters",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}",
+   "summary": "Get Cluster"
+  },
+  {
+   "tag": "Clusters",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}",
+   "summary": "Update Cluster"
+  },
+  {
+   "tag": "Clusters",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}",
+   "summary": "Delete Cluster"
+  },
+  {
+   "tag": "Clusters",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/stats",
+   "summary": "Get Cluster Capacity Statistics"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}/activationState",
+   "summary": "Turn On Free Tier Cluster"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}/activationState",
+   "summary": "Turn Off Free Tier Cluster"
+  },
+  {
+   "tag": "Clusters",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/activationState",
+   "summary": "Turn On Cluster"
+  },
+  {
+   "tag": "Clusters",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/activationState",
+   "summary": "Turn Off Cluster"
+  },
+  {
+   "tag": "On/Off Schedule",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule",
+   "summary": "Create Cluster On/Off schedule"
+  },
+  {
+   "tag": "On/Off Schedule",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule",
+   "summary": "Get Cluster On/Off schedule"
+  },
+  {
+   "tag": "On/Off Schedule",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule",
+   "summary": "Update Cluster On/Off schedule"
+  },
+  {
+   "tag": "On/Off Schedule",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule",
+   "summary": "Delete Cluster On/Off schedule"
+  },
+  {
+   "tag": "On/Off Schedule",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule/activationState",
+   "summary": "Pause Cluster On/Off Schedule"
+  },
+  {
+   "tag": "On/Off Schedule",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule/activationState",
+   "summary": "Unpause Cluster On/Off Schedule"
+  },
+  {
+   "tag": "Audit Logs",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/auditLog",
+   "summary": "Update Cluster Audit Log Configuration"
+  },
+  {
+   "tag": "Audit Logs",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/auditLog",
+   "summary": "Get Cluster Audit Log Configuration"
+  },
+  {
+   "tag": "Audit Logs",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/auditLogEvents",
+   "summary": "List Filterable Audit Log Events"
+  },
+  {
+   "tag": "Audit Logs",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/auditLogExports",
+   "summary": "Create Cluster Audit Log Export job"
+  },
+  {
+   "tag": "Audit Logs",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/auditLogExports",
+   "summary": "List Cluster Audit Log Export Jobs"
+  },
+  {
+   "tag": "Audit Logs",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/auditLogExports/{auditLogExportId}",
+   "summary": "Get Cluster Audit Log Export"
+  },
+  {
+   "tag": "CMEK",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/cmekAzureApplication",
+   "summary": "Get Azure Application ID"
+  },
+  {
+   "tag": "CMEK",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/cmekAzureApplication",
+   "summary": "Get Azure Application ID For Project"
+  },
+  {
+   "tag": "CMEK",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/cmek",
+   "summary": "Create Key Metadata"
+  },
+  {
+   "tag": "CMEK",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/cmek",
+   "summary": "List Key Metadata"
+  },
+  {
+   "tag": "CMEK",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/cmek",
+   "summary": "Create Azure Key Metadata For Project"
+  },
+  {
+   "tag": "CMEK",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/cmek",
+   "summary": "List Azure Key Metadata For Project"
+  },
+  {
+   "tag": "CMEK",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/cmek/{cmekId}/history",
+   "summary": "List Key Rotation History"
+  },
+  {
+   "tag": "CMEK",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/cmek/{cmekId}",
+   "summary": "Get Key Metadata"
+  },
+  {
+   "tag": "CMEK",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/cmek/{cmekId}",
+   "summary": "Rotate Key"
+  },
+  {
+   "tag": "CMEK",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/cmek/{cmekId}",
+   "summary": "Delete Key Metadata"
+  },
+  {
+   "tag": "CMEK",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/cmek/{cmekId}",
+   "summary": "Get Azure Key Metadata For Project"
+  },
+  {
+   "tag": "CMEK",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/cmek/{cmekId}",
+   "summary": "Rotate Azure Key For Project"
+  },
+  {
+   "tag": "CMEK",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/cmek/{cmekId}",
+   "summary": "Delete Azure Key Metadata For Project"
+  },
+  {
+   "tag": "CMEK",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/cmek/providers",
+   "summary": "Enable CMEK For Cloud Services Provider"
+  },
+  {
+   "tag": "CMEK",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/cmek/providers",
+   "summary": "Enable Azure CMEK For Project"
+  },
+  {
+   "tag": "CMEK",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cmek/{cmekId}/associate",
+   "summary": "Associate Key with Cluster"
+  },
+  {
+   "tag": "CMEK",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cmek/{cmekId}/unassociate",
+   "summary": "Unassociate Key from Cluster"
+  },
+  {
+   "tag": "Users",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/users",
+   "summary": "Create User"
+  },
+  {
+   "tag": "Users",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/users",
+   "summary": "List Users"
+  },
+  {
+   "tag": "Users",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/users/{userId}",
+   "summary": "Get User"
+  },
+  {
+   "tag": "Users",
+   "method": "PATCH",
+   "path": "/v4/organizations/{organizationId}/users/{userId}",
+   "summary": "Update User"
+  },
+  {
+   "tag": "Users",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/users/{userId}",
+   "summary": "Delete User"
+  },
+  {
+   "tag": "Allowed CIDRs (Cluster)",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/allowedcidrs",
+   "summary": "Create Allowed CIDR"
+  },
+  {
+   "tag": "Allowed CIDRs (Cluster)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/allowedcidrs",
+   "summary": "List Allowed CIDRs"
+  },
+  {
+   "tag": "Allowed CIDRs (Cluster)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/allowedcidrs/{allowedCidrId}",
+   "summary": "get allowed CIDR"
+  },
+  {
+   "tag": "Allowed CIDRs (Cluster)",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/allowedcidrs/{allowedCidrId}",
+   "summary": "Delete Allowed CIDR"
+  },
+  {
+   "tag": "Database Credentials",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users",
+   "summary": "List Database Credentials"
+  },
+  {
+   "tag": "Database Credentials",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users",
+   "summary": "Create Database Credentials"
+  },
+  {
+   "tag": "Database Roles",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privileges",
+   "summary": "List Capella Privileges"
+  },
+  {
+   "tag": "Database Roles",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/roles",
+   "summary": "List Database Roles"
+  },
+  {
+   "tag": "Database Roles",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/roles",
+   "summary": "Create Database Role"
+  },
+  {
+   "tag": "Database Roles",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/roles/{roleId}",
+   "summary": "Get Database Role"
+  },
+  {
+   "tag": "Database Roles",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/roles/{roleId}",
+   "summary": "Update Database Role"
+  },
+  {
+   "tag": "Database Roles",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/roles/{roleId}",
+   "summary": "Delete Database Role"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/freeTier",
+   "summary": "Create Free Tier App Service"
+  },
+  {
+   "tag": "App Services",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices",
+   "summary": "Create App Service"
+  },
+  {
+   "tag": "App Services",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/appservices",
+   "summary": "List AppServices"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/freeTier/{appServiceId}",
+   "summary": "Get Free Tier App Service"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/freeTier/{appServiceId}",
+   "summary": "Update Free Tier App Service"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/freeTier/{appServiceId}",
+   "summary": "Delete Free Tier App Service"
+  },
+  {
+   "tag": "App Services",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}",
+   "summary": "Get App Service"
+  },
+  {
+   "tag": "App Services",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}",
+   "summary": "Update App Service"
+  },
+  {
+   "tag": "App Services",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}",
+   "summary": "Delete App Service"
+  },
+  {
+   "tag": "App Services",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/activationState",
+   "summary": "Turn On App Service"
+  },
+  {
+   "tag": "App Services",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/activationState",
+   "summary": "Turn Off App Service"
+  },
+  {
+   "tag": "Allowed CIDRs (App Services)",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/allowedcidrs/{allowedCidrId}",
+   "summary": "Delete App Service Allowed CIDR"
+  },
+  {
+   "tag": "Allowed CIDRs (App Services)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/allowedcidrs",
+   "summary": "List Allowed CIDRs for an App Service"
+  },
+  {
+   "tag": "Allowed CIDRs (App Services)",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/allowedcidrs",
+   "summary": "Create Allowed CIDR"
+  },
+  {
+   "tag": "App Services",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/adminUsers",
+   "summary": "Create App Service Admin User"
+  },
+  {
+   "tag": "App Services",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/adminUsers",
+   "summary": "List App Service Admin Users"
+  },
+  {
+   "tag": "App Services",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/adminUsers/{userId}",
+   "summary": "Update App Service Admin User"
+  },
+  {
+   "tag": "App Services",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/adminUsers/{userId}",
+   "summary": "Delete App Service Admin User"
+  },
+  {
+   "tag": "App Services",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/adminUsers/{userId}",
+   "summary": "Get App Service Admin User"
+  },
+  {
+   "tag": "App Services Audit Logging",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLog",
+   "summary": "Enable or Disable App Service Audit Logging"
+  },
+  {
+   "tag": "App Services Audit Logging",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLog",
+   "summary": "Get App Service Audit Log State"
+  },
+  {
+   "tag": "App Services",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/metadataIsolation",
+   "summary": "Opt App Service Back In to Metadata Isolation"
+  },
+  {
+   "tag": "App Services",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/metadataIsolation",
+   "summary": "Get App Service Metadata Isolation State"
+  },
+  {
+   "tag": "App Services Log Streaming",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/logStreaming/activationState",
+   "summary": "Resume App Service Log Streaming"
+  },
+  {
+   "tag": "App Services Log Streaming",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/logStreaming/activationState",
+   "summary": "Pause App Service Log Streaming"
+  },
+  {
+   "tag": "App Services",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/certificates",
+   "summary": "Get Public Certificate for App Service"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints",
+   "summary": "List App Endpoints"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints",
+   "summary": "Create App Endpoint"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}",
+   "summary": "Get App Endpoint"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}",
+   "summary": "Update App Endpoint"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}",
+   "summary": "Delete App Endpoint"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/collections",
+   "summary": "List App Endpoint Collections"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/activationStatus",
+   "summary": "Resume or Bring an App Endpoint online"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/activationStatus",
+   "summary": "Pause or Take an App Endpoint offline"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/cors",
+   "summary": "Get the App Endpoint Cross-Origin Resource Sharing (CORS) Configuration."
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/cors",
+   "summary": "Upsert the App Endpoint Cross-Origin Resource Sharing (CORS) Configuration."
+  },
+  {
+   "tag": "App Services",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/adminUsers",
+   "summary": "List App Endpoint Admin Users"
+  },
+  {
+   "tag": "App Services Audit Logging",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/auditLogEvents",
+   "summary": "List App Endpoint Audit Log Event IDs"
+  },
+  {
+   "tag": "App Services Audit Logging",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/auditLog",
+   "summary": "Update App Endpoint Audit Logging Config"
+  },
+  {
+   "tag": "App Services Audit Logging",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/auditLog",
+   "summary": "Get App Endpoint Audit Logging Config"
+  },
+  {
+   "tag": "App Services Log Streaming",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/logStreaming",
+   "summary": "Configure App Service Log Streaming"
+  },
+  {
+   "tag": "App Services Log Streaming",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/logStreaming",
+   "summary": "Get App Service Log Streaming Configuration and State"
+  },
+  {
+   "tag": "App Services Log Streaming",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/logStreaming",
+   "summary": "Disable App Service Log Streaming"
+  },
+  {
+   "tag": "App Services Log Streaming",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/logStreaming",
+   "summary": "Update App Endpoint Log Streaming Config"
+  },
+  {
+   "tag": "App Services Log Streaming",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/logStreaming",
+   "summary": "Get App Endpoint Log Streaming Config"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointKeyspace}/accessControlFunction",
+   "summary": "Get Access Control and Validation function"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointKeyspace}/accessControlFunction",
+   "summary": "Upsert custom Access Control and Validation function"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointKeyspace}/accessControlFunction",
+   "summary": "Delete Access Control and Validation function"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointKeyspace}/importFilter",
+   "summary": "Get Import Filter"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointKeyspace}/importFilter",
+   "summary": "Upsert Import Filter"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointKeyspace}/importFilter",
+   "summary": "Delete Import Filter"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/oidcProviders",
+   "summary": "Create App Endpoint OpenID Connect (OIDC) Provider"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/oidcProviders",
+   "summary": "List App Endpoint OpenID Connect (OIDC) Providers"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/oidcProviders/{OIDCProviderId}",
+   "summary": "Get App Endpoint OpenID Connect (OIDC) Provider"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/oidcProviders/{OIDCProviderId}",
+   "summary": "Update App Endpoint OpenID Connect (OIDC) Provider"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/oidcProviders/{OIDCProviderId}",
+   "summary": "Delete App Endpoint OpenID Connect (OIDC) Provider"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/oidcProviders/defaultProvider",
+   "summary": "Update App Endpoint Default OIDC Provider"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/resync",
+   "summary": "Get Resync Status"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/resync",
+   "summary": "Start Resync"
+  },
+  {
+   "tag": "App Endpoints",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/appEndpoints/{appEndpointName}/resync",
+   "summary": "Stop Resync"
+  },
+  {
+   "tag": "App Services Audit Logging",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLogStreaming",
+   "summary": "Configure App Service Audit Log Streaming"
+  },
+  {
+   "tag": "App Services Audit Logging",
+   "method": "PATCH",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLogStreaming",
+   "summary": "Start or Resume Audit Log Streaming"
+  },
+  {
+   "tag": "App Services Audit Logging",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLogStreaming",
+   "summary": "Get App Service Audit Log Streaming State"
+  },
+  {
+   "tag": "App Services Audit Logging",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLogExports",
+   "summary": "Initiate Audit Log Export"
+  },
+  {
+   "tag": "App Services Audit Logging",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLogExports",
+   "summary": "List Audit Log Export Jobs"
+  },
+  {
+   "tag": "App Services Audit Logging",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/auditLogExports/{auditLogExportId}",
+   "summary": "Get Audit Log Export Job"
+  },
+  {
+   "tag": "App Services Private Endpoints",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/privateEndpointService",
+   "summary": "Enable App Service Private Endpoints"
+  },
+  {
+   "tag": "App Services Private Endpoints",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/privateEndpointService",
+   "summary": "Get App Service Private Endpoints State"
+  },
+  {
+   "tag": "App Services Private Endpoints",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/privateEndpointService",
+   "summary": "Disable App Service Private Endpoints"
+  },
+  {
+   "tag": "App Services Private Endpoints",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/privateEndpointService/privateEndpointCommand",
+   "summary": "Get App Service Private Endpoints Command"
+  },
+  {
+   "tag": "App Services Private Endpoints",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/privateEndpointService/endpoints",
+   "summary": "List App Service Private Endpoints"
+  },
+  {
+   "tag": "App Services Private Endpoints",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/privateEndpointService/endpoints/{endpointId}",
+   "summary": "Accept Private Endpoint Request"
+  },
+  {
+   "tag": "App Services Private Endpoints",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/appservices/{appServiceId}/privateEndpointService/endpoints/{endpointId}",
+   "summary": "Delete Private Endpoint Request"
+  },
+  {
+   "tag": "Database Credentials",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users/{userId}",
+   "summary": "Get Database Credentials"
+  },
+  {
+   "tag": "Database Credentials",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users/{userId}",
+   "summary": "Update Database Credentials"
+  },
+  {
+   "tag": "Database Credentials",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users/{userId}",
+   "summary": "Delete Database Credentials"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier",
+   "summary": "Create Free Tier Bucket"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier",
+   "summary": "List Free Tier Buckets"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets",
+   "summary": "Create Bucket"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets",
+   "summary": "List Buckets"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier/{bucketId}",
+   "summary": "Get Free Tier Bucket"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier/{bucketId}",
+   "summary": "Update Free Tier Bucket"
+  },
+  {
+   "tag": "Free Tier",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier/{bucketId}",
+   "summary": "Delete Free Tier Bucket"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}",
+   "summary": "Get Bucket"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}",
+   "summary": "Update Bucket"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}",
+   "summary": "Delete Bucket"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/flush",
+   "summary": "Flush Bucket Data"
+  },
+  {
+   "tag": "Clusters",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/bucketStorageMigration",
+   "summary": "Migrate Buckets"
+  },
+  {
+   "tag": "Private Endpoint Service",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService",
+   "summary": "Get Private Endpoint Service Status"
+  },
+  {
+   "tag": "Private Endpoint Service",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService",
+   "summary": "Enable Private Endpoint Service"
+  },
+  {
+   "tag": "Private Endpoint Service",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService",
+   "summary": "Update Private Endpoint Service Configuration"
+  },
+  {
+   "tag": "Private Endpoint Service",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService",
+   "summary": "Disable Private Endpoint Service"
+  },
+  {
+   "tag": "Private Endpoint Service",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService/endpoints",
+   "summary": "List Private Endpoints"
+  },
+  {
+   "tag": "Private Endpoint Service",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService/endpointCommand",
+   "summary": "Get Private Endpoint CLI Command required to setup private endpoint for specific CSP"
+  },
+  {
+   "tag": "Private Endpoint Service",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService/endpoints/{endpointId}/associate",
+   "summary": "Accept Private Endpoint Request"
+  },
+  {
+   "tag": "Private Endpoint Service",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/privateEndpointService/endpoints/{endpointId}/unassociate",
+   "summary": "Reject or disassociate Private Endpoint"
+  },
+  {
+   "tag": "Organizations",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}",
+   "summary": "Get Organization"
+  },
+  {
+   "tag": "Organizations",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/configuration",
+   "summary": "Update Organization Configuration"
+  },
+  {
+   "tag": "Organizations",
+   "method": "GET",
+   "path": "/v4/organizations",
+   "summary": "List Organizations"
+  },
+  {
+   "tag": "Certificates",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/certificates",
+   "summary": "Get Certificate"
+  },
+  {
+   "tag": "Sample Bucket",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/sampleBuckets",
+   "summary": "Load Sample Data"
+  },
+  {
+   "tag": "Sample Bucket",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/sampleBuckets",
+   "summary": "List Sample Data Import Buckets"
+  },
+  {
+   "tag": "Sample Bucket",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/sampleBuckets/{bucketId}",
+   "summary": "Get Sample Import Bucket"
+  },
+  {
+   "tag": "Sample Bucket",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/sampleBuckets/{bucketId}",
+   "summary": "Delete Sample Import Bucket"
+  },
+  {
+   "tag": "Backups & Restore (Bucket)",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backups",
+   "summary": "Create Backup"
+  },
+  {
+   "tag": "Backups & Restore (Bucket)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/backups",
+   "summary": "List Cluster Backups"
+  },
+  {
+   "tag": "Backups & Restore (Bucket)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/backups/{backupId}",
+   "summary": "Get Backup"
+  },
+  {
+   "tag": "Backups & Restore (Bucket)",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/backups/{backupId}",
+   "summary": "Delete Backup Cycle"
+  },
+  {
+   "tag": "Cloud Snapshot Backups & Restore",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups",
+   "summary": "Create Cloud Snapshot Backup"
+  },
+  {
+   "tag": "Cloud Snapshot Backups & Restore",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups",
+   "summary": "List Cloud Snapshot Backups"
+  },
+  {
+   "tag": "Cloud Snapshot Backups & Restore",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/restores",
+   "summary": "List Cloud Snapshot Restores"
+  },
+  {
+   "tag": "Cloud Snapshot Backups & Restore",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/regions",
+   "summary": "List Available Geographic Regions for Cross-region Operations"
+  },
+  {
+   "tag": "Cloud Snapshot Backups & Restore",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/{backupId}",
+   "summary": "Edit Backup Retention"
+  },
+  {
+   "tag": "Cloud Snapshot Backups & Restore",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/{backupId}",
+   "summary": "Delete Backup"
+  },
+  {
+   "tag": "Cloud Snapshot Backups & Restore",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/{backupId}/restore",
+   "summary": "Restore Backup"
+  },
+  {
+   "tag": "Cloud Snapshot Backups & Restore",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/cloudsnapshotbackups",
+   "summary": "List Cloud Snapshot Backups at the Project Level"
+  },
+  {
+   "tag": "Cloud Snapshot Backups & Restore",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/cloudsnapshotbackups/{backupId}/clone",
+   "summary": "Clone Cluster Backup"
+  },
+  {
+   "tag": "Cloud Snapshot Backups Schedule",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackupschedule",
+   "summary": "Upsert Backup Schedule"
+  },
+  {
+   "tag": "Cloud Snapshot Backups Schedule",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackupschedule",
+   "summary": "Get Backup Schedule"
+  },
+  {
+   "tag": "Cloud Snapshot Backups Schedule",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackupschedule",
+   "summary": "Delete Backup Schedule"
+  },
+  {
+   "tag": "Backup Schedule (Bucket)",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/schedules",
+   "summary": "Create Backup Schedule"
+  },
+  {
+   "tag": "Backup Schedule (Bucket)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/schedules",
+   "summary": "Get Backup Schedule"
+  },
+  {
+   "tag": "Backup Schedule (Bucket)",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/schedules",
+   "summary": "Update Backup Schedule"
+  },
+  {
+   "tag": "Backup Schedule (Bucket)",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/schedules",
+   "summary": "Delete Backup Schedule"
+  },
+  {
+   "tag": "Backup Schedule (Bucket)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/cycles",
+   "summary": "List Cycles"
+  },
+  {
+   "tag": "Backup Schedule (Bucket)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/cycles/{cycleId}",
+   "summary": "List Backups"
+  },
+  {
+   "tag": "Backups & Restore (Bucket)",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/backups/{backupId}/restore",
+   "summary": "Restore Backup"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes",
+   "summary": "Create Scope"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes",
+   "summary": "List Scopes"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}",
+   "summary": "Get Scope"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}",
+   "summary": "Delete Scope"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections",
+   "summary": "Create Collection"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections",
+   "summary": "List Collections"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections/{collectionName}",
+   "summary": "Get Collection"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections/{collectionName}",
+   "summary": "Update Collection"
+  },
+  {
+   "tag": "Buckets, Scopes, & Collections",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections/{collectionName}",
+   "summary": "Delete Collection"
+  },
+  {
+   "tag": "Network Peers",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/networkPeers",
+   "summary": "Create Network Peering"
+  },
+  {
+   "tag": "Network Peers",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/networkPeers",
+   "summary": "List Network Peering Records"
+  },
+  {
+   "tag": "Network Peers",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/networkPeers/{peerId}",
+   "summary": "Get Network Peering record"
+  },
+  {
+   "tag": "Network Peers",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/networkPeers/{peerId}",
+   "summary": "Delete Network Peering"
+  },
+  {
+   "tag": "Alert Integration",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/alertIntegrations",
+   "summary": "Create Alert Integration"
+  },
+  {
+   "tag": "Alert Integration",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/alertIntegrations",
+   "summary": "List Alert Integrations"
+  },
+  {
+   "tag": "Alert Integration",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/alertIntegrations/channels",
+   "summary": "List Channels for an Alert Integration"
+  },
+  {
+   "tag": "Alert Integration",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/alertIntegrations/{alertIntegrationId}",
+   "summary": "Get Alert Integration"
+  },
+  {
+   "tag": "Alert Integration",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/alertIntegrations/{alertIntegrationId}",
+   "summary": "Update Alert Integration"
+  },
+  {
+   "tag": "Alert Integration",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/alertIntegrations/{alertIntegrationId}",
+   "summary": "Delete Alert Integration"
+  },
+  {
+   "tag": "Alert Integration",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/alertIntegrationTest",
+   "summary": "Test Alert Integration"
+  },
+  {
+   "tag": "Events",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/events",
+   "summary": "List Events"
+  },
+  {
+   "tag": "Events",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/events/{eventId}",
+   "summary": "Get Event"
+  },
+  {
+   "tag": "Events",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/events",
+   "summary": "List Events"
+  },
+  {
+   "tag": "Events",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/events/{eventId}",
+   "summary": "Get Project Event"
+  },
+  {
+   "tag": "Network Peers",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/networkPeers/networkPeerCommand",
+   "summary": "Get Azure VNET Peering CLI Command"
+  },
+  {
+   "tag": "Query Indexes",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/queryService/indexes",
+   "summary": "Manage Query Indexes"
+  },
+  {
+   "tag": "Query Indexes",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/queryService/indexes",
+   "summary": "Get List Of Index Definitions"
+  },
+  {
+   "tag": "Query Indexes",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/queryService/indexes/{indexName}",
+   "summary": "Get Index Properties"
+  },
+  {
+   "tag": "Query Indexes",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/queryService/indexBuildStatus/{indexName}",
+   "summary": "Get Index Build Status"
+  },
+  {
+   "tag": "AI Data Plane Providers",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/aiServices/providers",
+   "summary": "List providers"
+  },
+  {
+   "tag": "AI Data Plane Providers",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/aiServices/providers",
+   "summary": "Create provider"
+  },
+  {
+   "tag": "AI Data Plane Providers",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/aiServices/providers/{providerId}",
+   "summary": "Get provider"
+  },
+  {
+   "tag": "AI Data Plane Providers",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/aiServices/providers/{providerId}",
+   "summary": "Update provider"
+  },
+  {
+   "tag": "AI Data Plane Providers",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/aiServices/providers/{providerId}",
+   "summary": "Delete provider"
+  },
+  {
+   "tag": "AI Workflows",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/workflows",
+   "summary": "List AI Workflows"
+  },
+  {
+   "tag": "AI Workflows",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/workflows",
+   "summary": "Create AI Workflow"
+  },
+  {
+   "tag": "AI Workflows",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/workflows/{workflowId}",
+   "summary": "Get AI Workflow"
+  },
+  {
+   "tag": "AI Workflows",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/workflows/{workflowId}",
+   "summary": "Delete AI Workflow"
+  },
+  {
+   "tag": "AI Workflows",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/workflows/{workflowId}/runs",
+   "summary": "List AI Workflow Runs"
+  },
+  {
+   "tag": "AI Workflows",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/workflows/{workflowId}/runs",
+   "summary": "Run an AI Workflow"
+  },
+  {
+   "tag": "AI Workflows",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/workflows/{workflowId}/runs",
+   "summary": "Stop AI Workflow Run"
+  },
+  {
+   "tag": "AI Workflows",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/workflows/{workflowId}/runs/{runId}",
+   "summary": "Get AI Workflow Run"
+  },
+  {
+   "tag": "AI Workflows",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/workflows/{workflowId}/runs/{runId}/processedFiles",
+   "summary": "Get AI Workflow Run Processed Files"
+  },
+  {
+   "tag": "AI Workflows",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/workflows/supportedExternalEmbeddingModels",
+   "summary": "Get Supported External Embedding Models"
+  },
+  {
+   "tag": "Models (AI Data Plane)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/aiServices/models",
+   "summary": "List Models"
+  },
+  {
+   "tag": "Models (AI Data Plane)",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/aiServices/models",
+   "summary": "Create Model"
+  },
+  {
+   "tag": "Models (AI Data Plane)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/aiServices/models/{modelId}",
+   "summary": "Get Model"
+  },
+  {
+   "tag": "Models (AI Data Plane)",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/aiServices/models/{modelId}",
+   "summary": "Delete Model"
+  },
+  {
+   "tag": "Models (AI Data Plane)",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/aiServices/models/{modelId}",
+   "summary": "Update Model"
+  },
+  {
+   "tag": "Models (AI Data Plane)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/aiServices/models/{modelId}/connectionString",
+   "summary": "Get Model Connection String"
+  },
+  {
+   "tag": "Models (AI Data Plane)",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/aiServices/models/{modelId}/activationState",
+   "summary": "Turn On Model"
+  },
+  {
+   "tag": "Models (AI Data Plane)",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/aiServices/models/{modelId}/activationState",
+   "summary": "Turn Off Model"
+  },
+  {
+   "tag": "Model Services API Keys (AI Data Plane)",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/aiServices/models/apiKeys",
+   "summary": "Create API Key"
+  },
+  {
+   "tag": "Model Services API Keys (AI Data Plane)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/aiServices/models/apiKeys",
+   "summary": "List API keys"
+  },
+  {
+   "tag": "Model Services API Keys (AI Data Plane)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/aiServices/models/apiKeys/{apiKeyId}",
+   "summary": "Get API Key"
+  },
+  {
+   "tag": "Model Services API Keys (AI Data Plane)",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/aiServices/models/apiKeys/{apiKeyId}",
+   "summary": "Delete API key"
+  },
+  {
+   "tag": "Replications",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications/{replicationId}",
+   "summary": "Get replication details"
+  },
+  {
+   "tag": "Replications",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications/{replicationId}",
+   "summary": "Delete a replication"
+  },
+  {
+   "tag": "Replications",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications/{replicationId}",
+   "summary": "Update an existing replication"
+  },
+  {
+   "tag": "Replications",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications/jobs/{jobId}",
+   "summary": "Get replication job details"
+  },
+  {
+   "tag": "Replications",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications",
+   "summary": "List replications for a given cluster"
+  },
+  {
+   "tag": "Replications",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications",
+   "summary": "Create a new replication"
+  },
+  {
+   "tag": "Replications",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/replications",
+   "summary": "List replications for a given project"
+  },
+  {
+   "tag": "Replications",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications/{replicationId}/activationStatus",
+   "summary": "Pause a replication"
+  },
+  {
+   "tag": "Replications",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/replications/{replicationId}/activationStatus",
+   "summary": "Resume a replication"
+  },
+  {
+   "tag": "Data API",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/dataAPI",
+   "summary": "Update Data API"
+  },
+  {
+   "tag": "Data API",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/dataAPI",
+   "summary": "Get Data API Status"
+  },
+  {
+   "tag": "Data API",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/dataAPI/privateEndpointCommand",
+   "summary": "Get CLI Commands For Setting Up Private Endpoint Connection"
+  },
+  {
+   "tag": "Data API",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/dataAPI/privateEndpoints",
+   "summary": "List Data API Private Endpoints"
+  },
+  {
+   "tag": "Data API",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/dataAPI/privateEndpoints/{endpointId}/associate",
+   "summary": "Accept Data API Private Endpoint Connection"
+  },
+  {
+   "tag": "Data API",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/dataAPI/privateEndpoints/{endpointId}/unassociate",
+   "summary": "Disassociate Data API Private Endpoint"
+  },
+  {
+   "tag": "Billing",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/billing",
+   "summary": "Get Categorized Billing"
+  },
+  {
+   "tag": "Billing",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/billing",
+   "summary": "Get Itemized Billing Per Cluster"
+  },
+  {
+   "tag": "Billing",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/billing/prePaidCredits",
+   "summary": "Get Prepaid Credits Billing"
+  },
+  {
+   "tag": "Billing",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/billing/payAsYouGo",
+   "summary": "Get Pay As You Go Billing"
+  },
+  {
+   "tag": "Billing",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/billing/download",
+   "summary": "Download Categorized Billing"
+  },
+  {
+   "tag": "Billing",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/billing/download",
+   "summary": "Download Itemized Billing"
+  },
+  {
+   "tag": "Clusters",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/deletionProtection",
+   "summary": "Update Deletion Protection"
+  },
+  {
+   "tag": "Eventing Functions",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions/{functionName}/code",
+   "summary": "Get Eventing Function Code"
+  },
+  {
+   "tag": "Eventing Functions",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions/{functionName}/code",
+   "summary": "Update Eventing Function Code"
+  },
+  {
+   "tag": "Eventing Functions",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions/{functionName}",
+   "summary": "Get Eventing Function"
+  },
+  {
+   "tag": "Eventing Functions",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions/{functionName}",
+   "summary": "Delete Eventing Function"
+  },
+  {
+   "tag": "Eventing Functions",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions/{functionName}",
+   "summary": "Update Eventing Function"
+  },
+  {
+   "tag": "Eventing Functions",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions",
+   "summary": "Create Eventing Function"
+  },
+  {
+   "tag": "Eventing Functions",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions",
+   "summary": "List Eventing Functions"
+  },
+  {
+   "tag": "Eventing Functions",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions/{functionName}/activationState",
+   "summary": "Set Eventing Function State"
+  },
+  {
+   "tag": "Eventing Functions",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/eventingFunctions/{functionName}/logs",
+   "summary": "Get Function Logs"
+  }
+ ]
+}

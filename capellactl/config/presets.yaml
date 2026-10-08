@@ -1,0 +1,42 @@
+# Cluster size presets for `capellactl init` and `capellactl cluster create` (CAP-035 AC3).
+# Change sizes here without changing code. Check each size is offered in your regions.
+#
+#   configurationType  singleNode (1 node) | multiNode
+#   availability       single | multi
+#   numOfNodes, cpu (vCPUs per node), ram (GB per node), services
+
+dev:
+  description: one node for development
+  configurationType: singleNode
+  availability: single
+  numOfNodes: 1
+  cpu: 4
+  ram: 16
+  services: [data, index, query]
+
+small:
+  description: three nodes, multi-AZ
+  configurationType: multiNode
+  availability: multi
+  numOfNodes: 3
+  cpu: 4
+  ram: 16
+  services: [data, index, query]
+
+medium:
+  description: three larger nodes, multi-AZ
+  configurationType: multiNode
+  availability: multi
+  numOfNodes: 3
+  cpu: 8
+  ram: 32
+  services: [data, index, query]
+
+large:
+  description: five nodes, multi-AZ
+  configurationType: multiNode
+  availability: multi
+  numOfNodes: 5
+  cpu: 16
+  ram: 64
+  services: [data, index, query]

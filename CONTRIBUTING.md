@@ -1,0 +1,62 @@
+# Contributing to capellactl
+
+## Progress must always be visible
+
+`docs/release-<version>/INDEX.md` is generated from the header table of each story file
+(`docs/release-<version>/CAP-NNN-*.md`). It must reflect reality
+at every point, not only at the end of a release.
+
+- When work **starts** on a story, set its **Status** to `In progress`.
+- When every AC of a story has a passing test tagged `@pytest.mark.story("CAP-NNN", "ACn")`, set it to `Implemented`.
+- A story that is dropped is set to `Descoped` (keep the file and ID; say why in the file).
+- After **any** status, points, priority, title or dependency change, regenerate in the same change:
+  `python3 scripts/update-story-index.py docs/release-1.0.0` (or `make index`).
+- In the same change, regenerate the API coverage reports: `python3 scripts/update-api-coverage.py` (or
+  `make coverage`). `docs/release-1.0.0/API-COVERAGE.md` derives every command's and operation's status from the
+  story statuses, so a story that becomes Implemented updates it.
+- Never edit INDEX.md or the API coverage reports by hand. CI runs
+  `python3 scripts/update-story-index.py --check docs/release-1.0.0` and `python3 scripts/update-api-coverage.py --check`
+  and fails when any of them is stale.
+
+## API coverage
+
+- Every Management API operation is mapped in `scripts/update-api-coverage.py`, either to the capellactl command(s)
+  that call it with their stories, or to a proposed command for a later release. App Services are reported in
+  `docs/release-2.0.0/API-COVERAGE-APP-SERVICES.md`; AI operations are out of scope.
+- When a story adds a command or starts calling an endpoint, update its entry in the command dictionary (`cmd(...)`)
+  or operation map (`op(...)`). If a needed command has no story, write the story first (next free `CAP-NNN`,
+  added to a phase in `scripts/update-story-index.py`).
+- The spec is read from the offline snapshot `docs/api/management-api-v4.0-operations.json`. Refresh it with
+  `python3 scripts/update-api-coverage.py --refresh-spec` (needs network). The script fails on any new operation
+  that is not mapped yet.
+
+## Stories and tests
+
+- Every story AC has at least one test named `test_<subject>_ac<n>_<behaviour>` and tagged with the
+  story marker (docs/release-1.0.0/00-architecture.md §12.2). `scripts/check-ac-coverage.py` fails CI
+  when an `Implemented` story has an untested AC and lists the open ACs of `In progress` stories.
+- Every resource story keeps an idempotency AC: a second run makes zero `POST`/`PUT`/`DELETE` calls.
+- Endpoints, fields and enums come from the Capella Management API v4.0 OpenAPI spec, never from memory.
+- When a story adds or changes user-facing behaviour, update the step-by-step guide `docs/getting-started.md`
+  (`tests/scenario/test_readme_walkthrough.py` runs its steps). Keep `README.md` short: overview, install,
+  quick start, links.
+- When a story is finished, add an **Implementation notes (as built)** section: deviations from the
+  original text, and the tests for each AC.
+
+## Dependencies and licences
+
+capellactl is licensed under Apache-2.0 (`LICENSE`, copyright in `NOTICE`); source files carry no licence
+header. When you add, remove or upgrade a runtime dependency, run `make notices` (needs network) and commit
+the updated `THIRD_PARTY_NOTICES.md`. CI fails when the file is stale or a dependency's licence is not in
+`scripts/licence-policy.json`; changing that list needs the code owner's approval.
+
+## Commands
+
+```bash
+python3.12 -m venv .venv && .venv/bin/pip install -e '.[dev]'
+make check        # lint, types, tests, AC coverage, INDEX and API coverage checks
+make index        # regenerate INDEX.md
+make coverage     # regenerate the API coverage reports (docs/release-*/API-COVERAGE*.md)
+make notices      # regenerate THIRD_PARTY_NOTICES.md after a dependency change
+make image        # build the container image
+```

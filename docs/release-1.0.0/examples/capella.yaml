@@ -1,0 +1,133 @@
+# capellactl reference environment
+#
+# One file = one project in one organization.
+# Field names match the Capella Management API v4.0 request bodies.
+#
+#   capellactl validate   # offline checks
+#   capellactl plan       # preview
+#   capellactl apply      # converge Capella to this file (safe to re-run)
+#
+# Secrets: ${VAR} reads an environment variable, ${file:./path} reads a file.
+# Literal passwords are rejected. The API key is read from CAPELLA_API_KEY only.
+
+apiVersion: capellactl/v1
+organizationId: ${CAPELLA_ORG_ID}
+
+project:
+  name: nova-dev
+  description: Nova development environment
+  # id: 00000000-0000-0000-0000-000000000000   # pin only if several projects share this name
+
+clusters:
+  - name: nova-dev-01
+    description: Nova development cluster
+    deletionProtection: true                    # must be turned off before destroy
+
+    # --- Immutable after creation -------------------------------------------
+    configurationType: multiNode                # multiNode | singleNode
+    cloudProvider:
+      type: aws                                 # aws | gcp | azure
+      region: us-east-1
+      cidr: 10.10.0.0/24                        # must not overlap other clusters in the project
+    availability:
+      type: multi                               # single | multi
+    couchbaseServer:
+      version: "8.0"                            # omit to use the Capella default
+
+    # --- Updatable in place ---------------------------------------------------
+    support:
+      plan: developer pro                       # basic | developer pro | enterprise
+      timezone: PT                              # ET | GMT | IST | PT
+    serviceGroups:
+      - node:
+          compute: { cpu: 4, ram: 16 }
+          disk: { type: gp3, storage: 50, iops: 3000 }   # AWS: gp3 | io2
+        numOfNodes: 3                           # 3–27 for the first group
+        services: [data, index, query]
+      # - node:
+      #     compute: { cpu: 4, ram: 16 }
+      #     disk: { type: gp3, storage: 50, iops: 3000 }
+      #   numOfNodes: 2
+      #   services: [search]
+
+    # --- Hibernation: Capella turns the cluster off outside these windows ----
+    hibernation:
+      timezone: US/Pacific                     # one of the API's schedule timezones
+      weekdays: "08:00-18:00"                  # monday–friday on-window (minutes :00 or :30)
+      weekend: "off"                           # quote on/off: unquoted YAML reads them as booleans (CAP-020 AC10)
+      friday: "08:00-14:30"                    # per-day override
+      # paused: true                           # keep the schedule but stop applying it
+      # ensure: absent                         # delete the schedule
+
+    # --- Network access (no update API: changes are applied as replace) -----
+    allowedCidrs:
+      - cidr: 203.0.113.10/32
+        comment: Office VPN egress
+      - cidr: 198.51.100.0/24
+        comment: CI runners
+        expiresAt: "2026-12-31T23:59:59Z"
+
+    # --- Data model -------------------------------------------------------------
+    buckets:
+      - name: orders                            # immutable
+        type: couchbase                         # immutable: couchbase | ephemeral
+        storageBackend: magma                   # immutable: couchstore | magma
+        bucketConflictResolution: seqno         # immutable: seqno | lww
+        evictionPolicy: fullEviction            # immutable
+        memoryAllocationInMb: 1024
+        replicas: 1                             # 1 | 2 | 3
+        durabilityLevel: majority               # none | majority | majorityAndPersistActive | persistToMajority
+        flushEnabled: false
+        timeToLiveInSeconds: 0                  # 0 = no bucket TTL
+        scopes:
+          - name: inventory
+            collections:
+              - name: items
+              - name: suppliers
+                maxTTL: -1                      # -1 never expire, 0 bucket TTL, >0 seconds
+          - name: billing
+            collections:
+              - name: invoices
+
+      - name: sessions
+        type: ephemeral
+        evictionPolicy: nruEviction
+        memoryAllocationInMb: 256
+        replicas: 1
+        timeToLiveInSeconds: 3600
+        scopes:
+          - name: web
+            collections:
+              - name: carts
+
+    # --- Database credentials (basic: read/write on buckets, scopes, collections)
+    databaseCredentials:
+      - name: orders_app
+        password: ${ORDERS_APP_PASSWORD}        # set on create only; rotate with --rotate-password
+        access:
+          - privileges: [data_reader, data_writer]
+            resources:
+              buckets:
+                - name: orders
+                  scopes:
+                    - name: inventory
+                      collections: [items, suppliers]
+                    - name: billing
+
+      - name: web_sessions
+        # no password: Capella generates one; saved to credentialsOutput (mode 0600)
+        access:
+          - privileges: [data_reader, data_writer]
+            resources:
+              buckets:
+                - name: sessions
+
+      - name: reporting_ro
+        password: ${file:./secrets/reporting_ro.txt}
+        access:
+          - privileges: [data_reader]
+            resources:
+              buckets:
+                - name: orders
+
+credentialsOutput: ./.capellactl/credentials   # generated passwords land here; git-ignore it

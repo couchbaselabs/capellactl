@@ -1,0 +1,32 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+.capellactl/
+# your own environment file(s) at the repository root; the docs example and test fixtures are tracked
+/capella.yaml*
+/capella.yml*
+
+# AI assistant (Claude) files and tooling: never committed
+CLAUDE.md
+CLAUDE.local.md
+**/CLAUDE.md
+**/CLAUDE.local.md
+.claude/
+**/.claude/
+.mcp.json
+
+# editor and OS files
+*.swp
+*.swo
+*~
+.DS_Store
+.idea/
+.vscode/

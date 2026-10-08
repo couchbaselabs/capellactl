@@ -1,0 +1,57 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.10", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e ".[dev]"
+      - run: python -m ruff check capellactl tests scripts
+      - run: python -m mypy capellactl
+      - run: python -m pytest
+      - run: python scripts/check-ac-coverage.py
+      - run: python scripts/update-story-index.py --check docs/release-1.0.0
+      - run: python scripts/update-api-coverage.py --check     # API-COVERAGE.md matches story statuses
+      - run: python scripts/third-party-notices.py --check      # CAP-044 AC3/AC4, per OS and Python
+
+  install-smoke:            # CAP-001 AC1
+    needs: test
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install pipx build && python -m build --wheel
+      - shell: bash
+        run: pipx install dist/*.whl && capellactl --version
+
+  image-smoke:              # CAP-001 AC6
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t capellactl:ci .
+      - run: docker run --rm capellactl:ci --version
+      - run: test "$(docker run --rm --entrypoint id capellactl:ci -u)" != "0"
+      - run: |
+          docker pull -q python:3.12-slim
+          base=$(docker image inspect python:3.12-slim --format '{{.Size}}')
+          size=$(docker image inspect capellactl:ci --format '{{.Size}}')
+          echo "image adds $(( (size - base) / 1048576 )) MB to python:3.12-slim"
+          test $(( size - base )) -lt 52428800

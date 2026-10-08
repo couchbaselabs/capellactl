@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["plan", "result"],
+  "properties": {
+    "plan": {"$ref": "plan.schema.json#/properties/plan"},
+    "result": {
+      "type": "object",
+      "required": ["status", "actions"],
+      "properties": {
+        "status": {"enum": ["ok", "failed", "interrupted"]},
+        "connectionStrings": {"type": "array", "items": {"type": "string"}},
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kind", "key", "action", "status", "id", "durationSeconds"],
+            "properties": {
+              "kind": {"type": "string"}, "key": {"type": "string"}, "action": {"type": "string"},
+              "status": {"enum": ["pending", "done", "unchanged", "skipped", "deferred", "blocked", "failed", "interrupted"]},
+              "id": {"type": ["string", "null"]}, "durationSeconds": {"type": "number"}, "error": {"type": "string"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

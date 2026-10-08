@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["plan"],
+  "properties": {
+    "plan": {
+      "type": "object",
+      "required": ["actions"],
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["kind", "key", "action", "changes"],
+            "properties": {
+              "kind": {"type": "string"},
+              "key": {"type": "string"},
+              "action": {"enum": ["noop", "create", "update", "replace", "delete", "blocked", "deferred"]},
+              "changes": {"type": "array", "items": {"type": "object", "required": ["path", "before", "after"]}},
+              "reason": {"type": "string"},
+              "summary": {"type": "string"},
+              "notes": {"type": "array", "items": {"type": "string"}}
+            },
+            "additionalProperties": false
+          }
+        },
+        "unmanaged": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "capellactl -o json cluster scale --step: one object per group (an array with --all-groups) (CAP-018 AC6).",
+  "$defs": {
+    "result": {
+      "type": "object",
+      "required": ["cluster", "group", "from", "to", "status"],
+      "properties": {
+        "cluster": {"type": "string"},
+        "group": {"type": "string"},
+        "from": {"type": "integer"},
+        "to": {"type": "integer"},
+        "status": {"enum": ["scaled", "at_limit", "blocked", "cancelled"]}
+      },
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [{"$ref": "#/$defs/result"}, {"type": "array", "items": {"$ref": "#/$defs/result"}, "minItems": 1}]
+}
