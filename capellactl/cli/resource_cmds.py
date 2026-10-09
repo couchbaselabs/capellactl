@@ -198,7 +198,7 @@ def project_create(state: AppState, name: str, description: str | None) -> None:
     import yaml
 
     from capellactl.cli import console
-    from capellactl.cli.console import err
+    from capellactl.cli.console import err, note
     from capellactl.config.editor import ConfigEditor
     from capellactl.importer import NEW_CLUSTER_TEMPLATE, ImportResult, combine, render
 
@@ -222,20 +222,16 @@ def project_create(state: AppState, name: str, description: str | None) -> None:
         raise CliExit(ExitCode.BLOCKED, f"project {name} already exists; {hint}", topic="idempotency")
     interactive = console.is_interactive()
     if description is None and interactive:
-        description = click.prompt("Description (optional)", default="", show_default=False)
+        description = console.ask("Description (optional)", "", show_default=False)
     out(f"Project {name} · organization {client.org_id}")
     out("")
     out(f"  + project {name}" + (f"  {description}" if description else ""))
     out("")
     out("Plan: 1 to add, 0 to change, 0 to delete, 0 blocked.")
-    if not state.auto_approve:
-        if not interactive:
-            raise CliExit(ExitCode.ERROR, "refusing to create a project without --auto-approve in a "
-                                          "non-interactive session")
-        verb = "add it to" if editor is not None and not in_file else ("keep" if in_file else "write")
-        if not click.confirm(f"Create project {name} in Capella and {verb} {path.name}?", default=False):
-            out("Cancelled; nothing was created.")
-            return
+    verb = "add it to" if editor is not None and not in_file else ("keep" if in_file else "write")
+    if not console.confirm(state, f"Create project {name} in Capella and {verb} {path.name}?", "create a project"):
+        out("Cancelled; nothing was created.")
+        return
     body: dict[str, Any] = {"name": name}
     if description:
         body["description"] = description
@@ -247,7 +243,7 @@ def project_create(state: AppState, name: str, description: str | None) -> None:
     if editor is not None:
         editor.add_project({**body, "clusters": []})
         backup = editor.save()
-        err(f"previous file saved as {backup}")
+        note(f"previous file saved as {backup}")
         out(f"Added project {name} to {path}.")
     else:
         try:
@@ -309,7 +305,7 @@ def project_delete(state: AppState, name: str, cascade: bool, discard_snapshots:
     """Delete a project from Capella and from capella.yaml (CAP-010)."""
     from capellactl.api.errors import Conflict
     from capellactl.cli import console
-    from capellactl.cli.console import err, wait_progress
+    from capellactl.cli.console import note, wait_progress
     from capellactl.engine.clock import get_clock
     from capellactl.engine.waiter import wait_for_cluster
     from capellactl.resources.cluster import is_free
@@ -350,22 +346,19 @@ def project_delete(state: AppState, name: str, cascade: bool, discard_snapshots:
     if blocked:
         raise CliExit(ExitCode.BLOCKED, "Nothing was deleted.", topic="safety")
 
-    if not state.auto_approve:
-        if not console.is_interactive():
-            raise CliExit(ExitCode.ERROR, "refusing to delete without --auto-approve in a non-interactive session")
-        if clusters:
-            out(f"This deletes {len(clusters)} cluster(s) and all their data"
-                + ("; snapshot backups are discarded" if discard_snapshots else "; snapshot backups are kept") + ".")
-        typed = click.prompt("Type the project name to confirm deletion", default="", show_default=False)
-        if typed.strip() != name:
-            out("Cancelled; nothing was deleted.")
-            return
+    notes = (f"This deletes {len(clusters)} cluster(s) and all their data"
+             + ("; snapshot backups are discarded" if discard_snapshots else "; snapshot backups are kept") + "."
+             if clusters else None)
+    if not console.confirm_typed(state, "Type the project name to confirm deletion", "delete a project", name,
+                                 notes=notes):
+        out("Cancelled; nothing was deleted.")
+        return
 
     clock = get_clock()
     for c in reversed(clusters):
         cid, cname = str(c["id"]), str(c.get("name"))
         free = is_free(c)
-        err(f"→ deleting cluster {cname} …")
+        note(f"→ deleting cluster {cname} …")
         if free:
             ep.delete_free_cluster(client, pid, cid)
         else:
@@ -390,7 +383,7 @@ def project_delete(state: AppState, name: str, cascade: bool, discard_snapshots:
 
 def _remove_from_file(state: AppState, name: str) -> None:
     """Keep capella.yaml in step: drop the deleted project (CAP-010 AC8)."""
-    from capellactl.cli.console import err
+    from capellactl.cli.console import note
     from capellactl.config.editor import ConfigEditor
 
     path = state.config_path()
@@ -403,7 +396,7 @@ def _remove_from_file(state: AppState, name: str) -> None:
             del projects[i]
             break
     backup = ed.save()
-    err(f"removed project {name} from {path.name} (previous version kept as {backup.name})")
+    note(f"removed project {name} from {path.name} (previous version kept as {backup.name})")
 
 
 # ------------------------------------------------------------------ cluster
@@ -413,7 +406,7 @@ def _remove_from_file(state: AppState, name: str) -> None:
                     "  capellactl cluster scale nova-dev-01 --nodes 5\n  capellactl cluster list\n"
                     "  capellactl cluster get nova-dev-01")
 def cluster() -> None:
-    """Clusters: options, list, get, create, update, scale, delete, protect, power, schedule."""
+    """Clusters: options, list, get, create, clone, update, scale, delete, protect, power, schedule."""
 
 
 def _cluster_rows(items: list[dict[str, Any]], project: bool = False) -> list[tuple[str, ...]]:
@@ -535,6 +528,9 @@ def _register_cluster_ops() -> None:
     cluster.add_command(cluster_options)
     cluster.add_command(cluster_delete)
     cluster.add_command(cluster_protect)
+    from capellactl.cli.cluster_clone import cluster_clone
+
+    cluster.add_command(cluster_clone)
     from capellactl.cli.power_cmds import cluster_power
     from capellactl.cli.schedule_cmds import schedule
 

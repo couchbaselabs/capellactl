@@ -17,7 +17,7 @@ from capellactl.api.errors import (
     TransportError,
     Unauthorized,
 )
-from capellactl.cli.console import err, setup_logging
+from capellactl.cli.console import err, set_quiet, setup_logging
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.groups import SuggestingGroup
 from capellactl.cli.state import AppState, parse_duration
@@ -102,12 +102,15 @@ def _report(exc: CliExit) -> None:
 @click.option("--profile", metavar="NAME", help="Saved profile (see 'capellactl configure').")
 @click.option("-o", "--output", type=click.Choice(["text", "json"]), default="text", show_default=True, help="Output format.")
 @click.option("--log-level", type=click.Choice(["error", "warn", "info", "debug"]), default="info", show_default=True)
-@click.option("--auto-approve", is_flag=True, help="Skip interactive confirmation.")
+@click.option("--auto-approve", "--yes", "-y", "auto_approve", is_flag=True,
+              help="Approve every change without asking (the only approval; see 'help ci').")
+@click.option("-q", "--quiet", is_flag=True, envvar="CAPELLACTL_QUIET",
+              help="No progress, hints or notes; errors and results are still printed. Env: CAPELLACTL_QUIET.")
 @click.option("--no-wait", is_flag=True, help="Return as soon as async operations are accepted.")
 @click.option("--timeout", default="60m", show_default=True, metavar="DURATION", help="Max wait for async operations.")
 @click.pass_context
 def cli(ctx: click.Context, config: str | None, profile: str | None, output: str, log_level: str,
-        auto_approve: bool, no_wait: bool, timeout: str) -> None:
+        auto_approve: bool, quiet: bool, no_wait: bool, timeout: str) -> None:
     """Declarative, idempotent management of Couchbase Capella environments.
 
     Describe your project, clusters, buckets and credentials in capella.yaml, then plan and apply.
@@ -117,8 +120,9 @@ def cli(ctx: click.Context, config: str | None, profile: str | None, output: str
     except ValueError as exc:
         raise click.BadParameter(str(exc), param_hint="--timeout") from None
     setup_logging(log_level)
+    set_quiet(quiet)
     ctx.obj = AppState(config_flag=config, profile_flag=profile, output=output, log_level=log_level,
-                       auto_approve=auto_approve, no_wait=no_wait, timeout=td)
+                       auto_approve=auto_approve, quiet=quiet, no_wait=no_wait, timeout=td)
 
 
 def _register() -> None:

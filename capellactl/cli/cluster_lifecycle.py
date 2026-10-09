@@ -14,7 +14,7 @@ import click
 from capellactl.api import endpoints as ep
 from capellactl.api.errors import CapellaApiError, NotFound
 from capellactl.cli import console
-from capellactl.cli.console import err, out, wait_progress
+from capellactl.cli.console import note, out, wait_progress
 from capellactl.cli.env import pass_state
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.resource_cmds import (
@@ -52,14 +52,10 @@ def cluster_protect(state: AppState, name: str, enable: bool | None, project: st
         out(f"deletion protection is already {word} for {name}; nothing to do in Capella")
         _record_protection(state, name, owner, enable)
         return
-    if not enable and not state.auto_approve:
-        if not console.is_interactive():
-            raise CliExit(ExitCode.ERROR, "refusing to turn off deletion protection without --auto-approve in a "
-                                          "non-interactive session")
-        if not click.confirm(f"Turn off deletion protection for {name}? The cluster and its buckets can then be "
-                             "deleted.", default=False):
-            out("Cancelled; deletion protection is unchanged.")
-            return
+    if not enable and not console.confirm(state, f"Turn off deletion protection for {name}? The cluster and its "
+                                                 "buckets can then be deleted.", "turn off deletion protection"):
+        out("Cancelled; deletion protection is unchanged.")
+        return
     ep.set_deletion_protection(client, pid, str(cl["id"]), enable)
     out(f"deletion protection {word} for {name}")
     _record_protection(state, name, owner, enable)
@@ -175,7 +171,7 @@ def _remove_from_file(state: AppState, name: str, project: str | None) -> None:
         return
     ed.remove_cluster(name, found[0])
     backup = ed.save()
-    err(f"removed cluster {name} from {path.name} (previous version kept as {backup.name})")
+    note(f"removed cluster {name} from {path.name} (previous version kept as {backup.name})")
 
 
 @click.command("delete", epilog="\b\nExamples:\n  capellactl cluster delete nova-dev-01\n"
@@ -210,15 +206,11 @@ def cluster_delete(state: AppState, name: str, discard_snapshots: bool, cascade:
 
     for line in _delete_details(client, pid, cl, discard_snapshots):
         out(line)
-    if not state.auto_approve:
-        if not console.is_interactive():
-            raise CliExit(ExitCode.ERROR, "refusing to delete without --auto-approve in a non-interactive session")
-        typed = click.prompt("Type the cluster name to confirm deletion", default="", show_default=False)
-        if typed.strip() != name:
-            out("Cancelled; nothing was deleted.")
-            return
+    if not console.confirm_typed(state, "Type the cluster name to confirm deletion", "delete a cluster", name):
+        out("Cancelled; nothing was deleted.")
+        return
 
-    err(f"→ deleting cluster {name} …")
+    note(f"→ deleting cluster {name} …")
     if is_free(cl):
         ep.delete_free_cluster(client, pid, str(cl["id"]))
     else:

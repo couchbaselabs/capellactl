@@ -1,7 +1,7 @@
 PY ?= .venv/bin/python
 RELEASE ?= docs/release-1.0.0
 
-.PHONY: lint typecheck test test-integration ac-coverage index index-check coverage coverage-check notices notices-check build image check
+.PHONY: lint typecheck test test-integration ac-coverage index index-check coverage coverage-check notices notices-check docs docs-check dist build image check
 
 lint:
 	$(PY) -m ruff check capellactl tests scripts
@@ -36,10 +36,18 @@ notices:
 notices-check:
 	$(PY) scripts/third-party-notices.py --check
 
-build:
-	$(PY) -m pip wheel --no-deps -w dist .
+docs:            # docs/reference.md from the config schema (CAP-033)
+	$(PY) scripts/update-reference.py
 
-image:
-	docker build -t capellactl:$$($(PY) -c 'import capellactl;print(capellactl.__version__)') .
+docs-check:
+	$(PY) scripts/update-reference.py --check
 
-check: lint typecheck test ac-coverage index-check coverage-check notices-check
+dist:            # source archive, wheel and SHA256SUMS in dist/ (CAP-043)
+	$(PY) scripts/build-dist.py
+
+build: dist
+
+image: dist      # the image installs the wheel built by `make dist`
+	docker build -t capellactl:$$($(PY) scripts/version.py | tr '+' '-') .
+
+check: lint typecheck test ac-coverage index-check coverage-check notices-check docs-check

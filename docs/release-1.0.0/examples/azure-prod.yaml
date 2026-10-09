@@ -1,0 +1,52 @@
+# Production on Microsoft Azure: multi-zone, deletion protection on, always on (no hibernation schedule).
+# Azure disks are P-types (P6 … P60): their size and IOPS come from the type, so only `type` is set.
+# Region names are Azure's (eastus, westeurope …), not AWS's (us-east-1).
+#
+#   export CAPELLA_ORG_ID=… ORDERS_APP_PASSWORD=…
+#   capellactl validate && capellactl plan && capellactl apply
+
+apiVersion: capellactl/v1
+organizationId: ${CAPELLA_ORG_ID}
+
+project:
+  name: nova-prod
+  description: Nova production
+
+clusters:
+  - name: nova-prod-azure
+    description: Production cluster (Azure)
+    deletionProtection: true
+    cloudProvider:
+      type: azure
+      region: eastus
+      cidr: 10.50.0.0/24
+    availability:
+      type: multi
+    support:
+      plan: enterprise
+      timezone: ET
+    serviceGroups:
+      - node:
+          compute: { cpu: 8, ram: 32 }
+          disk: { type: P30 }
+        numOfNodes: 3
+        services: [data, index, query]
+    allowedCidrs:
+      - cidr: 198.51.100.0/24
+        comment: Application subnet (replace with yours)
+    buckets:
+      - name: orders
+        memoryAllocationInMb: 4096
+        replicas: 2
+        scopes:
+          - name: billing
+            collections:
+              - name: invoices
+    databaseCredentials:
+      - name: orders_app
+        password: ${ORDERS_APP_PASSWORD}
+        access:
+          - privileges: [data_reader, data_writer]
+            resources:
+              buckets:
+                - name: orders

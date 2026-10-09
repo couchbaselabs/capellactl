@@ -8,8 +8,10 @@
   degraded clusters, ambiguous names, unsafe scale-in, turned-off clusters, buckets that need more
   memory than the cluster has free or more replicas than it has data nodes for, collection maxTTL
   changes on Couchbase Server older than 7.6.0.
-- **Confirmation**: apply asks before changing anything; destructive changes are listed again.
-  `--auto-approve` skips the prompt (CI). Without a terminal, apply refuses unless `--auto-approve`.
+- **Confirmation**: every command that changes Capella or capella.yaml asks first; apply lists destructive
+  changes again. `--auto-approve` (`--yes`, `-y`) is the only approval: there is no environment variable or
+  profile setting for it. Without a terminal, every such command refuses unless `--auto-approve`
+  (see `capellactl help ci`).
 - **Bucket deletes** show the item count, memory used and the credentials that lose access, and ask
   you to type the bucket name (`bucket delete`, and each bucket in `apply --prune`).
 - **Scope and collection deletes** list the collections whose documents are deleted and the credentials

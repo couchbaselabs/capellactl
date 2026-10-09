@@ -48,8 +48,10 @@ def test_docs_ac7_migration_guide_commands_valid(run):
         assert run(*path, "--help").exit_code == 0, path
 
 
-DOCS = [GUIDE.parents[0] / "getting-started.md", GUIDE.parents[0] / "release-1.0.0" / "cheatsheet.md",
-        GUIDE.parents[1] / "README.md", *sorted((GUIDE.parents[1] / "capellactl" / "help").glob("*.md"))]
+# Every customer document: docs/*.md (getting started, runbook, Terraform, reference, migration guide), the
+# README and the built-in help pages (CAP-033 AC2).
+DOCS = [*sorted(GUIDE.parents[0].glob("*.md")), GUIDE.parents[1] / "README.md",
+        *sorted((GUIDE.parents[1] / "capellactl" / "help").glob("*.md"))]
 
 
 def _doc_lines() -> list[tuple[str, str]]:
@@ -67,7 +69,8 @@ def _doc_lines() -> list[tuple[str, str]]:
     return out
 
 
-def test_docs_every_command_parses(run):
+@pytest.mark.story("CAP-033", "AC2")
+def test_docs_ac2_commands_parse(run):
     """Each `capellactl …` line in the docs parses (global options before the command, real options only)."""
     lines = _doc_lines()
     assert len(lines) > 150

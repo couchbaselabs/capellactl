@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import socket
+from pathlib import Path
 
 import click
 import pytest
@@ -52,7 +53,7 @@ def test_help_ac2_unknown_command_suggestion(run):
 def test_help_ac3_topics_listed(run):
     r = run("help", "topics")
     assert r.exit_code == 0
-    assert len(TOPICS) == 9
+    assert len(TOPICS) == 10
     for name, summary in TOPICS.items():
         assert name in r.output and summary in r.output
 
@@ -80,3 +81,14 @@ def test_help_ac7_offline_no_key(run, monkeypatch):
                  ("help", "config", "clusters.name"), ("completion", "bash")):
         r = run(*args, no_env=True)
         assert r.exit_code == 0, args
+
+
+@pytest.mark.story("CAP-042", "AC8")
+def test_ci_ac8_help_topic(run):
+    r = run("help", "ci")
+    assert r.exit_code == 0
+    for s in ("--auto-approve", "--yes", "-y", "--quiet", "CAPELLACTL_QUIET", "plan --detailed-exitcode",
+              "GitHub Actions", "GitLab CI", "There is no environment variable or profile setting for it"):
+        assert s in r.output, s
+    readme = (Path(__file__).resolve().parents[3] / "README.md").read_text()
+    assert "capellactl help ci" in readme

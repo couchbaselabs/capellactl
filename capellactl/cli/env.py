@@ -10,7 +10,7 @@ import click
 from capellactl.api import endpoints as ep
 from capellactl.api.errors import Forbidden, ServerError
 from capellactl.cli import console
-from capellactl.cli.console import err, out
+from capellactl.cli.console import err, note, out
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.state import AppState
 from capellactl.engine.clock import format_duration
@@ -96,7 +96,7 @@ def plan(state: AppState, targets: tuple[str, ...], detailed_exitcode: bool) -> 
 
 
 # -------------------------------------------------------------------- apply
-def confirm_data_delete(ctx: Any, action: Any) -> bool:
+def confirm_data_delete(state: AppState, ctx: Any, action: Any) -> bool:
     """Show what a bucket, scope or collection delete loses and ask for its name to be typed (CAP-024 AC1/AC3,
     CAP-026 AC4/AC5)."""
     from capellactl.resources import bucket as bucket_res
@@ -118,16 +118,15 @@ def confirm_data_delete(ctx: Any, action: Any) -> bool:
     for line in lines:
         out(f"  {line}")
     name = str(action.observed.body.get("name"))
-    typed = click.prompt(f"Type the {action.kind} name to confirm deletion of {action.key}", default="",
-                         show_default=False)
-    return bool(typed.strip() == name)
+    return console.confirm_typed(state, f"Type the {action.kind} name to confirm deletion of {action.key}",
+                                 f"delete a {action.kind}", name)
 
 
 def _confirm(state: AppState, p: Plan, cfg: Any, ctx: Any) -> None:
     if state.auto_approve:
         return
     if not console.is_interactive():
-        raise CliExit(ExitCode.ERROR, "refusing to apply without --auto-approve in a non-interactive session")
+        raise console.refusal(state, "apply")
     destructive = [a for a in p.visible() if a.type in (ActionType.DELETE, ActionType.REPLACE)
                    or (a.label and "scale in" in a.label)]
     if destructive:
@@ -141,12 +140,12 @@ def _confirm(state: AppState, p: Plan, cfg: Any, ctx: Any) -> None:
             out(f"  {a.key}")
     for a in destructive:
         if a.kind in ("bucket", "scope", "collection") and a.type is ActionType.DELETE \
-                and not confirm_data_delete(ctx, a):
+                and not confirm_data_delete(state, ctx, a):
             out("Apply cancelled; nothing was changed.")
             raise CliExit(ExitCode.OK, "")
     n = sum(1 for a in p.visible() if a.type in (ActionType.CREATE, ActionType.UPDATE, ActionType.REPLACE,
                                                   ActionType.DELETE))
-    if not click.confirm(f"Apply {n} change{'s' if n != 1 else ''} to {projects_label(cfg)}?", default=False):
+    if not console.confirm(state, f"Apply {n} change{'s' if n != 1 else ''} to {projects_label(cfg)}?", "apply"):
         out("Apply cancelled.")
         raise CliExit(ExitCode.OK, "")
 
@@ -251,7 +250,7 @@ def apply_plan(state: AppState, p: Plan, cfg: Any, ctx: Any, after: list[str] | 
         return
     if not shown:
         if not state.json:
-            out(render_plan_text(p, plan_header(cfg, ctx.client)))
+            out(render_plan_text(p, plan_header(cfg, ctx.client), quiet=console.is_quiet()))
             out("")
         _confirm(state, p, cfg, ctx)
     started = ctx.clock.monotonic()
@@ -297,9 +296,9 @@ def apply_plan(state: AppState, p: Plan, cfg: Any, ctx: Any, after: list[str] | 
         msg += f"\n{undone}" if undone else "\nFix the problem and re-run apply; completed changes are not repeated."
         raise CliExit(code, msg)
     for line in after or []:
-        err(line)
+        note(line)
     if not state.json:
-        err(f"Apply complete in {format_duration(ctx.clock.monotonic() - started)}.")
+        note(f"Apply complete in {format_duration(ctx.clock.monotonic() - started)}.")
 
 
 # ------------------------------------------------------------- not yet built
@@ -384,21 +383,18 @@ def destroy(state: AppState, discard_snapshots: bool) -> None:
     if state.json:
         out(dumps(render_plan_json(deletes)))
     else:
-        out(render_plan_text(deletes, plan_header(cfg, ctx.client)))
+        out(render_plan_text(deletes, plan_header(cfg, ctx.client), quiet=console.is_quiet()))
         out("")
         for line in kept:
             out(line)
-    if not state.auto_approve:
-        if not console.is_interactive():
-            raise CliExit(ExitCode.ERROR, "refusing to destroy without --auto-approve in a non-interactive session")
-        out(f"This deletes everything listed above ({DESTROY_ORDER_NOTE}). Snapshot backups are "
-            f"{'deleted' if discard_snapshots else 'kept'}.")
-        names = cfg.project_names()
-        typed = click.prompt(f"Type {'the project name' if len(names) == 1 else 'the project names, comma-separated'} "
-                             "to confirm", default="", show_default=False)
-        if sorted(t.strip() for t in typed.split(",")) != sorted(names):
-            out("Destroy cancelled; nothing was deleted.")
-            return
+    names = cfg.project_names()
+    if not console.confirm_typed(
+            state, f"Type {'the project name' if len(names) == 1 else 'the project names, comma-separated'} to confirm",
+            "destroy", lambda typed: sorted(t.strip() for t in typed.split(",")) == sorted(names),
+            notes=f"This deletes everything listed above ({DESTROY_ORDER_NOTE}). Snapshot backups are "
+                  f"{'deleted' if discard_snapshots else 'kept'}."):
+        out("Destroy cancelled; nothing was deleted.")
+        return
     started = ctx.clock.monotonic()
     result = execute(ctx, deletes)
     if not state.json:
@@ -414,7 +410,7 @@ def destroy(state: AppState, discard_snapshots: bool) -> None:
     for line in kept:
         err(line)
     unpin_deleted(cfg, result.actions)
-    err(f"Destroy complete in {format_duration(ctx.clock.monotonic() - started)}. capella.yaml still describes the "
+    note(f"Destroy complete in {format_duration(ctx.clock.monotonic() - started)}. capella.yaml still describes the "
         "environment: run 'capellactl apply' to build it again.")
 
 
@@ -442,7 +438,7 @@ def unpin_deleted(cfg: Any, actions: list[Any]) -> None:
             changed = True
     if changed:
         backup = ed.save()
-        err(f"{path.name}: removed the ids of the deleted project and clusters (previous version kept as "
+        note(f"{path.name}: removed the ids of the deleted project and clusters (previous version kept as "
             f"{backup.name})")
 
 
@@ -517,7 +513,8 @@ def _choose_project(client: Any, name: str | None, project_id: str | None) -> di
     out("Projects:")
     for i, p in enumerate(projects, 1):
         out(f"  {i}. {p.get('name')}")
-    idx = click.prompt("Which project should capella.yaml describe?", type=click.IntRange(1, len(projects)))
+    idx = int(console.ask("Which project should capella.yaml describe?", flag="--project",
+                          type=click.IntRange(1, len(projects))))
     return projects[idx - 1]
 
 
@@ -570,7 +567,7 @@ def run_import(state: AppState, client: Any = None, projects: tuple[str, ...] = 
         elif not console.is_interactive():
             raise CliExit(ExitCode.ERROR, f"{path} already exists and is not a capellactl file; pass --force to "
                                           f"overwrite it (the current file is kept as {path.name}.bak)")
-        elif not click.confirm(f"{path} exists. Overwrite it (a backup is kept as {path.name}.bak)?", default=False):
+        elif not console.ask_yes_no(f"{path} exists. Overwrite it (a backup is kept as {path.name}.bak)?", False):
             out("Import cancelled; nothing was written.")
             return
 
@@ -613,12 +610,12 @@ def run_import(state: AppState, client: Any = None, projects: tuple[str, ...] = 
         for node in new_doc["projects"]:
             editor.add_project(node)
         backup = editor.save()
-        err(f"previous file saved as {backup}")
+        note(f"previous file saved as {backup}")
     else:
         if path.exists():
             backup = path.with_name(path.name + ".bak")
             backup.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
-            err(f"previous file saved as {backup}")
+            note(f"previous file saved as {backup}")
         path.write_text(text, encoding="utf-8")
     for w in combined.warnings:
         err(f"warning: {w}")

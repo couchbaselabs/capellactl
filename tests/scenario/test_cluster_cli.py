@@ -54,7 +54,7 @@ def test_cluster_create_ac2_flags_and_defaults(fake, run, imported):
 def test_cluster_create_ac2_non_interactive_needs_auto_approve(fake, run, imported):
     before = imported.read_text()
     r = run("cluster", "create", "nova-qa-01")
-    assert r.exit_code == 1 and "without --auto-approve in a non-interactive session" in r.output
+    assert r.exit_code == 1 and "refusing to change capella.yaml and Capella without approval; pass --auto-approve" in r.output
     assert imported.read_text() == before and fake.writes() == []
 
 

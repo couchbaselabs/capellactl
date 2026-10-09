@@ -65,7 +65,7 @@ RELEASES = {
             "Redaction canary test passes; no API key or password in any captured output (CAP-008)",
             "Every open question in the story files is answered or explicitly deferred to 1.1",
             "Import round trip (CAP-036 AC2) shows no changes against at least one real customer-like environment in the sandbox",
-            "Time-to-first-environment check done by an engineer new to the tool: under 60 minutes (CAP-033 AC5)",
+            "Time-to-first-environment check done by an engineer new to the tool against a real organization: under 60 minutes (release check; CAP-033 AC5 runs the same guide path against the fake in CI)",
             "Source archive, wheel and SHA256SUMS built with `make dist` and attached to the GitHub Release (CAP-043); container image published; standalone executables for macOS, Linux and Windows in `downloads/` and listed in the README Download section (CAP-045); README, runbook and examples validated (CAP-033)",
         ],
     },

@@ -2,7 +2,7 @@
 
 | Epic | Priority | Points | Depends on | Status |
 |---|---|---|---|---|
-| E1 Foundation | P0 | 5 | CAP-003 | In progress |
+| E1 Foundation | P0 | 5 | CAP-003 | Implemented |
 
 ## User story
 As a **developer of capellactl**, I want an in-memory fake of the Management API that behaves like Capella (IDs, async states, ETags, conflicts, errors), so that every story's acceptance criteria can be asserted quickly and deterministically without a real organization.
@@ -81,12 +81,12 @@ class FakeCapella:
 |---|---|---|
 | `test_fake_ac5_fail_next_times` | `tests/unit/fakes/test_fake_capella.py` | |
 
-### AC6 — Parity check against real Capella
-**Given** the nightly integration run (CAP-032), **then** a recorded sample of real responses (IDs and secrets scrubbed) is compared field-by-field with the fake's responses for the same operations, and new or missing fields are reported.
+### AC6 — Parity check against the published API spec
+**Given** every operation in the endpoint inventory, **when** it is called on the fake with a valid request, **then** the answer is compared with that operation's documented success responses in the published Management API v4.0 OpenAPI spec (an offline snapshot in `docs/api/management-api-v4.0-responses.json`): the status code must be documented, every required field present, every returned field documented and of the documented type. Missing, extra and mistyped fields are reported. No Capella organization is called.
 
 | Test | Location | Verifies |
 |---|---|---|
-| `test_fake_ac6_response_shape_parity` | `tests/integration/test_fake_parity.py` | `@pytest.mark.integration` |
+| `test_fake_ac6_response_shape_parity` | `tests/unit/fakes/test_fake_parity.py` | All 56 inventory operations; runs offline in every CI build |
 
 ## Out of scope
 - Simulating Capella's real timings or billing.
@@ -95,7 +95,19 @@ class FakeCapella:
 - None.
 
 ## Implementation notes (as built)
-- AC6 (response-shape parity with a real organization) is written but skipped: it needs `CAPELLA_SANDBOX_API_KEY` and `CAPELLA_SANDBOX_ORG_ID`. The story stays In progress until it runs green (planned with CAP-032).
+- AC6 changed (2026-10-08): the parity check runs against the published OpenAPI spec instead of a real
+  organization, because no tenant may be called from tests. `scripts/update-api-responses.py` writes the documented
+  2xx responses of every inventory operation, with `$ref`s resolved, to `docs/api/management-api-v4.0-responses.json`
+  (refresh it when the spec changes: `python3 scripts/update-api-responses.py`). The former tenant-based
+  `tests/integration/test_fake_parity.py` was removed.
+- What the parity check found and fixed in the fake: full `audit` blocks (organizations, projects, clusters,
+  credentials, allowed CIDRs); `preferences` on organizations; `cursor.hrefs` (`first`, `last`, `previous`, `next`)
+  on paginated lists; no `cursor` on the lists Capella does not paginate (organizations, buckets, collections);
+  `enableCrossClusterVersioning` on buckets; no `userRoles: null` on basic credentials; no `deletionProtection` or
+  `expressScaling` on a free-tier cluster's own GET (the cluster list still reports `deletionProtection`); the fake's
+  internal `_cluster` field no longer leaks into allowed-CIDR responses.
+- Effect on capellactl: a bucket update now sends `enableCrossClusterVersioning` back with the other observed
+  values, as it would against Capella (`test_bucket_ac3_update_full_body`).
 - Extra harness features used by other stories: `fail_next(..., before=)` simulates races; `hooks` run before each request.
 
 ### Tests by AC
@@ -107,4 +119,4 @@ class FakeCapella:
 | AC3 | `test_fake_ac3_stale_etag_412` (tests/unit/fakes/test_fake_capella.py)<br>`test_fake_ac3_duplicate_child_409` (tests/unit/fakes/test_fake_capella.py)<br>`test_fake_ac3_duplicate_cluster_name_allowed` (tests/unit/fakes/test_fake_capella.py) |
 | AC4 | `test_fake_ac4_writes_excludes_gets` (tests/unit/fakes/test_fake_capella.py)<br>`test_fake_ac4_call_repr_redacts_password` (tests/unit/fakes/test_fake_capella.py) |
 | AC5 | `test_fake_ac5_fail_next_times` (tests/unit/fakes/test_fake_capella.py) |
-| AC6 | `test_fake_ac6_response_shape_parity` (tests/integration/test_fake_parity.py) |
+| AC6 | `test_fake_ac6_response_shape_parity`, `test_fake_parity_checker_reports_each_kind` (tests/unit/fakes/test_fake_parity.py) |

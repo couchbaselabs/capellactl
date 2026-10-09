@@ -118,8 +118,10 @@ def test_bucket_ac3_update_full_body(fake, run, write_config):
     assert not lines[i + 2].startswith("      ")
     puts = fake.calls("PUT", f"*/buckets/{bid}")
     assert len(puts) == 1
+    # Every updatable field Capella reported is sent back unchanged (enableCrossClusterVersioning included)
     assert puts[0].body == {"memoryAllocationInMb": 2048, "durabilityLevel": "majority", "replicas": 1,
-                            "timeToLiveInSeconds": 0, "flushEnabled": False, "priority": 3}
+                            "timeToLiveInSeconds": 0, "flushEnabled": False, "priority": 3,
+                            "enableCrossClusterVersioning": False}
 
 
 @pytest.mark.story("CAP-023", "AC3")

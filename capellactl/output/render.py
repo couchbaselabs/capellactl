@@ -51,7 +51,10 @@ def action_line(a: Action) -> list[str]:
     return lines
 
 
-def render_plan_text(plan: Plan, header: str | None = None) -> str:
+def render_plan_text(plan: Plan, header: str | None = None, quiet: bool = False) -> str:
+    """The plan before a change. `quiet` (CAP-042): only the summary line, unless something is blocked."""
+    if quiet and not plan.blocked:
+        return redact(plan.summary_line())
     out: list[str] = []
     if header:
         out += [header, ""]

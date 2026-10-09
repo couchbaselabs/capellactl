@@ -2,7 +2,7 @@
 
 | Epic | Priority | Points | Depends on | Status |
 |---|---|---|---|---|
-| E3 Clusters | P1 | 5 | CAP-011, CAP-023, CAP-025, CAP-036, CAP-038, CAP-048 | Not started |
+| E3 Clusters | P1 | 5 | CAP-011, CAP-023, CAP-025, CAP-036, CAP-038, CAP-048 | Implemented |
 
 ## User story
 As a **platform engineer**, I want to pick an existing cluster from a project and deploy the same cluster in another region with one command, so that a second region (for disaster recovery, latency or a regional rollout) matches the first without retyping its size, services, buckets, scopes and collections, and without editing capella.yaml.
@@ -137,6 +137,40 @@ With a terminal, an invalid region or CIDR that was typed at a prompt is asked a
 - App Services and other linked services (release 2.0.0).
 
 ## Open questions
-- Server version: should the clone request the source's exact Couchbase Server version, or leave it out so Capella picks the current default? Proposed: request the source's version, and if Capella rejects it (no longer offered in that region), stop and suggest `--server-version latest`.
-- Should the clone be recorded with a link to its source (for example a `clonedFrom:` comment in capella.yaml), so a later `cluster clone --refresh` can copy new buckets and collections across? Proposed: a YAML comment only in 1.0.0.
-- Deletion protection: copy the source's setting (proposed), or always leave it off on a new standby?
+- ~~Server version: the source's exact version, or Capella's default?~~ Answered (2026-10-08), as proposed: the clone requests the source's version; `--server-version VERSION|latest` overrides it, and a rejected create suggests `--server-version latest`.
+- ~~A link to the source in capella.yaml?~~ Answered (2026-10-08), as proposed: a YAML comment only (`# cloned from SOURCE (PROJECT, REGION)`); `--refresh` is not part of 1.0.0.
+- ~~Deletion protection: copy it, or leave it off?~~ Answered (2026-10-08), as proposed: copied from the source.
+
+## Implementation notes (as built)
+- `capellactl/cli/cluster_clone.py`. The source is read with the importer's `build_document` (CAP-036), so the
+  clone gets exactly what `import` would record; comment placeholders and advanced credentials are dropped.
+- Interactive order: source project (only when more than one project has clusters), source cluster, **region,
+  then name** (the name's default `SOURCE-REGION` needs the region), target project, CIDR, then the one
+  confirmation. With arguments given, only what is missing is asked.
+- `--server-version VERSION|latest` was added (Open questions): `latest` leaves the version out so Capella chooses.
+- Not copied, and listed under the plan: documents, the hibernation schedule (with the `cluster schedule set`
+  command to add one), and allowed CIDRs and credentials unless their options are given. A customer-managed
+  encryption key (`cmekId`) and private DNS resolution are also not copied (both are tied to the source's cloud
+  account or network) and are listed when the source has them.
+- A `--cidr` that overlaps a cluster of the source's or the target's project exits 3 before anything is
+  written. Azure P-type disks are sent by type only, as `cluster create` does (Capella sets size and IOPS).
+- Credential passwords: a `${VAR}` / `${file:…}` reference on the source in capella.yaml is kept; otherwise
+  Capella generates a new one, saved to `.capellactl/credentials/CLONE.NAME.json`.
+- The target project, when only Capella has it, is added to capella.yaml with `import --project` (with its
+  existing clusters). The same-region, same-project case is approved like a write (`--auto-approve`).
+
+### Tests by AC
+
+| AC | Tests |
+|---|---|
+| AC1 | `test_cluster_clone_ac1_flags_copies_settings` (tests/scenario/test_cluster_clone.py) |
+| AC2 | `test_cluster_clone_ac2_interactive_picks_source` |
+| AC3 | `test_cluster_clone_ac3_region_bound_values_reset` |
+| AC4 | `test_cluster_clone_ac4_no_data_model`, `test_cluster_clone_ac4_with_cidrs`, `test_cluster_clone_ac4_with_credentials_new_passwords` |
+| AC5 | `test_cluster_clone_ac5_to_project_with_overrides`, `test_cluster_clone_ac5_missing_target_project` |
+| AC6 | `test_cluster_clone_ac6_invalid_input_writes_nothing` (region, CIDR, name, free tier, deploying) |
+| AC7 | `test_cluster_clone_ac7_rejected_create_restores_file` (422 and 500) |
+| AC8 | `test_cluster_clone_ac8_idempotent` |
+| AC9 | `test_cluster_clone_ac9_integration` (tests/integration/test_cluster_clone.py; nightly, needs the sandbox) |
+
+Also: `test_cluster_clone_server_version_latest`, `test_cluster_clone_same_region_asks`.

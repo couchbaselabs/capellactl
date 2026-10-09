@@ -77,7 +77,7 @@ def test_project_delete_ac5_wrong_name_cancels(fake, run, two, monkeypatch):
     assert "Cancelled; nothing was deleted." in r.output and fake.writes() == []
     monkeypatch.setattr(console, "is_interactive", lambda: False)
     r = run("project", "delete", "non-prod")
-    assert r.exit_code == 1 and "without --auto-approve" in r.output and fake.writes() == []
+    assert r.exit_code == 1 and "without approval; pass --auto-approve" in r.output and fake.writes() == []
 
 
 @pytest.mark.story("CAP-010", "AC6")

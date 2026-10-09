@@ -24,7 +24,7 @@ from capellactl.api import endpoints as ep
 from capellactl.api.client import CapellaClient
 from capellactl.cli import console
 from capellactl.cli.cluster_ops import DISK_DEFAULT, PROVIDERS, REGION_DEFAULT, SUPPORT_PLANS, suggest_cidr
-from capellactl.cli.console import err, out
+from capellactl.cli.console import err, note, out
 from capellactl.cli.env import pass_state
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.state import AppState
@@ -217,8 +217,8 @@ class Wizard:
 
 def _prompt(text: str, default: Any = None, kind: Any = str, choices: list[str] | None = None) -> Callable[[], Any]:
     t = click.Choice(choices) if choices else kind
-    return lambda: click.prompt(text, default=default, type=t, show_choices=bool(choices),
-                                show_default=default not in (None, ""))
+    return lambda: console.ask(text, default, type=t, show_choices=bool(choices),
+                               show_default=default not in (None, ""))
 
 
 def parse_cidrs(text: str) -> list[str]:
@@ -261,7 +261,7 @@ def _choose(items: list[dict[str, Any]], label: str, default_id: str | None) -> 
     for i, item in enumerate(items, 1):
         out(f"  {i}. {item.get('name')} ({item.get('id')})")
     default = next((i for i, it in enumerate(items, 1) if it.get("id") == default_id), 1)
-    idx = click.prompt(label, type=click.IntRange(1, len(items)), default=default)
+    idx = int(console.ask(label, default, type=click.IntRange(1, len(items))))
     return items[idx - 1]
 
 
@@ -279,7 +279,7 @@ def organization(state: AppState, org_flag: str | None, interactive: bool,
         if not interactive:
             missing.append("--org-id")
             return None, "", None
-        return None, str(click.prompt("Organization ID", default=default_org)).strip(), None
+        return None, str(console.ask("Organization ID", default_org, flag="--org-id")).strip(), None
     base_url = str(s.base_url.value)
     orgs = ep.list_organizations(CapellaClient(str(key), None, base_url, clock=get_clock()))
     chosen: dict[str, Any] | None = None
@@ -314,7 +314,7 @@ def project_choice(client: CapellaClient | None, wanted: str | None, wanted_id: 
             out("Existing projects:")
             for i, p in enumerate(projects, 1):
                 out(f"  {i}. {p.get('name')}")
-        answer = str(click.prompt("Project (number of an existing project, or a new name)")).strip()
+        answer = str(console.ask("Project (number of an existing project, or a new name)", flag="--project")).strip()
         if answer.isdigit() and 1 <= int(answer) <= len(projects):
             chosen = projects[int(answer) - 1]
             same = [p for p in projects if p.get("name") == chosen.get("name")]
@@ -393,13 +393,13 @@ def init(state: AppState, file: str | None, non_interactive: bool, dry_run: bool
         if not interactive:
             raise CliExit(ExitCode.ERROR, f"{path.name} exists; pass --force to overwrite it (the current file is "
                                           f"kept as {path.name}.bak)")
-        if not click.confirm(f"{path.name} exists. Overwrite?", default=False):
+        if not console.ask_yes_no(f"{path.name} exists. Overwrite?", False):
             out("Nothing was written.")
             return
 
     if interactive:
-        start = click.prompt("Start from: a new environment, or an existing Capella project",
-                             type=click.Choice(["new", "import"]), default="new")
+        start = console.ask("Start from: a new environment, or an existing Capella project", "new",
+                            type=click.Choice(["new", "import"]))
         if start == "import":
             _import(state, path, org_id)
             return
@@ -458,7 +458,7 @@ def init(state: AppState, file: str | None, non_interactive: bool, dry_run: bool
     if path.exists():
         backup = path.with_name(path.name + ".bak")
         backup.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
-        err(f"previous file saved as {backup.name}")
+        note(f"previous file saved as {backup.name}")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     out(f"✔ Wrote {path} (validated)")
@@ -493,9 +493,9 @@ def _interview(w: Wizard, free_name: Callable[[str], list[str]], region_given: b
         w.ask(set_("cpu"), _prompt("vCPUs per node", a.cpu, int), group)
         w.ask(set_("ram"), _prompt("RAM GB per node", a.ram, int), group)
     w.ask(set_("support_plan"), _prompt("Support plan", a.support_plan, choices=SUPPORT_PLANS), ("clusters[0].support",))
-    w.ask(set_("protect"), lambda: click.confirm("Protect from deletion?", default=a.protect),
+    w.ask(set_("protect"), lambda: console.ask_yes_no("Protect from deletion?", bool(a.protect)),
           ("clusters[0].deletionProtection",))
-    hibernate = click.confirm("Hibernate outside office hours (weekdays only)?", default=a.office_hours is not None)
+    hibernate = console.ask_yes_no("Hibernate outside office hours (weekdays only)?", a.office_hours is not None)
     if hibernate:
         a.office_hours = a.office_hours or OFFICE_HOURS
         w.ask(set_("office_hours"), _prompt("Weekday on-window (HH:MM-HH:MM, minutes 00 or 30)", a.office_hours),
@@ -507,7 +507,7 @@ def _interview(w: Wizard, free_name: Callable[[str], list[str]], region_given: b
     def cidrs(v: str) -> None:
         a.cidrs = [canonical_or_raw(c) for c in parse_cidrs(v)]
         if any(c in ("0.0.0.0/0", "::/0") for c in a.cidrs):
-            a.allow_any_ip = click.confirm("0.0.0.0/0 lets any IP address connect. Allow it?", default=False)
+            a.allow_any_ip = console.ask_yes_no("0.0.0.0/0 lets any IP address connect. Allow it?", False)
 
     w.ask(cidrs, _prompt("Allowed IP ranges (CIDR, comma-separated; empty: none)", ",".join(a.cidrs)),
           ("clusters[0].allowedCidrs",))
@@ -549,7 +549,6 @@ def _import(state: AppState, path: Path, org_flag: str | None) -> None:
         raise CliExit(ExitCode.ERROR, "this organization has no projects to import; choose 'new' instead")
     out("Projects:")
     chosen = _choose(projects, "Project to import", None)
-    names = str(click.prompt("Clusters to import (comma-separated names; empty: all)", default="",
-                             show_default=False))
+    names = str(console.ask("Clusters to import (comma-separated names; empty: all)", "", show_default=False))
     clusters = tuple(n.strip() for n in names.split(",") if n.strip())
     run_import(state, client, project_id=str(chosen["id"]), clusters=clusters, file=str(path), force=True)

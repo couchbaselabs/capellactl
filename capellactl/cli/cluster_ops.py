@@ -16,7 +16,7 @@ import click
 from capellactl.api import endpoints as ep
 from capellactl.api.errors import TransportError
 from capellactl.cli import console
-from capellactl.cli.console import err, out
+from capellactl.cli.console import err, note, out
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.state import AppState
 from capellactl.config.editor import ConfigEditor, put
@@ -117,7 +117,7 @@ def choose_project(ed: ConfigEditor, project: str | None, interactive: bool) -> 
     out("Projects in capella.yaml:")
     for i, n in enumerate(names, 1):
         out(f"  {i}. {n}")
-    idx = click.prompt("Which project?", type=click.IntRange(1, len(names)))
+    idx = int(console.ask("Which project?", flag="--project", type=click.IntRange(1, len(names))))
     return names[idx - 1]
 
 
@@ -135,7 +135,7 @@ def locate(ed: ConfigEditor, name: str, project: str | None) -> tuple[Any, Any]:
 
 def _ask(text: str, default: Any, choices: list[str] | None = None, kind: Any = str) -> Any:
     t = click.Choice(choices) if choices else kind
-    return click.prompt(text, default=default, type=t, show_choices=bool(choices))
+    return console.ask(text, default, type=t, show_choices=bool(choices))
 
 
 def open_editor(state: AppState) -> ConfigEditor:
@@ -163,10 +163,11 @@ def _validate_candidate(state: AppState, ed: ConfigEditor, text: str) -> Config:
 def change_and_apply(state: AppState, ed: ConfigEditor, target: str, question: str, no_apply: bool,
                      text: str | None = None, noop_message: str | None = None,
                      descendants: bool = True, rotate_passwords: bool = False,
-                     **options: bool) -> tuple[Plan | None, Any]:
+                     after_plan: list[str] | None = None, **options: bool) -> tuple[Plan | None, Any]:
     """Validate → plan → confirm → write → apply. Returns (plan, ctx) or (None, None) when nothing ran.
 
-    `options`: RunContext switches (power_on, allow_service_removal, skip_capacity_check …)."""
+    `after_plan`: lines shown under the plan, before the question. `options`: RunContext switches (power_on,
+    allow_service_removal, skip_capacity_check …)."""
     from capellactl.cli import env as env_mod
 
     text = text if text is not None else ed.text()
@@ -185,21 +186,20 @@ def change_and_apply(state: AppState, ed: ConfigEditor, target: str, question: s
             ed.save(text)
         out(noop_message or "No changes: capella.yaml and Capella already match.")
         return None, None
-    out(render_plan_text(plan, env_mod.plan_header(cfg, client)))
+    if not state.json:  # -o json: the plan is part of the one JSON document printed after apply
+        out(render_plan_text(plan, env_mod.plan_header(cfg, client), quiet=console.is_quiet()))
+        for line in after_plan or []:
+            out(line)
     if plan.blocked:
         raise CliExit(ExitCode.BLOCKED, "Nothing was written to capella.yaml or changed in Capella.",
                       topic=plan.blocked[0].topic)
-    if not state.auto_approve:
-        if not console.is_interactive():
-            raise CliExit(ExitCode.ERROR, "refusing to change capella.yaml without --auto-approve in a "
-                                          "non-interactive session")
-        if not click.confirm(question, default=False):
-            out("Cancelled; capella.yaml and Capella are unchanged.")
-            return None, None
+    if not console.confirm(state, question, "change capella.yaml and Capella"):
+        out("Cancelled; capella.yaml and Capella are unchanged.")
+        return None, None
     previous = ed.original
     if text != ed.original:
         backup = ed.save(text)
-        err(f"{ed.path.name} updated (previous version kept as {backup.name})")
+        note(f"{ed.path.name} updated (previous version kept as {backup.name})")
     if no_apply:
         out("Not applied (--no-apply). Run 'capellactl apply' to deploy it.")
         return None, None

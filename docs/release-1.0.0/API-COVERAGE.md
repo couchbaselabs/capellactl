@@ -32,9 +32,9 @@ The spec has **285 operations**. Release 1.0.0 is about the operational database
 
 | | Commands | ✅ Done | 🟡 Partial | ⬜ Not built (stub) | ⏭️ Not in 1.0 (proposed) | Coverage (done / total) |
 |---|---|---|---|---|---|---|
-| **Resource commands planned for 1.0.0** | **42** | 41 | 0 | 1 | — | **98%** |
+| **Resource commands planned for 1.0.0** | **42** | 42 | 0 | 0 | — | **100%** |
 | Workflow commands (`plan`, `apply`, …) | 11 | 11 | 0 | 0 | — | 100% |
-| All resource commands, including proposed ones | 157 | 41 | 0 | 1 | 115 | 26% |
+| All resource commands, including proposed ones | 157 | 42 | 0 | 0 | 115 | 27% |
 
 *Each verb counts as one command (for example `cluster schedule pause`). Each command maps to one or more API operations. For example, `bucket create` calls both the provisioned and the free-tier create.*
 
@@ -103,7 +103,7 @@ Every resource command: built, stubbed, or proposed, with the API operations it 
 | `capellactl cluster create` | ✅ Done | CAP-011, CAP-038, CAP-041 | `POST {org}/projects/{p}/clusters/freeTier`<br>`POST {org}/projects/{p}/clusters` |  |
 | `capellactl cluster update` | ✅ Done | CAP-012, CAP-017 | `PUT {org}/projects/{p}/clusters/freeTier/{c}`<br>`PUT {org}/projects/{p}/clusters/{c}` |  |
 | `capellactl cluster scale` | ✅ Done | CAP-015, CAP-016, CAP-018 | `PUT {org}/projects/{p}/clusters/{c}` |  |
-| `capellactl cluster clone` | ⬜ Not built | CAP-049 |  | Not built: copy a cluster (size, services, buckets, scopes, collections) to another region. |
+| `capellactl cluster clone` | ✅ Done | CAP-049 | `POST {org}/projects/{p}/clusters` |  |
 | `capellactl cluster delete` | ✅ Done | CAP-014, CAP-041 | `DELETE {org}/projects/{p}/clusters/freeTier/{c}`<br>`DELETE {org}/projects/{p}/clusters/{c}` |  |
 | `capellactl cluster protect` | ✅ Done | CAP-013 | `PUT {org}/projects/{p}/clusters/{c}/deletionProtection` |  |
 | `capellactl cluster power on` | ✅ Done | CAP-019 | `POST {org}/projects/{p}/clusters/freeTier/{c}/activationState`<br>`POST {org}/projects/{p}/clusters/{c}/activationState` |  |
@@ -307,7 +307,7 @@ Paths are abbreviated: `{org}` = `/v4/organizations/{organizationId}`, `{p}` = p
 
 | Operation | Method | Path | capellactl command | Status | Notes / what's left |
 |---|---|---|---|---|---|
-| Create Cluster | `POST` | `{org}/projects/{p}/clusters` | `cluster create` | ✅ Done |  |
+| Create Cluster | `POST` | `{org}/projects/{p}/clusters` | `cluster create` / `cluster clone` | ✅ Done |  |
 | List Clusters | `GET` | `{org}/projects/{p}/clusters` | `cluster list` | ✅ Done |  |
 | Get Cluster | `GET` | `{org}/projects/{p}/clusters/{c}` | `cluster get` | ✅ Done |  |
 | Update Cluster | `PUT` | `{org}/projects/{p}/clusters/{c}` | `cluster update` / `cluster scale` | ✅ Done | Description, support, scale out/in/up/down (capacity-checked), step scaling. |

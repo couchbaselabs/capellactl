@@ -23,6 +23,7 @@ TOPICS: dict[str, str] = {
     "credentials": "database credentials, generated passwords, rotation",
     "safety": "deletion protection, prune, cascade, confirmations",
     "exit-codes": "what each exit code means",
+    "ci": "pipelines: --auto-approve, --quiet, gating on plan, GitHub Actions and GitLab examples",
     "environment": "API key, organization, profiles, environment variables, precedence",
 }
 

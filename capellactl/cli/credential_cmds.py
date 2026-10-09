@@ -16,7 +16,7 @@ from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from capellactl.api import endpoints as ep
 from capellactl.cli import console
 from capellactl.cli.cluster_ops import change_and_apply, locate, open_editor
-from capellactl.cli.console import err, out
+from capellactl.cli.console import note, out
 from capellactl.cli.env import pass_state
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.groups import SuggestingGroup
@@ -298,12 +298,10 @@ def credential_delete(state: AppState, cluster: str, name: str, project: str | N
         return
     summary = "advanced (userRoles)" if is_advanced(found) else access_summary(found.get("access"))
     out(f"  - credential {cluster}/{name}  {summary}")
-    if not state.auto_approve:
-        if not console.is_interactive():
-            raise CliExit(ExitCode.ERROR, "refusing to delete without --auto-approve in a non-interactive session")
-        if not click.confirm(f"Applications using {name} will lose access to {cluster}. Delete it?", default=False):
-            out("Cancelled; nothing was deleted.")
-            return
+    if not console.confirm(state, f"Applications using {name} will lose access to {cluster}. Delete it?",
+                           "delete a database credential"):
+        out("Cancelled; nothing was deleted.")
+        return
     ep.delete_credential(client, pid, cid, str(found["id"]))  # the id always comes from the list response
     out(f"deleted credential {cluster}/{name}")
     note = kept_secret_note(directory, cluster, name)
@@ -334,4 +332,4 @@ def _remove_from_file(state: AppState, cluster: str, name: str, project: str | N
     if not seq:
         del found[1]["databaseCredentials"]
     backup = ed.save()
-    err(f"removed credential {name} from {path.name} (previous version kept as {backup.name})")
+    note(f"removed credential {name} from {path.name} (previous version kept as {backup.name})")

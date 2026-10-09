@@ -16,7 +16,7 @@ from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from capellactl.api import endpoints as ep
 from capellactl.cli import console
 from capellactl.cli.cluster_ops import change_and_apply, locate, open_editor
-from capellactl.cli.console import err, out
+from capellactl.cli.console import note, out
 from capellactl.cli.env import pass_state
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.groups import SuggestingGroup
@@ -126,12 +126,10 @@ def cidr_delete(state: AppState, cluster: str, cidr_value: str, project: str | N
         _remove_from_file(state, cluster, canon, project)
         return
     out(f"  - allowed-cidr {cluster}/{canon}" + (f'  "{found[0]["comment"]}"' if found[0].get("comment") else ""))
-    if not state.auto_approve:
-        if not console.is_interactive():
-            raise CliExit(ExitCode.ERROR, "refusing to delete without --auto-approve in a non-interactive session")
-        if not click.confirm(f"Connections from {canon} to {cluster} will be refused. Delete it?", default=False):
-            out("Cancelled; nothing was deleted.")
-            return
+    if not console.confirm(state, f"Connections from {canon} to {cluster} will be refused. Delete it?",
+                           "delete an allowed CIDR"):
+        out("Cancelled; nothing was deleted.")
+        return
     for entry in found:
         ep.delete_allowed_cidr(client, pid, cid, str(entry["id"]))
     out(f"deleted allowed CIDR {canon} from {cluster}")
@@ -160,4 +158,4 @@ def _remove_from_file(state: AppState, cluster: str, canon: str, project: str | 
     if not seq:
         del found[1]["allowedCidrs"]
     backup = ed.save()
-    err(f"removed {canon} from {path.name} (previous version kept as {backup.name})")
+    note(f"removed {canon} from {path.name} (previous version kept as {backup.name})")

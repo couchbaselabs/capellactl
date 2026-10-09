@@ -81,14 +81,10 @@ def power(state: AppState, client: Any, pid: str, cl: dict[str, Any], on: bool, 
             raise CliExit(ExitCode.BLOCKED, f"cluster {name} is {current}; it can be turned "
                                             f"{'on' if on else 'off'} only when it is "
                                             f"{'turned off' if on else 'healthy'}", topic="hibernation")
-        if not on and confirm and attempt == 1 and not state.auto_approve:
-            if not console.is_interactive():
-                raise CliExit(ExitCode.ERROR, "refusing to turn off a cluster without --auto-approve in a "
-                                              "non-interactive session")
-            out(OFF_NOTES)
-            if not click.confirm(f"Turn off cluster {name}?", default=False):
-                out("Cancelled; the cluster is unchanged.")
-                return
+        if not on and confirm and attempt == 1 \
+                and not console.confirm(state, f"Turn off cluster {name}?", "turn off a cluster", notes=OFF_NOTES):
+            out("Cancelled; the cluster is unchanged.")
+            return
         try:
             if free:  # free tier: its own endpoints; turning on always includes linked App Services
                 (ep.turn_free_cluster_on if on else ep.turn_free_cluster_off)(client, pid, cid)

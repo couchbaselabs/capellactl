@@ -2,7 +2,7 @@
 
 | Epic | Priority | Points | Depends on | Status |
 |---|---|---|---|---|
-| E9 Lifecycle & release | P0 | 3 | CAP-001, CAP-044 | Not started |
+| E9 Lifecycle & release | P0 | 3 | CAP-001, CAP-044 | In progress |
 
 ## User story
 As a **maintainer shipping capellactl as source code to every team**, I want one command that builds the source archive, the wheel and their checksums the same way on any machine and in CI, so that releasing is simple and anyone can rebuild, verify and install exactly what we shipped.
@@ -95,5 +95,38 @@ As built today:
 - Signing artifacts (Sigstore/GPG).
 
 ## Open questions
-- Should the sdist include `tests/` and `docs/` (complete source release, as proposed) or only the package?
+- ~~Should the sdist include `tests/` and `docs/`?~~ Answered (2026-10-08), as proposed: yes, a complete source release (`tests/`, `docs/`, `scripts/`), so anyone can rebuild and test what was shipped.
 - ~~Do we also need a zipapp/shiv single-file build for machines where pip cannot install packages?~~ Answered (2026-10-06): yes, as standalone executables that need no Python, in CAP-045.
+
+## Implementation notes (as built)
+- **Still open: AC7.** The release workflow needs one dry run on GitHub: Actions → release → Run workflow (a
+  manual run builds, checks and installs on Linux, macOS and Windows, and publishes nothing). Record the run
+  here, then set the story to Implemented. `test_dist_ac7_release_workflow` checks the workflow's steps statically.
+- Version: `scripts/version.py`, hatchling's `code` version source (no hatch-vcs dependency). A `vX.Y.Z` tag on
+  HEAD gives `X.Y.Z`; after it, `X.Y.(Z+1).devN+gSHA`; before the first tag, `1.0.0.devN+gSHA`; a source archive
+  reads its own `PKG-INFO`. `capellactl.__version__` comes from the installed package's metadata.
+- `scripts/build-dist.py` builds the sdist, then the wheel from the sdist (`python -m build --no-isolation`), so a
+  wheel that builds proves the archive is complete. It checks both against an allowlist, plus a list of names that
+  never ship anywhere (local `capella.yaml`, `*.bak`, `.capellactl/`, `secrets/`, `.env`, assistant files; the
+  documented examples and test fixtures are allowed), runs `twine check --strict`, and writes `SHA256SUMS`.
+- hatchling adds `.gitignore` to the sdist (it keeps the same exclusions when the wheel is built from it); it is on
+  the allowlist.
+- `python -m capellactl` works (new `capellactl/__main__.py`); the release install matrix uses it.
+- `CHANGELOG.md` is new, with an `## Unreleased` section; a tagged build fails until it has `## X.Y.Z`.
+  CONTRIBUTING.md has the release steps.
+- The Dockerfile is now a single stage that installs `dist/capellactl-*.whl`; `make image` runs `make dist` first.
+  `make build` calls `make dist`.
+- `build` and `twine` were added to the `dev` extra.
+
+### Tests by AC
+
+| AC | Tests (tests/unit/test_packaging.py) |
+|---|---|
+| AC1 | `test_dist_ac1_make_dist_outputs` |
+| AC2 | `test_dist_ac2_install_from_sdist` (sdist and wheel); release workflow install matrix (Linux, macOS, Windows × Python 3.10, 3.13, plus pipx) |
+| AC3 | `test_dist_ac3_no_local_files_in_archives`, `test_dist_ac3_archive_outside_allowlist_fails` |
+| AC4 | `test_dist_ac4_license_files` |
+| AC5 | `test_dist_ac5_version_from_tag` |
+| AC6 | `test_dist_ac6_reproducible_build` |
+| AC7 | `test_dist_ac7_release_workflow` (static); dry run on GitHub still to do |
+| AC8 | `test_dist_ac8_single_build_path` |

@@ -52,7 +52,7 @@ def test_apply_ac2_non_interactive_requires_flag(fake, run, write_config):
     write_config()
     r = run("apply")
     assert r.exit_code == 1
-    assert "refusing to apply without --auto-approve in a non-interactive session" in r.output
+    assert "refusing to apply without approval; pass --auto-approve" in r.output
     assert fake.writes() == []
 
 

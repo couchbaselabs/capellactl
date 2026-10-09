@@ -9,7 +9,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from capellactl.api.client import CapellaClient
-from capellactl.cli.console import err, err_inline
+from capellactl.cli.console import err, err_inline, note
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.config.loader import Config, ConfigError, load_config
 from capellactl.config.settings import ConfigDiscoveryError, Settings, resolve_settings
@@ -36,6 +36,7 @@ class AppState:
     output: str = "text"
     log_level: str = "info"
     auto_approve: bool = False
+    quiet: bool = False
     no_wait: bool = False
     timeout: timedelta = timedelta(minutes=60)
     env: dict[str, str] = field(default_factory=lambda: dict(os.environ))
@@ -67,7 +68,7 @@ class AppState:
             topic = exc.issues[0].topic if exc.issues else "config"
             raise CliExit(ExitCode.CONFIG_INVALID, str(exc), topic=topic) from None
         for hint in cfg.hints:
-            err(hint)
+            note(hint)
         return cfg
 
     def client(self, file_org: str | None = None, require_org: bool = True) -> CapellaClient:
@@ -83,7 +84,7 @@ class AppState:
 
     def run_context(self, client: CapellaClient, config: Config | None) -> RunContext:
         def progress(msg: str) -> None:
-            err(msg)
+            note(msg)
 
         return RunContext(client=client, config=config, clock=get_clock(), timeout=self.timeout,
                           no_wait=self.no_wait, progress=progress, progress_inline=err_inline,

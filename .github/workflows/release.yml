@@ -1,0 +1,102 @@
+name: release
+# CAP-043: on a pushed tag vX.Y.Z, check, build with `make dist`, install the archives on Linux, macOS and Windows,
+# then attach the source archive, the wheel and SHA256SUMS to the GitHub Release. Nothing is published when a step
+# fails. Run it by hand (Actions → release → Run workflow) for a dry run: every step except publishing.
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+      - run: make check PY=python
+
+  dist:
+    needs: check
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+      - run: make dist PY=python          # fails without a CHANGELOG.md section for the tag's version
+      - id: version
+        run: echo "version=$(python scripts/version.py)" >> "$GITHUB_OUTPUT"
+      - name: version matches the tag
+        if: github.event_name == 'push'
+        run: test "$(python scripts/version.py)" = "${GITHUB_REF_NAME#v}"
+      - run: cd dist && sha256sum -c SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  install:
+    needs: dist
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.10", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: install from the source archive and from the wheel, each in a clean virtualenv
+        shell: bash
+        run: |
+          set -euo pipefail
+          for kind in tar.gz whl; do
+            python -m venv "venv-$kind"
+            if [ -x "venv-$kind/bin/python" ]; then py="venv-$kind/bin/python"; else py="venv-$kind/Scripts/python"; fi
+            "$py" -m pip install -q dist/*."$kind"
+            "$py" -m capellactl --version | grep -qF "capellactl ${{ needs.dist.outputs.version }} "
+            "$py" -m capellactl help topics > /dev/null
+          done
+      - name: pipx
+        shell: bash
+        run: |
+          python -m pip install -q pipx
+          python -m pipx install dist/*.whl
+          capellactl --version
+
+  publish:
+    needs: install
+    if: github.event_name == 'push'      # a manual run is a dry run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: attach the archives and SHA256SUMS to the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "capellactl ${GITHUB_REF_NAME#v}" \
+            --notes "See CHANGELOG.md. Verify with: sha256sum -c SHA256SUMS" \
+          || gh release upload "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --clobber

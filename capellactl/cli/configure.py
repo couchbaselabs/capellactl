@@ -108,7 +108,7 @@ def configure(ctx: click.Context, local_profile: str | None, org_id: str | None,
     else:
         out("Paste the API Key Token from Capella (Organization settings → API Keys). It is shown once when the key "
             "is created; the API Key ID will not work.")
-        raw = click.prompt("Capella API Key Token (input hidden)", hide_input=True)
+        raw = console.ask("Capella API Key Token (input hidden)", flag="--api-key-stdin", hide_input=True)
     key, fixed = clean_api_key(raw)
     if not key:
         raise CliExit(ExitCode.CONFIG_INVALID, "no API Key Token entered")
@@ -137,7 +137,7 @@ def configure(ctx: click.Context, local_profile: str | None, org_id: str | None,
         out("Organizations:")
         for i, o in enumerate(orgs, 1):
             out(f"  {i}. {o.get('name')} ({o.get('id')})")
-        idx = click.prompt("Choose an organization", type=click.IntRange(1, len(orgs)))
+        idx = console.ask("Choose an organization", flag="--org-id", type=click.IntRange(1, len(orgs)))
         chosen = orgs[idx - 1]
 
     profiles = st.load_profiles(state.env)
@@ -175,11 +175,15 @@ def _offer_import(state: AppState, client: CapellaClient, org: dict[str, Any], d
         return
     if do_import is False:
         return
+    if not ep.list_projects(client):  # a new organization: nothing to discover yet, so point to the next step
+        out("This organization has no projects yet. Next: capellactl project create NAME    (creates it in Capella "
+            "and writes capella.yaml)")
+        return
     if do_import is None:
         if not interactive:
             out("Next: capellactl import    (writes capella.yaml from your Capella project)")
             return
-        if not click.confirm("Discover your projects and clusters and write capella.yaml now?", default=True):
+        if not console.ask_yes_no("Discover your projects and clusters and write capella.yaml now?", True):
             out("Later: capellactl import")
             return
     run_import(state, client, force=bool(do_import) and target.exists())
@@ -201,7 +205,7 @@ def _check_existing(state: AppState, client: CapellaClient, org: dict[str, Any],
         out(f"Commands that read {target} will use organization {file_org} and fail with this key. Either:")
         out(f"  - rewrite it for {org_name} (the current file is kept as {target.name}.bak): capellactl import --force")
         out(f"  - keep it, and save a key for {file_org} in its own profile: capellactl configure --profile NAME")
-        if prompt and click.confirm(f"Back up {target.name} and re-import it for {org_name}?", default=False):
+        if prompt and console.ask_yes_no(f"Back up {target.name} and re-import it for {org_name}?", False):
             run_import(state, client, force=True)
         return
     if hint:

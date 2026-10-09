@@ -26,6 +26,10 @@ at every point, not only at the end of a release.
 - When a story adds a command or starts calling an endpoint, update its entry in the command dictionary (`cmd(...)`)
   or operation map (`op(...)`). If a needed command has no story, write the story first (next free `CAP-NNN`,
   added to a phase in `scripts/update-story-index.py`).
+- The fake Capella's responses are checked against the documented responses of every endpoint capellactl calls
+  (`docs/api/management-api-v4.0-responses.json`, CAP-004 AC6). When the spec changes or a story calls a new
+  endpoint, refresh it with `python3 scripts/update-api-responses.py` (needs network) and fix the fake until
+  `tests/unit/fakes/test_fake_parity.py` passes. No test ever calls a real Capella organization.
 - The spec is read from the offline snapshot `docs/api/management-api-v4.0-operations.json`. Refresh it with
   `python3 scripts/update-api-coverage.py --refresh-spec` (needs network). The script fails on any new operation
   that is not mapped yet.
@@ -40,6 +44,9 @@ at every point, not only at the end of a release.
 - When a story adds or changes user-facing behaviour, update the step-by-step guide `docs/getting-started.md`
   (`tests/scenario/test_readme_walkthrough.py` runs its steps). Keep `README.md` short: overview, install,
   quick start, links.
+- When a story changes a day-2 task, update `docs/runbook.md` (its commands are parsed in CI). When it changes
+  `capellactl/config/schema.json`, run `make docs`: `docs/reference.md` is generated from the schema and CI fails
+  when it is stale.
 - When a story is finished, add an **Implementation notes (as built)** section: deviations from the
   original text, and the tests for each AC.
 
@@ -58,5 +65,17 @@ make check        # lint, types, tests, AC coverage, INDEX and API coverage chec
 make index        # regenerate INDEX.md
 make coverage     # regenerate the API coverage reports (docs/release-*/API-COVERAGE*.md)
 make notices      # regenerate THIRD_PARTY_NOTICES.md after a dependency change
+make docs         # regenerate docs/reference.md after a schema change
+make dist         # source archive, wheel and SHA256SUMS in dist/ (version from the git tag)
 make image        # build the container image
 ```
+
+## Releasing
+
+1. Rename `## Unreleased` in `CHANGELOG.md` to `## X.Y.Z — date`, commit, and tag the commit `vX.Y.Z`.
+   The version comes only from the tag (`scripts/version.py`); never edit it in a file.
+2. Push the tag. `.github/workflows/release.yml` runs the checks, builds with `make dist`, installs the
+   archives on Linux, macOS and Windows, and attaches them with `SHA256SUMS` to the GitHub Release.
+   A manual run of the workflow (Run workflow) is a dry run that publishes nothing.
+3. Builds between releases are development versions of the next patch release (`1.0.1.devN+gSHA` after
+   `v1.0.0`). `NEXT_RELEASE` in `scripts/version.py` is used only before the first release tag exists.

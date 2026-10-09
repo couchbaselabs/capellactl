@@ -26,7 +26,7 @@ some platforms or Python versions.
 | markdown-it-py | 4.2.0 | MIT |  | https://github.com/executablebooks/markdown-it-py |
 | mdurl | 0.1.2 | MIT |  | https://github.com/executablebooks/mdurl |
 | more-itertools | 11.1.0 | MIT |  | https://github.com/more-itertools/more-itertools |
-| pycparser | 3.0 | BSD-3-Clause | sys_platform == "linux" and platform_python_implementation != "PyPy" and implementation_name != "PyPy" | https://github.com/eliben/pycparser |
+| pycparser | 3.1 | BSD-3-Clause | sys_platform == "linux" and platform_python_implementation != "PyPy" and implementation_name != "PyPy" | https://github.com/eliben/pycparser |
 | Pygments | 2.21.0 | BSD-2-Clause |  | https://pygments.org |
 | pywin32-ctypes | 0.2.3 | BSD-3-Clause | sys_platform == "win32" | https://github.com/enthought/pywin32-ctypes |
 | PyYAML | 6.0.3 | MIT |  | https://pyyaml.org/ |
@@ -37,5 +37,6 @@ some platforms or Python versions.
 | ruamel.yaml | 0.19.1 | MIT |  | https://sourceforge.net/p/ruamel-yaml/ |
 | SecretStorage | 3.5.0 | BSD-3-Clause | sys_platform == "linux" | https://github.com/mitya57/secretstorage |
 | typing_extensions | 4.16.0 | PSF-2.0 | python_version < "3.13" | https://github.com/python/typing_extensions |
+| tzdata | 2026.5 | Apache-2.0 | sys_platform == "win32" | https://github.com/python/tzdata |
 | urllib3 | 2.8.0 | MIT |  | https://urllib3.readthedocs.io |
 | zipp | 4.1.1 | MIT | python_version < "3.12" | https://github.com/jaraco/zipp |

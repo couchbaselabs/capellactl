@@ -1,6 +1,6 @@
 # Getting started with capellactl
 
-A step-by-step walkthrough from installation to day-2 operations. For copy-paste commands see the [cheatsheet](release-1.0.0/cheatsheet.md); for any command, `capellactl help` or `--help`.
+A step-by-step walkthrough from installation to day-2 operations. For day-2 tasks and copy-paste commands see the [runbook](runbook.md); for any command, `capellactl help` or `--help`.
 
 ## Step by step
 
@@ -18,7 +18,7 @@ git clone <this repository> capellactl && cd capellactl
 python3.12 -m venv .venv
 .venv/bin/pip install -e .
 source .venv/bin/activate          # puts capellactl on your PATH
-capellactl --version               # capellactl 1.0.0.dev0 (Management API v4.0)
+capellactl --version               # capellactl 1.0.0 (Management API v4.0); 1.0.1.devN+g… between releases
 ```
 
 **3. Connect and discover**
@@ -51,7 +51,14 @@ Next: capellactl plan    (reports no changes for what was imported)
 capellactl init --non-interactive --project nova-dev --cluster nova-dev-01 --provider aws --region us-east-1 \
   --preset small --hibernation office-hours --timezone US/Pacific --cidr 203.0.113.10/32
 capellactl init --dry-run            # print the YAML instead of writing it
+capellactl validate                  # offline check of capella.yaml
+capellactl plan                      # what apply will create
+capellactl apply                     # create it; waits until the cluster is healthy
 ```
+
+**A new organization with no projects yet?** `configure` says so instead of offering to discover them; create the
+first project with step 4 (`capellactl project create NAME`, which also writes `capella.yaml`), then deploy a
+cluster with step 6.
 
 **4. Projects: list, create, delete**
 
@@ -67,7 +74,7 @@ p-2    non-prod  QA            2026-10-05T18:02:11Z  yes
 ```
 
 `project create` refuses a name that already exists in Capella (add those with `capellactl import --project NAME`). `project delete` refuses a project that still has clusters unless you add `--cascade`, which deletes them first (refused while a cluster has deletion protection; snapshot backups are kept unless `--discard-snapshots`). Then deploy the first cluster of the new project with step 6 (`--project non-prod`).
-- In CI, or without a keychain: export `CAPELLA_API_KEY` and `CAPELLA_ORG_ID`, then run `capellactl import --project NAME`.
+- In CI, or without a keychain: export `CAPELLA_API_KEY` and `CAPELLA_ORG_ID`, then run `capellactl import --project NAME`. Without a terminal, commands that change something need `--auto-approve` (`-y`) and never stop to ask; `--quiet` keeps the log short. `capellactl help ci` has pipeline examples.
 
 **5. Check: plan reports no changes**
 
@@ -149,6 +156,16 @@ capellactl --auto-approve cluster create nova-qa-01 --project non-prod --provide
 ```
 
 Sizes: `dev` (1 node, AWS), `small` (3 × 4 vCPU/16 GB), `medium` (3 × 8/32), `large` (5 × 16/64), or `custom`. `capellactl cluster create --help` lists every option. A new cluster usually takes several minutes; apply waits until it is healthy (`--no-wait` returns at once).
+
+To deploy the same cluster in a second region (disaster recovery, latency), clone it instead of retyping its settings:
+
+```bash
+capellactl cluster clone nova-dev-01 nova-dev-west --region us-west-2                       # same project
+capellactl cluster clone nova-dev-01 nova-dr-01 --region us-west-2 --to-project non-prod --with-cidrs
+capellactl cluster clone                                                                     # asks for everything
+```
+
+The clone gets the source's size, service groups, disks, support plan, availability, deletion protection, and its buckets, scopes and collections (`--no-data-model` leaves those out). Documents and the hibernation schedule are not copied; allowed CIDRs and database credentials only with `--with-cidrs` and `--with-credentials` (each credential gets a new password). The plan lists what is not copied before you confirm.
 
 **7. Change a cluster**
 

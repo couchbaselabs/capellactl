@@ -14,7 +14,7 @@ from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from capellactl.api import endpoints as ep
 from capellactl.cli import console
 from capellactl.cli.cluster_ops import _ask, change_and_apply, locate, open_editor
-from capellactl.cli.console import err, out
+from capellactl.cli.console import note, out
 from capellactl.cli.env import pass_state
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.groups import SuggestingGroup
@@ -286,13 +286,9 @@ def bucket_delete(state: AppState, cluster: str, name: str, project: str | None)
     out(f"  - bucket {cluster}/{name}")
     for line in delete_details(client, pid, cid, body):
         out(f"  {line}")
-    if not state.auto_approve:
-        if not console.is_interactive():
-            raise CliExit(ExitCode.ERROR, "refusing to delete without --auto-approve in a non-interactive session")
-        typed = click.prompt("Type the bucket name to confirm deletion", default="", show_default=False)
-        if typed.strip() != name:
-            out("Cancelled; nothing was deleted.")
-            return
+    if not console.confirm_typed(state, "Type the bucket name to confirm deletion", "delete a bucket", name):
+        out("Cancelled; nothing was deleted.")
+        return
     delete = ep.delete_free_bucket if is_free(cl) else ep.delete_bucket
     delete(client, pid, cid, str(found["id"]))  # the id always comes from the list response
     out(f"deleted bucket {cluster}/{name}")
@@ -321,4 +317,4 @@ def _remove_from_file(state: AppState, cluster: str, name: str, project: str | N
     if not seq:
         del found[1]["buckets"]
     backup = ed.save()
-    err(f"removed bucket {name} from {path.name} (previous version kept as {backup.name})")
+    note(f"removed bucket {name} from {path.name} (previous version kept as {backup.name})")

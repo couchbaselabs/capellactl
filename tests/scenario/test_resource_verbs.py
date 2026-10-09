@@ -8,7 +8,8 @@ from tests.conftest import MINIMAL, seed_healthy
 
 @pytest.mark.parametrize(("group", "verbs"), [
     ("project", {"list", "get", "create", "update", "delete"}),
-    ("cluster", {"list", "get", "create", "update", "delete", "options", "scale", "protect", "power", "schedule"}),
+    ("cluster", {"list", "get", "create", "clone", "update", "delete", "options", "scale", "protect", "power",
+                 "schedule"}),
     ("cidr", {"list", "create", "delete"}),
     ("bucket", {"list", "get", "create", "update", "delete"}),
     ("scope", {"list", "create", "delete"}),

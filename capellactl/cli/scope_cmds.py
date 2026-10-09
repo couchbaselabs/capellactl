@@ -16,7 +16,7 @@ from capellactl.api import endpoints as ep
 from capellactl.cli import console
 from capellactl.cli.bucket_cmds import PROJECT_OPT, _bucket_node, _find_bucket
 from capellactl.cli.cluster_ops import _ask, change_and_apply, locate, open_editor
-from capellactl.cli.console import err, out
+from capellactl.cli.console import note, out
 from capellactl.cli.env import pass_state
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.groups import SuggestingGroup
@@ -111,15 +111,10 @@ def _append(node: CommentedMap, key: str, item: dict[str, Any]) -> CommentedMap:
 
 
 def _confirm_typed(state: AppState, kind: str, name: str) -> bool:
-    if state.auto_approve:
+    if console.confirm_typed(state, f"Type the {kind} name to confirm deletion", f"delete a {kind}", name):
         return True
-    if not console.is_interactive():
-        raise CliExit(ExitCode.ERROR, "refusing to delete without --auto-approve in a non-interactive session")
-    typed = click.prompt(f"Type the {kind} name to confirm deletion", default="", show_default=False)
-    if typed.strip() != name:
-        out("Cancelled; nothing was deleted.")
-        return False
-    return True
+    out("Cancelled; nothing was deleted.")
+    return False
 
 
 def _remove_from_file(state: AppState, cluster: str, bucket: str, scope_name: str, coll: str | None,
@@ -150,7 +145,7 @@ def _remove_from_file(state: AppState, cluster: str, bucket: str, scope_name: st
     if not b["scopes"]:
         del b["scopes"]
     backup = ed.save()
-    err(f"removed {what} from {ed.path.name} (previous version kept as {backup.name})")
+    note(f"removed {what} from {ed.path.name} (previous version kept as {backup.name})")
 
 
 # -------------------------------------------------------------------- scope

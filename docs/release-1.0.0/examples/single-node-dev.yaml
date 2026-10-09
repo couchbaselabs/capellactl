@@ -1,0 +1,44 @@
+# Cheapest developer cluster: one node, single availability zone, on only during the working week.
+#
+#   export CAPELLA_ORG_ID=…            # or leave it to your profile (capellactl configure)
+#   capellactl validate && capellactl plan && capellactl apply
+
+apiVersion: capellactl/v1
+organizationId: ${CAPELLA_ORG_ID}
+
+project:
+  name: nova-sandbox
+  description: Personal development sandbox
+
+clusters:
+  - name: nova-sandbox-01
+    description: Single-node developer cluster
+    configurationType: singleNode            # 1 node, development only        (cannot change later)
+    cloudProvider:
+      type: aws
+      region: us-east-1
+      cidr: 10.30.0.0/24
+    availability:
+      type: single                           # singleNode clusters use one zone (cannot change later)
+    support:
+      plan: basic
+    serviceGroups:
+      - node:
+          compute: { cpu: 4, ram: 16 }
+          disk: { type: gp3, storage: 50, iops: 3000 }
+        numOfNodes: 1
+        services: [data, index, query, search]
+    hibernation:                             # Capella turns the cluster off outside these windows
+      timezone: US/Eastern
+      weekdays: "08:00-19:00"
+      weekend: "off"                         # quoted: unquoted on/off are YAML booleans
+    allowedCidrs:
+      - cidr: 203.0.113.10/32
+        comment: Developer laptop (replace with your IP)
+    buckets:
+      - name: playground
+        memoryAllocationInMb: 256
+        scopes:
+          - name: app
+            collections:
+              - name: docs

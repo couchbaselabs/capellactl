@@ -28,7 +28,7 @@ def _setup(tmp_path: Path, tagged: list[str]) -> tuple[Path, Path]:
     docs, tests = tmp_path / "docs", tmp_path / "tests"
     docs.mkdir()
     tests.mkdir()
-    (docs / "CAP-999-fixture.md").write_text(STORY)
+    (docs / "CAP-999-fixture.md").write_text(STORY, encoding="utf-8")
     body = "\n".join(f'@pytest.mark.story("CAP-999", "{ac}")\ndef test_x_{ac.lower()}(): ...' for ac in tagged)
     (tests / "test_fixture.py").write_text("import pytest\n" + body)
     return docs, tests
@@ -36,7 +36,7 @@ def _setup(tmp_path: Path, tagged: list[str]) -> tuple[Path, Path]:
 
 def _status(docs, status):
     p = docs / "CAP-999-fixture.md"
-    p.write_text(p.read_text().replace("In progress", status))
+    p.write_text(p.read_text(encoding="utf-8").replace("In progress", status), encoding="utf-8")
 
 
 @pytest.mark.story("CAP-001", "AC5")

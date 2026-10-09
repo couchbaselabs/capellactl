@@ -84,6 +84,12 @@ AZURE_FIXED_DISKS = {"P6": (64, 240), "P10": (128, 500), "P15": (256, 1100), "P2
                      "P30": (1024, 5000), "P40": (2048, 7500), "P50": (4096, 7500), "P60": (8192, 16000)}
 
 
+def audit(version: int = 1) -> dict[str, Any]:
+    """The audit block Capella returns on organizations, projects, clusters, credentials and allowed CIDRs."""
+    return {"createdBy": "fake-api-key", "createdAt": "2026-01-01T00:00:00Z", "modifiedBy": "fake-api-key",
+            "modifiedAt": "2026-01-01T00:00:00Z", "version": version}
+
+
 class FakeCapella:
     def __init__(self, org_id: str = "org-1", clock: FakeClock | None = None, base_url: str = DEFAULT_BASE_URL,
                  step_seconds: float = 60.0) -> None:
@@ -91,7 +97,9 @@ class FakeCapella:
         self.clock = clock or FakeClock()
         self.base_url = base_url.rstrip("/")
         self.step_seconds = step_seconds
-        self.orgs: dict[str, dict[str, Any]] = {org_id: {"id": org_id, "name": "Nova Corp", "description": ""}}
+        self.orgs: dict[str, dict[str, Any]] = {org_id: {"id": org_id, "name": "Nova Corp", "description": "",
+                                                         "preferences": {"sessionDuration": 7200},
+                                                         "audit": audit()}}
         self.projects: dict[str, dict[str, Any]] = {}
         self.clusters: dict[str, dict[str, Any]] = {}
         self.cidrs: dict[str, dict[str, Any]] = {}
@@ -129,7 +137,7 @@ class FakeCapella:
     def seed_project(self, name: str, **fields: Any) -> str:
         pid = fields.pop("id", None) or self._new_id("p")
         self.projects[pid] = {"id": pid, "name": name, "description": fields.pop("description", ""),
-                              "audit": {"createdAt": "2026-01-01T00:00:00Z"}, **fields}
+                              "audit": audit(), **fields}
         self._bump(f"project:{pid}")
         return str(pid)
 
@@ -146,7 +154,7 @@ class FakeCapella:
         body.update(copy.deepcopy(fields))
         body.update({"id": cid, "name": name, "connectionString": f"couchbases://cb.{cid}.cloud.couchbase.com",
                      "deletionProtection": body.get("deletionProtection", False), "expressScaling": "disabled",
-                     "audit": {"createdAt": "2026-01-01T00:00:00Z"}})
+                     "audit": audit()})
         self.clusters[cid] = {"body": body, "project": project_id, "seq": [(state, -1.0)], "deleted_at": None,
                               "destroy_fails": False}
         self._bump(f"cluster:{cid}")
@@ -159,7 +167,10 @@ class FakeCapella:
                 "serviceGroups": [{"node": {"compute": {"cpu": 2, "ram": 8},
                                             "disk": {"type": "gp3", "storage": 50, "iops": 3000}},
                                    "numOfNodes": 1, "services": ["data", "index", "query", "search"]}]}
-        return self.seed_cluster(project_id, name, state, **{**free, **fields})
+        cid = self.seed_cluster(project_id, name, state, **{**free, **fields})
+        for key in ("deletionProtection", "expressScaling"):  # not in the free-tier cluster response
+            self.clusters[cid]["body"].pop(key, None)
+        return cid
 
     def seed_bucket(self, cluster_id: str, name: str, **fields: Any) -> str:
         bid = bucket_id(name)
@@ -167,6 +178,7 @@ class FakeCapella:
                                            "memoryAllocationInMb": 100, "bucketConflictResolution": "seqno",
                                            "durabilityLevel": "none", "replicas": 1, "flushEnabled": False,
                                            "timeToLiveInSeconds": 0, "evictionPolicy": "fullEviction", "priority": 0,
+                                           "enableCrossClusterVersioning": False,
                                            "stats": {"itemCount": 0, "opsPerSecond": 0, "diskUsedInMib": 0,
                                                      "memoryUsedInMib": 0},
                                            **fields}
@@ -277,7 +289,21 @@ class FakeCapella:
             pages["next"] = page + 1
         if page > 1:
             pages["previous"] = page - 1
-        return _ok(200, {"data": chunk, "cursor": {"pages": pages, "hrefs": {}}})
+        href = f"{self.base_url}{{}}?page={{}}&perPage={per}"  # Capella's hrefs; the path is not needed here
+        hrefs = {"first": href.format("", 1), "last": href.format("", last),
+                 "previous": href.format("", page - 1) if page > 1 else "",
+                 "next": href.format("", page + 1) if page < last else ""}
+        return _ok(200, {"data": chunk, "cursor": {"pages": pages, "hrefs": hrefs}})
+
+    @staticmethod
+    def _list(items: list[Any]) -> Resp:
+        """A list Capella does not paginate (organizations, buckets, collections): no cursor."""
+        return _ok(200, {"data": items})
+
+    @staticmethod
+    def _public(item: dict[str, Any]) -> dict[str, Any]:
+        """A stored resource as Capella returns it: without the fake's own `_` fields, with an audit block."""
+        return {"audit": audit(), **{k: v for k, v in item.items() if not k.startswith("_")}}
 
     def _etag_check(self, key: str, headers: dict[str, str]) -> Resp | None:
         want = headers.get("If-Match")
@@ -324,7 +350,7 @@ class FakeCapella:
         r = self._route
 
         # Organizations
-        r("GET", "/v4/organizations", lambda **k: self._page(list(self.orgs.values()), k["query"]))
+        r("GET", "/v4/organizations", lambda **k: self._list(list(self.orgs.values())))
         r("GET", ORG, lambda o, **k: self._org(o) or _ok(200, self.orgs[o]))
 
         # Projects
@@ -376,7 +402,8 @@ class FakeCapella:
                 return _err(404, f"project {p} not found", 4042)
             ids = [cid for cid, c in list(self.clusters.items()) if c["project"] == p
                    and not (c["deleted_at"] is not None and self.clock.monotonic() >= c["deleted_at"])]
-            return self._page([self._cluster_view(cid) for cid in ids], k["query"])
+            # The list reports deletionProtection for every cluster, free tier included (its own GET does not).
+            return self._page([{"deletionProtection": False, **self._cluster_view(cid)} for cid in ids], k["query"])
 
         def create_cluster(o: str, p: str, body: Any, **k: Any) -> Resp:
             if p not in self.projects:
@@ -587,7 +614,7 @@ class FakeCapella:
         def cidr_list(o: str, p: str, c: str, **k: Any) -> Resp:
             if (e := self._cluster(o, p, c)[1]) is not None:
                 return e
-            return self._page([v for v in self.cidrs.values() if v["_cluster"] == c], k["query"])
+            return self._page([self._public(v) for v in self.cidrs.values() if v["_cluster"] == c], k["query"])
 
         def cidr_create(o: str, p: str, c: str, body: Any, **k: Any) -> Resp:
             if (e := self._cluster(o, p, c)[1]) is not None:
@@ -601,7 +628,7 @@ class FakeCapella:
             return _ok(201, {"id": i})
 
         def cidr_get(o: str, p: str, c: str, i: str, **k: Any) -> Resp:
-            return _ok(200, self.cidrs[i]) if i in self.cidrs else _err(404, "not found", 4044)
+            return _ok(200, self._public(self.cidrs[i])) if i in self.cidrs else _err(404, "not found", 4044)
 
         def cidr_delete(o: str, p: str, c: str, i: str, **k: Any) -> Resp:
             return _ok(204) if self.cidrs.pop(i, None) else _err(404, "not found", 4044)
@@ -615,7 +642,7 @@ class FakeCapella:
         def b_list(o: str, p: str, c: str, **k: Any) -> Resp:
             if (e := self._cluster(o, p, c)[1]) is not None:
                 return e
-            return self._page([v for (cid, _), v in self.buckets.items() if cid == c], k["query"])
+            return self._list([v for (cid, _), v in self.buckets.items() if cid == c])
 
         def b_create(o: str, p: str, c: str, body: Any, **k: Any) -> Resp:
             if (e := self._cluster(o, p, c)[1]) is not None:
@@ -732,7 +759,7 @@ class FakeCapella:
             sc = self.scopes.get((c, b)) or {}
             if s not in sc:
                 return _err(404, "scope not found", 4046)
-            return self._page(list(sc[s].values()), k["query"])
+            return self._list(list(sc[s].values()))
 
         def col_create(o: str, p: str, c: str, b: str, s: str, body: Any, **k: Any) -> Resp:
             sc = self.scopes.get((c, b)) or {}
@@ -832,7 +859,9 @@ class FakeCapella:
 
     @staticmethod
     def _user_view(u: dict[str, Any]) -> dict[str, Any]:
-        view = {k: v for k, v in u.items() if not k.startswith("_")}
+        view = {"audit": audit(), **{k: v for k, v in u.items() if not k.startswith("_")}}
+        if view.get("userRoles") is None:  # basic credentials: Capella leaves userRoles out
+            view.pop("userRoles", None)
         # Like Capella: a whole-bucket grant comes back with a wildcard scope, `scopes: [{name: "*"}]`.
         view["access"] = [{**a, "resources": {**a["resources"], "buckets": [
             b if b.get("scopes") else {**b, "scopes": [{"name": "*"}]} for b in a["resources"]["buckets"]]}}

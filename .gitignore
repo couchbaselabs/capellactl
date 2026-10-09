@@ -13,6 +13,10 @@ build/
 # your own environment file(s) at the repository root; the docs example and test fixtures are tracked
 /capella.yaml*
 /capella.yml*
+# secrets referenced from capella.yaml (${file:./secrets/…}) and local environment files
+/secrets/
+.env
+.env.*
 
 # AI assistant (Claude) files and tooling: never committed
 CLAUDE.md

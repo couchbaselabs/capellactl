@@ -1,0 +1,3110 @@
+{
+ "source": "/private/tmp/claude-503/-Users-anuj-sahni-couchbase-cbtools-capellactl/c682a2d1-3559-4121-8362-a2ac0dee55f3/scratchpad/spec/openapi.yaml",
+ "apiVersion": "v4.0",
+ "retrieved": "2026-10-08",
+ "operations": [
+  {
+   "method": "GET",
+   "path": "/v4/organizations",
+   "documented": true,
+   "summary": "List Organizations",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "data"
+     ],
+     "properties": {
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "id",
+         "name",
+         "description",
+         "audit",
+         "preferences"
+        ],
+        "properties": {
+         "id": {
+          "type": "string",
+          "format": "uuid"
+         },
+         "name": {
+          "type": "string"
+         },
+         "subdomain": {
+          "type": "string"
+         },
+         "description": {
+          "type": "string"
+         },
+         "preferences": {
+          "type": "object",
+          "properties": {
+           "sessionDuration": {
+            "type": "integer",
+            "format": "uint32"
+           }
+          }
+         },
+         "audit": {
+          "type": "object",
+          "required": [
+           "createdBy",
+           "createdAt",
+           "modifiedBy",
+           "modifiedAt",
+           "version"
+          ],
+          "properties": {
+           "createdBy": {
+            "type": "string"
+           },
+           "createdAt": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "modifiedBy": {
+            "type": "string"
+           },
+           "modifiedAt": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "version": {
+            "type": "integer"
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}",
+   "documented": true,
+   "summary": "Get Organization",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "id",
+      "name",
+      "description",
+      "audit",
+      "preferences"
+     ],
+     "properties": {
+      "id": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "name": {
+       "type": "string"
+      },
+      "subdomain": {
+       "type": "string"
+      },
+      "description": {
+       "type": "string"
+      },
+      "preferences": {
+       "type": "object",
+       "properties": {
+        "sessionDuration": {
+         "type": "integer",
+         "format": "uint32"
+        }
+       }
+      },
+      "audit": {
+       "type": "object",
+       "required": [
+        "createdBy",
+        "createdAt",
+        "modifiedBy",
+        "modifiedAt",
+        "version"
+       ],
+       "properties": {
+        "createdBy": {
+         "type": "string"
+        },
+        "createdAt": {
+         "type": "string",
+         "format": "date-time"
+        },
+        "modifiedBy": {
+         "type": "string"
+        },
+        "modifiedAt": {
+         "type": "string",
+         "format": "date-time"
+        },
+        "version": {
+         "type": "integer"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects",
+   "documented": true,
+   "summary": "List Project",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "data",
+      "cursor"
+     ],
+     "properties": {
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "id",
+         "description",
+         "name",
+         "audit"
+        ],
+        "properties": {
+         "id": {
+          "type": "string",
+          "format": "uuid"
+         },
+         "description": {
+          "type": "string"
+         },
+         "name": {
+          "type": "string"
+         },
+         "audit": {
+          "type": "object",
+          "required": [
+           "createdBy",
+           "createdAt",
+           "modifiedBy",
+           "modifiedAt",
+           "version"
+          ],
+          "properties": {
+           "createdBy": {
+            "type": "string"
+           },
+           "createdAt": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "modifiedBy": {
+            "type": "string"
+           },
+           "modifiedAt": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "version": {
+            "type": "integer"
+           }
+          }
+         }
+        }
+       }
+      },
+      "cursor": {
+       "type": "object",
+       "required": [
+        "pages",
+        "hrefs"
+       ],
+       "properties": {
+        "pages": {
+         "type": "object",
+         "required": [
+          "page",
+          "last",
+          "perPage",
+          "totalItems"
+         ],
+         "properties": {
+          "page": {
+           "type": "integer"
+          },
+          "next": {
+           "type": "integer"
+          },
+          "previous": {
+           "type": "integer"
+          },
+          "last": {
+           "type": "integer"
+          },
+          "perPage": {
+           "type": "integer"
+          },
+          "totalItems": {
+           "type": "integer"
+          }
+         }
+        },
+        "hrefs": {
+         "type": "object",
+         "required": [
+          "first",
+          "last",
+          "previous",
+          "next"
+         ],
+         "properties": {
+          "first": {
+           "type": "string",
+           "format": "uri"
+          },
+          "last": {
+           "type": "string",
+           "format": "uri"
+          },
+          "previous": {
+           "type": "string",
+           "format": "uri"
+          },
+          "next": {
+           "type": "string",
+           "format": "uri"
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects",
+   "documented": true,
+   "summary": "Create Project",
+   "responses": {
+    "201": {
+     "type": "object",
+     "required": [
+      "id"
+     ],
+     "properties": {
+      "id": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}",
+   "documented": true,
+   "summary": "Get Project",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "id",
+      "description",
+      "name",
+      "audit"
+     ],
+     "properties": {
+      "id": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "description": {
+       "type": "string"
+      },
+      "name": {
+       "type": "string"
+      },
+      "audit": {
+       "type": "object",
+       "required": [
+        "createdBy",
+        "createdAt",
+        "modifiedBy",
+        "modifiedAt",
+        "version"
+       ],
+       "properties": {
+        "createdBy": {
+         "type": "string"
+        },
+        "createdAt": {
+         "type": "string",
+         "format": "date-time"
+        },
+        "modifiedBy": {
+         "type": "string"
+        },
+        "modifiedAt": {
+         "type": "string",
+         "format": "date-time"
+        },
+        "version": {
+         "type": "integer"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}",
+   "documented": true,
+   "summary": "Update Project",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}",
+   "documented": true,
+   "summary": "Delete Project",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters",
+   "documented": true,
+   "summary": "List Clusters",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "data",
+      "cursor"
+     ],
+     "properties": {
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "id",
+         "name",
+         "description",
+         "configurationType",
+         "connectionString",
+         "cloudProvider",
+         "couchbaseServer",
+         "serviceGroups",
+         "availability",
+         "support",
+         "currentState",
+         "audit",
+         "deletionProtection"
+        ],
+        "properties": {
+         "id": {
+          "type": "string",
+          "format": "uuid"
+         },
+         "appServiceId": {
+          "type": "string",
+          "format": "uuid"
+         },
+         "name": {
+          "type": "string"
+         },
+         "description": {
+          "type": "string"
+         },
+         "configurationType": {
+          "type": "string",
+          "enum": [
+           "singleNode",
+           "multiNode"
+          ]
+         },
+         "connectionString": {
+          "type": "string"
+         },
+         "cloudProvider": {
+          "type": "object",
+          "required": [
+           "type",
+           "region"
+          ],
+          "properties": {
+           "type": {
+            "type": "string",
+            "enum": [
+             "aws",
+             "gcp",
+             "azure"
+            ]
+           },
+           "region": {
+            "type": "string"
+           },
+           "cidr": {
+            "type": "string"
+           }
+          }
+         },
+         "couchbaseServer": {
+          "type": "object",
+          "properties": {
+           "version": {
+            "type": "string"
+           }
+          }
+         },
+         "serviceGroups": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "node": {
+             "type": "object",
+             "required": [
+              "compute",
+              "disk"
+             ],
+             "properties": {
+              "compute": {
+               "type": "object",
+               "required": [
+                "cpu",
+                "ram"
+               ],
+               "properties": {
+                "cpu": {
+                 "type": "integer"
+                },
+                "ram": {
+                 "type": "integer"
+                }
+               }
+              },
+              "disk": {
+               "oneOf": [
+                {
+                 "type": "object",
+                 "required": [
+                  "type",
+                  "storage",
+                  "iops"
+                 ],
+                 "properties": {
+                  "type": {
+                   "type": "string",
+                   "enum": [
+                    "gp3",
+                    "io2"
+                   ]
+                  },
+                  "storage": {
+                   "type": "integer"
+                  },
+                  "iops": {
+                   "type": "integer"
+                  }
+                 }
+                },
+                {
+                 "type": "object",
+                 "required": [
+                  "type"
+                 ],
+                 "properties": {
+                  "type": {
+                   "type": "string",
+                   "enum": [
+                    "P6",
+                    "P10",
+                    "P15",
+                    "P20",
+                    "P30",
+                    "P40",
+                    "P50",
+                    "P60",
+                    "Ultra"
+                   ]
+                  },
+                  "storage": {
+                   "type": "integer",
+                   "enum": [
+                    64,
+                    128,
+                    256,
+                    512,
+                    1024,
+                    2048,
+                    3072,
+                    4096,
+                    5120,
+                    6144,
+                    7168,
+                    8192,
+                    9216,
+                    10240,
+                    11264,
+                    12288,
+                    13312,
+                    14336,
+                    15360
+                   ]
+                  },
+                  "iops": {
+                   "type": "integer"
+                  },
+                  "autoExpansion": {
+                   "type": "boolean"
+                  }
+                 }
+                },
+                {
+                 "type": "object",
+                 "required": [
+                  "type",
+                  "storage"
+                 ],
+                 "properties": {
+                  "type": {
+                   "type": "string",
+                   "enum": [
+                    "pd-ssd"
+                   ]
+                  },
+                  "storage": {
+                   "type": "integer"
+                  }
+                 }
+                }
+               ]
+              }
+             }
+            },
+            "numOfNodes": {
+             "type": "integer"
+            },
+            "services": {
+             "type": "array",
+             "items": {
+              "type": "string",
+              "enum": [
+               "data",
+               "query",
+               "index",
+               "search",
+               "analytics",
+               "eventing"
+              ]
+             }
+            }
+           }
+          }
+         },
+         "availability": {
+          "type": "object",
+          "required": [
+           "type"
+          ],
+          "properties": {
+           "type": {
+            "type": "string",
+            "enum": [
+             "single",
+             "multi"
+            ]
+           }
+          }
+         },
+         "support": {
+          "type": "object",
+          "required": [
+           "plan",
+           "timezone"
+          ],
+          "properties": {
+           "plan": {
+            "type": "string",
+            "enum": [
+             "basic",
+             "developer pro",
+             "enterprise"
+            ]
+           },
+           "timezone": {
+            "type": "string",
+            "enum": [
+             "ET",
+             "GMT",
+             "IST",
+             "PT"
+            ]
+           }
+          }
+         },
+         "currentState": {
+          "type": "string",
+          "enum": [
+           "draft",
+           "deploying",
+           "scaling",
+           "upgrading",
+           "rebalancing",
+           "peering",
+           "destroying",
+           "healthy",
+           "degraded",
+           "turnedOff",
+           "turningOff",
+           "turningOn",
+           "deploymentFailed",
+           "scaleFailed",
+           "upgradeFailed",
+           "rebalanceFailed",
+           "peeringFailed",
+           "destroyFailed",
+           "offline",
+           "turningOffFailed",
+           "turningOnFailed"
+          ]
+         },
+         "audit": {
+          "type": "object",
+          "required": [
+           "createdBy",
+           "createdAt",
+           "modifiedBy",
+           "modifiedAt",
+           "version"
+          ],
+          "properties": {
+           "createdBy": {
+            "type": "string"
+           },
+           "createdAt": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "modifiedBy": {
+            "type": "string"
+           },
+           "modifiedAt": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "version": {
+            "type": "integer"
+           }
+          }
+         },
+         "cmekId": {
+          "type": "string"
+         },
+         "enablePrivateDNSResolution": {
+          "type": "boolean"
+         },
+         "deletionProtection": {
+          "type": "boolean"
+         },
+         "expressScaling": {
+          "type": "string",
+          "enum": [
+           "enabled",
+           "disabled"
+          ]
+         }
+        }
+       }
+      },
+      "cursor": {
+       "type": "object",
+       "required": [
+        "pages",
+        "hrefs"
+       ],
+       "properties": {
+        "pages": {
+         "type": "object",
+         "required": [
+          "page",
+          "last",
+          "perPage",
+          "totalItems"
+         ],
+         "properties": {
+          "page": {
+           "type": "integer"
+          },
+          "next": {
+           "type": "integer"
+          },
+          "previous": {
+           "type": "integer"
+          },
+          "last": {
+           "type": "integer"
+          },
+          "perPage": {
+           "type": "integer"
+          },
+          "totalItems": {
+           "type": "integer"
+          }
+         }
+        },
+        "hrefs": {
+         "type": "object",
+         "required": [
+          "first",
+          "last",
+          "previous",
+          "next"
+         ],
+         "properties": {
+          "first": {
+           "type": "string",
+           "format": "uri"
+          },
+          "last": {
+           "type": "string",
+           "format": "uri"
+          },
+          "previous": {
+           "type": "string",
+           "format": "uri"
+          },
+          "next": {
+           "type": "string",
+           "format": "uri"
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters",
+   "documented": true,
+   "summary": "Create Cluster",
+   "responses": {
+    "202": {
+     "type": "object",
+     "required": [
+      "id"
+     ],
+     "properties": {
+      "id": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}",
+   "documented": true,
+   "summary": "Get Cluster",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "id",
+      "name",
+      "description",
+      "configurationType",
+      "connectionString",
+      "cloudProvider",
+      "couchbaseServer",
+      "serviceGroups",
+      "availability",
+      "support",
+      "currentState",
+      "audit",
+      "deletionProtection"
+     ],
+     "properties": {
+      "id": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "appServiceId": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "name": {
+       "type": "string"
+      },
+      "description": {
+       "type": "string"
+      },
+      "configurationType": {
+       "type": "string",
+       "enum": [
+        "singleNode",
+        "multiNode"
+       ]
+      },
+      "connectionString": {
+       "type": "string"
+      },
+      "cloudProvider": {
+       "type": "object",
+       "required": [
+        "type",
+        "region"
+       ],
+       "properties": {
+        "type": {
+         "type": "string",
+         "enum": [
+          "aws",
+          "gcp",
+          "azure"
+         ]
+        },
+        "region": {
+         "type": "string"
+        },
+        "cidr": {
+         "type": "string"
+        }
+       }
+      },
+      "couchbaseServer": {
+       "type": "object",
+       "properties": {
+        "version": {
+         "type": "string"
+        }
+       }
+      },
+      "serviceGroups": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "node": {
+          "type": "object",
+          "required": [
+           "compute",
+           "disk"
+          ],
+          "properties": {
+           "compute": {
+            "type": "object",
+            "required": [
+             "cpu",
+             "ram"
+            ],
+            "properties": {
+             "cpu": {
+              "type": "integer"
+             },
+             "ram": {
+              "type": "integer"
+             }
+            }
+           },
+           "disk": {
+            "oneOf": [
+             {
+              "type": "object",
+              "required": [
+               "type",
+               "storage",
+               "iops"
+              ],
+              "properties": {
+               "type": {
+                "type": "string",
+                "enum": [
+                 "gp3",
+                 "io2"
+                ]
+               },
+               "storage": {
+                "type": "integer"
+               },
+               "iops": {
+                "type": "integer"
+               }
+              }
+             },
+             {
+              "type": "object",
+              "required": [
+               "type"
+              ],
+              "properties": {
+               "type": {
+                "type": "string",
+                "enum": [
+                 "P6",
+                 "P10",
+                 "P15",
+                 "P20",
+                 "P30",
+                 "P40",
+                 "P50",
+                 "P60",
+                 "Ultra"
+                ]
+               },
+               "storage": {
+                "type": "integer",
+                "enum": [
+                 64,
+                 128,
+                 256,
+                 512,
+                 1024,
+                 2048,
+                 3072,
+                 4096,
+                 5120,
+                 6144,
+                 7168,
+                 8192,
+                 9216,
+                 10240,
+                 11264,
+                 12288,
+                 13312,
+                 14336,
+                 15360
+                ]
+               },
+               "iops": {
+                "type": "integer"
+               },
+               "autoExpansion": {
+                "type": "boolean"
+               }
+              }
+             },
+             {
+              "type": "object",
+              "required": [
+               "type",
+               "storage"
+              ],
+              "properties": {
+               "type": {
+                "type": "string",
+                "enum": [
+                 "pd-ssd"
+                ]
+               },
+               "storage": {
+                "type": "integer"
+               }
+              }
+             }
+            ]
+           }
+          }
+         },
+         "numOfNodes": {
+          "type": "integer"
+         },
+         "services": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "enum": [
+            "data",
+            "query",
+            "index",
+            "search",
+            "analytics",
+            "eventing"
+           ]
+          }
+         }
+        }
+       }
+      },
+      "availability": {
+       "type": "object",
+       "required": [
+        "type"
+       ],
+       "properties": {
+        "type": {
+         "type": "string",
+         "enum": [
+          "single",
+          "multi"
+         ]
+        }
+       }
+      },
+      "support": {
+       "type": "object",
+       "required": [
+        "plan",
+        "timezone"
+       ],
+       "properties": {
+        "plan": {
+         "type": "string",
+         "enum": [
+          "basic",
+          "developer pro",
+          "enterprise"
+         ]
+        },
+        "timezone": {
+         "type": "string",
+         "enum": [
+          "ET",
+          "GMT",
+          "IST",
+          "PT"
+         ]
+        }
+       }
+      },
+      "currentState": {
+       "type": "string",
+       "enum": [
+        "draft",
+        "deploying",
+        "scaling",
+        "upgrading",
+        "rebalancing",
+        "peering",
+        "destroying",
+        "healthy",
+        "degraded",
+        "turnedOff",
+        "turningOff",
+        "turningOn",
+        "deploymentFailed",
+        "scaleFailed",
+        "upgradeFailed",
+        "rebalanceFailed",
+        "peeringFailed",
+        "destroyFailed",
+        "offline",
+        "turningOffFailed",
+        "turningOnFailed"
+       ]
+      },
+      "audit": {
+       "type": "object",
+       "required": [
+        "createdBy",
+        "createdAt",
+        "modifiedBy",
+        "modifiedAt",
+        "version"
+       ],
+       "properties": {
+        "createdBy": {
+         "type": "string"
+        },
+        "createdAt": {
+         "type": "string",
+         "format": "date-time"
+        },
+        "modifiedBy": {
+         "type": "string"
+        },
+        "modifiedAt": {
+         "type": "string",
+         "format": "date-time"
+        },
+        "version": {
+         "type": "integer"
+        }
+       }
+      },
+      "cmekId": {
+       "type": "string"
+      },
+      "enablePrivateDNSResolution": {
+       "type": "boolean"
+      },
+      "deletionProtection": {
+       "type": "boolean"
+      },
+      "expressScaling": {
+       "type": "string",
+       "enum": [
+        "enabled",
+        "disabled"
+       ]
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}",
+   "documented": true,
+   "summary": "Update Cluster",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}",
+   "documented": true,
+   "summary": "Delete Cluster",
+   "responses": {
+    "202": null
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/deletionProtection",
+   "documented": true,
+   "summary": "Update Deletion Protection",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/activationState",
+   "documented": true,
+   "summary": "Turn On Cluster",
+   "responses": {
+    "202": null
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/activationState",
+   "documented": true,
+   "summary": "Turn Off Cluster",
+   "responses": {
+    "202": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/stats",
+   "documented": true,
+   "summary": "Get Cluster Capacity Statistics",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "freeMemoryInMb",
+      "totalMemoryInMb",
+      "maxReplicas"
+     ],
+     "properties": {
+      "freeMemoryInMb": {
+       "type": "integer"
+      },
+      "totalMemoryInMb": {
+       "type": "integer"
+      },
+      "maxReplicas": {
+       "type": "integer"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier",
+   "documented": true,
+   "summary": "Create Free Tier Cluster",
+   "responses": {
+    "202": {
+     "type": "object",
+     "required": [
+      "id"
+     ],
+     "properties": {
+      "id": {
+       "type": "string",
+       "format": "uuid"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}",
+   "documented": true,
+   "summary": "Get Free Tier Cluster",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "id",
+      "name",
+      "description",
+      "configurationType",
+      "connectionString",
+      "cloudProvider",
+      "couchbaseServer",
+      "serviceGroups",
+      "availability",
+      "support",
+      "currentState",
+      "audit"
+     ],
+     "properties": {
+      "id": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "appServiceId": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "name": {
+       "type": "string"
+      },
+      "description": {
+       "type": "string"
+      },
+      "configurationType": {
+       "type": "string",
+       "enum": [
+        "singleNode",
+        "multiNode"
+       ]
+      },
+      "connectionString": {
+       "type": "string"
+      },
+      "cloudProvider": {
+       "type": "object",
+       "required": [
+        "type",
+        "region"
+       ],
+       "properties": {
+        "type": {
+         "type": "string",
+         "enum": [
+          "aws",
+          "gcp",
+          "azure"
+         ]
+        },
+        "region": {
+         "type": "string"
+        },
+        "cidr": {
+         "type": "string"
+        }
+       }
+      },
+      "couchbaseServer": {
+       "type": "object",
+       "properties": {
+        "version": {
+         "type": "string"
+        }
+       }
+      },
+      "serviceGroups": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "node": {
+          "type": "object",
+          "required": [
+           "compute",
+           "disk"
+          ],
+          "properties": {
+           "compute": {
+            "type": "object",
+            "required": [
+             "cpu",
+             "ram"
+            ],
+            "properties": {
+             "cpu": {
+              "type": "integer"
+             },
+             "ram": {
+              "type": "integer"
+             }
+            }
+           },
+           "disk": {
+            "oneOf": [
+             {
+              "type": "object",
+              "required": [
+               "type",
+               "storage",
+               "iops"
+              ],
+              "properties": {
+               "type": {
+                "type": "string",
+                "enum": [
+                 "gp3",
+                 "io2"
+                ]
+               },
+               "storage": {
+                "type": "integer"
+               },
+               "iops": {
+                "type": "integer"
+               }
+              }
+             },
+             {
+              "type": "object",
+              "required": [
+               "type"
+              ],
+              "properties": {
+               "type": {
+                "type": "string",
+                "enum": [
+                 "P6",
+                 "P10",
+                 "P15",
+                 "P20",
+                 "P30",
+                 "P40",
+                 "P50",
+                 "P60",
+                 "Ultra"
+                ]
+               },
+               "storage": {
+                "type": "integer",
+                "enum": [
+                 64,
+                 128,
+                 256,
+                 512,
+                 1024,
+                 2048,
+                 3072,
+                 4096,
+                 5120,
+                 6144,
+                 7168,
+                 8192,
+                 9216,
+                 10240,
+                 11264,
+                 12288,
+                 13312,
+                 14336,
+                 15360
+                ]
+               },
+               "iops": {
+                "type": "integer"
+               },
+               "autoExpansion": {
+                "type": "boolean"
+               }
+              }
+             },
+             {
+              "type": "object",
+              "required": [
+               "type",
+               "storage"
+              ],
+              "properties": {
+               "type": {
+                "type": "string",
+                "enum": [
+                 "pd-ssd"
+                ]
+               },
+               "storage": {
+                "type": "integer"
+               }
+              }
+             }
+            ]
+           }
+          }
+         },
+         "numOfNodes": {
+          "type": "integer"
+         },
+         "services": {
+          "type": "array",
+          "items": {
+           "type": "string",
+           "enum": [
+            "data",
+            "query",
+            "index",
+            "search",
+            "analytics",
+            "eventing"
+           ]
+          }
+         }
+        }
+       }
+      },
+      "availability": {
+       "type": "object",
+       "required": [
+        "type"
+       ],
+       "properties": {
+        "type": {
+         "type": "string",
+         "enum": [
+          "single",
+          "multi"
+         ]
+        }
+       }
+      },
+      "support": {
+       "type": "object",
+       "required": [
+        "plan",
+        "timezone"
+       ],
+       "properties": {
+        "plan": {
+         "type": "string",
+         "enum": [
+          "free"
+         ]
+        },
+        "timezone": {
+         "type": "string",
+         "enum": [
+          "ET",
+          "GMT",
+          "IST",
+          "PT"
+         ]
+        }
+       }
+      },
+      "currentState": {
+       "type": "string",
+       "enum": [
+        "draft",
+        "deploying",
+        "scaling",
+        "upgrading",
+        "rebalancing",
+        "peering",
+        "destroying",
+        "healthy",
+        "degraded",
+        "turnedOff",
+        "turningOff",
+        "turningOn",
+        "deploymentFailed",
+        "scaleFailed",
+        "upgradeFailed",
+        "rebalanceFailed",
+        "peeringFailed",
+        "destroyFailed",
+        "offline",
+        "turningOffFailed",
+        "turningOnFailed"
+       ]
+      },
+      "audit": {
+       "type": "object",
+       "required": [
+        "createdBy",
+        "createdAt",
+        "modifiedBy",
+        "modifiedAt",
+        "version"
+       ],
+       "properties": {
+        "createdBy": {
+         "type": "string"
+        },
+        "createdAt": {
+         "type": "string",
+         "format": "date-time"
+        },
+        "modifiedBy": {
+         "type": "string"
+        },
+        "modifiedAt": {
+         "type": "string",
+         "format": "date-time"
+        },
+        "version": {
+         "type": "integer"
+        }
+       }
+      },
+      "cmekId": {
+       "type": "string"
+      },
+      "enablePrivateDNSResolution": {
+       "type": "boolean"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}",
+   "documented": true,
+   "summary": "Update Free Tier Cluster",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}",
+   "documented": true,
+   "summary": "Delete Free Tier Cluster",
+   "responses": {
+    "202": null
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}/activationState",
+   "documented": true,
+   "summary": "Turn On Free Tier Cluster",
+   "responses": {
+    "202": null
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/freeTier/{clusterId}/activationState",
+   "documented": true,
+   "summary": "Turn Off Free Tier Cluster",
+   "responses": {
+    "202": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule",
+   "documented": true,
+   "summary": "Get Cluster On/Off schedule",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "timezone",
+      "days",
+      "activationStatus"
+     ],
+     "properties": {
+      "activationStatus": {
+       "type": "string",
+       "enum": [
+        "active",
+        "paused"
+       ]
+      },
+      "timezone": {
+       "type": "string",
+       "enum": [
+        "Pacific/Midway",
+        "US/Hawaii",
+        "US/Alaska",
+        "US/Pacific",
+        "US/Mountain",
+        "US/Central",
+        "US/Eastern",
+        "America/Puerto_Rico",
+        "Canada/Newfoundland",
+        "America/Argentina/Buenos_Aires",
+        "Atlantic/Cape_Verde",
+        "Europe/London",
+        "Europe/Amsterdam",
+        "Europe/Athens",
+        "Africa/Nairobi",
+        "Asia/Tehran",
+        "Indian/Mauritius",
+        "Asia/Karachi",
+        "Asia/Calcutta",
+        "Asia/Dhaka",
+        "Asia/Bangkok",
+        "Asia/Hong_Kong",
+        "Asia/Tokyo",
+        "Australia/North",
+        "Australia/Sydney",
+        "Pacific/Ponape",
+        "Antarctica/South_Pole"
+       ]
+      },
+      "days": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "state",
+         "day"
+        ],
+        "properties": {
+         "state": {
+          "type": "string",
+          "enum": [
+           "on",
+           "off",
+           "custom"
+          ]
+         },
+         "day": {
+          "type": "string",
+          "enum": [
+           "monday",
+           "tuesday",
+           "wednesday",
+           "thursday",
+           "friday",
+           "saturday",
+           "sunday"
+          ]
+         },
+         "from": {
+          "type": "object",
+          "properties": {
+           "hour": {
+            "type": "integer"
+           },
+           "minute": {
+            "type": "integer"
+           }
+          }
+         },
+         "to": {
+          "type": "object",
+          "properties": {
+           "hour": {
+            "type": "integer"
+           },
+           "minute": {
+            "type": "integer"
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule",
+   "documented": true,
+   "summary": "Create Cluster On/Off schedule",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule",
+   "documented": true,
+   "summary": "Update Cluster On/Off schedule",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule",
+   "documented": true,
+   "summary": "Delete Cluster On/Off schedule",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule/activationState",
+   "documented": true,
+   "summary": "Unpause Cluster On/Off Schedule",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/onOffSchedule/activationState",
+   "documented": true,
+   "summary": "Pause Cluster On/Off Schedule",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/allowedcidrs",
+   "documented": true,
+   "summary": "List Allowed CIDRs",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "data",
+      "cursor"
+     ],
+     "properties": {
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "id",
+         "cidr",
+         "status",
+         "type",
+         "audit"
+        ],
+        "properties": {
+         "id": {
+          "type": "string"
+         },
+         "cidr": {
+          "type": "string"
+         },
+         "comment": {
+          "type": "string"
+         },
+         "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+         },
+         "status": {
+          "type": "string",
+          "enum": [
+           "active",
+           "expired"
+          ]
+         },
+         "type": {
+          "type": "string",
+          "enum": [
+           "temporary",
+           "permanent"
+          ]
+         },
+         "audit": {
+          "type": "object",
+          "required": [
+           "createdBy",
+           "createdAt",
+           "modifiedBy",
+           "modifiedAt",
+           "version"
+          ],
+          "properties": {
+           "createdBy": {
+            "type": "string"
+           },
+           "createdAt": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "modifiedBy": {
+            "type": "string"
+           },
+           "modifiedAt": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "version": {
+            "type": "integer"
+           }
+          }
+         }
+        }
+       }
+      },
+      "cursor": {
+       "type": "object",
+       "required": [
+        "pages",
+        "hrefs"
+       ],
+       "properties": {
+        "pages": {
+         "type": "object",
+         "required": [
+          "page",
+          "last",
+          "perPage",
+          "totalItems"
+         ],
+         "properties": {
+          "page": {
+           "type": "integer"
+          },
+          "next": {
+           "type": "integer"
+          },
+          "previous": {
+           "type": "integer"
+          },
+          "last": {
+           "type": "integer"
+          },
+          "perPage": {
+           "type": "integer"
+          },
+          "totalItems": {
+           "type": "integer"
+          }
+         }
+        },
+        "hrefs": {
+         "type": "object",
+         "required": [
+          "first",
+          "last",
+          "previous",
+          "next"
+         ],
+         "properties": {
+          "first": {
+           "type": "string",
+           "format": "uri"
+          },
+          "last": {
+           "type": "string",
+           "format": "uri"
+          },
+          "previous": {
+           "type": "string",
+           "format": "uri"
+          },
+          "next": {
+           "type": "string",
+           "format": "uri"
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/allowedcidrs",
+   "documented": true,
+   "summary": "Create Allowed CIDR",
+   "responses": {
+    "201": {
+     "type": "object",
+     "required": [
+      "id"
+     ],
+     "properties": {
+      "id": {
+       "type": "string"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/allowedcidrs/{allowedCidrId}",
+   "documented": true,
+   "summary": "get allowed CIDR",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "id",
+      "cidr",
+      "status",
+      "type",
+      "audit"
+     ],
+     "properties": {
+      "id": {
+       "type": "string"
+      },
+      "cidr": {
+       "type": "string"
+      },
+      "comment": {
+       "type": "string"
+      },
+      "expiresAt": {
+       "type": "string",
+       "format": "date-time"
+      },
+      "status": {
+       "type": "string",
+       "enum": [
+        "active",
+        "expired"
+       ]
+      },
+      "type": {
+       "type": "string",
+       "enum": [
+        "temporary",
+        "permanent"
+       ]
+      },
+      "audit": {
+       "type": "object",
+       "required": [
+        "createdBy",
+        "createdAt",
+        "modifiedBy",
+        "modifiedAt",
+        "version"
+       ],
+       "properties": {
+        "createdBy": {
+         "type": "string"
+        },
+        "createdAt": {
+         "type": "string",
+         "format": "date-time"
+        },
+        "modifiedBy": {
+         "type": "string"
+        },
+        "modifiedAt": {
+         "type": "string",
+         "format": "date-time"
+        },
+        "version": {
+         "type": "integer"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/allowedcidrs/{allowedCidrId}",
+   "documented": true,
+   "summary": "Delete Allowed CIDR",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets",
+   "documented": true,
+   "summary": "List Buckets",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "data"
+     ],
+     "properties": {
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "id",
+         "name",
+         "timeToLiveInSeconds",
+         "replicas",
+         "type",
+         "storageBackend",
+         "memoryAllocationInMb",
+         "bucketConflictResolution",
+         "durabilityLevel",
+         "evictionPolicy",
+         "stats",
+         "enableCrossClusterVersioning"
+        ],
+        "properties": {
+         "id": {
+          "type": "string"
+         },
+         "name": {
+          "type": "string"
+         },
+         "type": {
+          "type": "string"
+         },
+         "storageBackend": {
+          "type": "string"
+         },
+         "vbuckets": {
+          "type": "integer",
+          "enum": [
+           128,
+           1024
+          ]
+         },
+         "memoryAllocationInMb": {
+          "type": "integer"
+         },
+         "bucketConflictResolution": {
+          "type": "string"
+         },
+         "durabilityLevel": {
+          "type": "string"
+         },
+         "replicas": {
+          "type": "integer"
+         },
+         "flush": {
+          "type": "boolean"
+         },
+         "flushEnabled": {
+          "type": "boolean"
+         },
+         "timeToLiveInSeconds": {
+          "type": "integer"
+         },
+         "enableCrossClusterVersioning": {
+          "type": "boolean"
+         },
+         "evictionPolicy": {
+          "type": "string",
+          "enum": [
+           "fullEviction",
+           "noEviction",
+           "nruEviction"
+          ]
+         },
+         "stats": {
+          "type": "object",
+          "required": [
+           "itemCount",
+           "opsPerSecond",
+           "diskUsedInMib",
+           "memoryUsedInMib"
+          ],
+          "properties": {
+           "itemCount": {
+            "type": "integer"
+           },
+           "opsPerSecond": {
+            "type": "integer"
+           },
+           "diskUsedInMib": {
+            "type": "integer"
+           },
+           "memoryUsedInMib": {
+            "type": "integer"
+           }
+          }
+         },
+         "priority": {
+          "type": "integer"
+         }
+        }
+       }
+      },
+      "clusterStats": {
+       "type": "object",
+       "required": [
+        "freeMemoryInMb",
+        "totalMemoryInMb",
+        "maxReplicas"
+       ],
+       "properties": {
+        "freeMemoryInMb": {
+         "type": "integer"
+        },
+        "totalMemoryInMb": {
+         "type": "integer"
+        },
+        "maxReplicas": {
+         "type": "integer"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets",
+   "documented": true,
+   "summary": "Create Bucket",
+   "responses": {
+    "201": {
+     "type": "object",
+     "required": [
+      "id"
+     ],
+     "properties": {
+      "id": {
+       "type": "string"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}",
+   "documented": true,
+   "summary": "Get Bucket",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "id",
+      "name",
+      "timeToLiveInSeconds",
+      "replicas",
+      "type",
+      "storageBackend",
+      "memoryAllocationInMb",
+      "bucketConflictResolution",
+      "durabilityLevel",
+      "evictionPolicy",
+      "stats",
+      "enableCrossClusterVersioning"
+     ],
+     "properties": {
+      "id": {
+       "type": "string"
+      },
+      "name": {
+       "type": "string"
+      },
+      "type": {
+       "type": "string"
+      },
+      "storageBackend": {
+       "type": "string"
+      },
+      "vbuckets": {
+       "type": "integer",
+       "enum": [
+        128,
+        1024
+       ]
+      },
+      "memoryAllocationInMb": {
+       "type": "integer"
+      },
+      "bucketConflictResolution": {
+       "type": "string"
+      },
+      "durabilityLevel": {
+       "type": "string"
+      },
+      "replicas": {
+       "type": "integer"
+      },
+      "flush": {
+       "type": "boolean"
+      },
+      "flushEnabled": {
+       "type": "boolean"
+      },
+      "timeToLiveInSeconds": {
+       "type": "integer"
+      },
+      "enableCrossClusterVersioning": {
+       "type": "boolean"
+      },
+      "evictionPolicy": {
+       "type": "string",
+       "enum": [
+        "fullEviction",
+        "noEviction",
+        "nruEviction"
+       ]
+      },
+      "stats": {
+       "type": "object",
+       "required": [
+        "itemCount",
+        "opsPerSecond",
+        "diskUsedInMib",
+        "memoryUsedInMib"
+       ],
+       "properties": {
+        "itemCount": {
+         "type": "integer"
+        },
+        "opsPerSecond": {
+         "type": "integer"
+        },
+        "diskUsedInMib": {
+         "type": "integer"
+        },
+        "memoryUsedInMib": {
+         "type": "integer"
+        }
+       }
+      },
+      "priority": {
+       "type": "integer"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}",
+   "documented": true,
+   "summary": "Update Bucket",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}",
+   "documented": true,
+   "summary": "Delete Bucket",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier",
+   "documented": true,
+   "summary": "List Free Tier Buckets",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "data"
+     ],
+     "properties": {
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "id",
+         "name",
+         "timeToLiveInSeconds",
+         "replicas",
+         "type",
+         "storageBackend",
+         "memoryAllocationInMb",
+         "bucketConflictResolution",
+         "durabilityLevel",
+         "evictionPolicy",
+         "stats",
+         "enableCrossClusterVersioning"
+        ],
+        "properties": {
+         "id": {
+          "type": "string"
+         },
+         "name": {
+          "type": "string"
+         },
+         "type": {
+          "type": "string"
+         },
+         "storageBackend": {
+          "type": "string"
+         },
+         "vbuckets": {
+          "type": "integer",
+          "enum": [
+           128,
+           1024
+          ]
+         },
+         "memoryAllocationInMb": {
+          "type": "integer"
+         },
+         "bucketConflictResolution": {
+          "type": "string"
+         },
+         "durabilityLevel": {
+          "type": "string"
+         },
+         "replicas": {
+          "type": "integer"
+         },
+         "flush": {
+          "type": "boolean"
+         },
+         "flushEnabled": {
+          "type": "boolean"
+         },
+         "timeToLiveInSeconds": {
+          "type": "integer"
+         },
+         "enableCrossClusterVersioning": {
+          "type": "boolean"
+         },
+         "evictionPolicy": {
+          "type": "string",
+          "enum": [
+           "fullEviction",
+           "noEviction",
+           "nruEviction"
+          ]
+         },
+         "stats": {
+          "type": "object",
+          "required": [
+           "itemCount",
+           "opsPerSecond",
+           "diskUsedInMib",
+           "memoryUsedInMib"
+          ],
+          "properties": {
+           "itemCount": {
+            "type": "integer"
+           },
+           "opsPerSecond": {
+            "type": "integer"
+           },
+           "diskUsedInMib": {
+            "type": "integer"
+           },
+           "memoryUsedInMib": {
+            "type": "integer"
+           }
+          }
+         },
+         "priority": {
+          "type": "integer"
+         }
+        }
+       }
+      },
+      "clusterStats": {
+       "type": "object",
+       "required": [
+        "freeMemoryInMb",
+        "totalMemoryInMb",
+        "maxReplicas"
+       ],
+       "properties": {
+        "freeMemoryInMb": {
+         "type": "integer"
+        },
+        "totalMemoryInMb": {
+         "type": "integer"
+        },
+        "maxReplicas": {
+         "type": "integer"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier",
+   "documented": true,
+   "summary": "Create Free Tier Bucket",
+   "responses": {
+    "201": {
+     "type": "object",
+     "required": [
+      "id"
+     ],
+     "properties": {
+      "id": {
+       "type": "string"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier/{bucketId}",
+   "documented": true,
+   "summary": "Get Free Tier Bucket",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "id",
+      "name",
+      "timeToLiveInSeconds",
+      "replicas",
+      "type",
+      "storageBackend",
+      "memoryAllocationInMb",
+      "bucketConflictResolution",
+      "durabilityLevel",
+      "evictionPolicy",
+      "stats",
+      "enableCrossClusterVersioning"
+     ],
+     "properties": {
+      "id": {
+       "type": "string"
+      },
+      "name": {
+       "type": "string"
+      },
+      "type": {
+       "type": "string"
+      },
+      "storageBackend": {
+       "type": "string"
+      },
+      "vbuckets": {
+       "type": "integer",
+       "enum": [
+        128,
+        1024
+       ]
+      },
+      "memoryAllocationInMb": {
+       "type": "integer"
+      },
+      "bucketConflictResolution": {
+       "type": "string"
+      },
+      "durabilityLevel": {
+       "type": "string"
+      },
+      "replicas": {
+       "type": "integer"
+      },
+      "flush": {
+       "type": "boolean"
+      },
+      "flushEnabled": {
+       "type": "boolean"
+      },
+      "timeToLiveInSeconds": {
+       "type": "integer"
+      },
+      "enableCrossClusterVersioning": {
+       "type": "boolean"
+      },
+      "evictionPolicy": {
+       "type": "string",
+       "enum": [
+        "fullEviction",
+        "noEviction",
+        "nruEviction"
+       ]
+      },
+      "stats": {
+       "type": "object",
+       "required": [
+        "itemCount",
+        "opsPerSecond",
+        "diskUsedInMib",
+        "memoryUsedInMib"
+       ],
+       "properties": {
+        "itemCount": {
+         "type": "integer"
+        },
+        "opsPerSecond": {
+         "type": "integer"
+        },
+        "diskUsedInMib": {
+         "type": "integer"
+        },
+        "memoryUsedInMib": {
+         "type": "integer"
+        }
+       }
+      },
+      "priority": {
+       "type": "integer"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier/{bucketId}",
+   "documented": true,
+   "summary": "Update Free Tier Bucket",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/freeTier/{bucketId}",
+   "documented": true,
+   "summary": "Delete Free Tier Bucket",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes",
+   "documented": true,
+   "summary": "List Scopes",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "scopes"
+     ],
+     "properties": {
+      "scopes": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "collections"
+        ],
+        "properties": {
+         "name": {
+          "type": "string"
+         },
+         "collections": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "name": {
+             "type": "string"
+            },
+            "maxTTL": {
+             "type": "integer"
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes",
+   "documented": true,
+   "summary": "Create Scope",
+   "responses": {
+    "201": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}",
+   "documented": true,
+   "summary": "Get Scope",
+   "responses": {
+    "200": {
+     "type": "object",
+     "properties": {
+      "name": {
+       "type": "string"
+      },
+      "collections": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "name": {
+          "type": "string"
+         },
+         "maxTTL": {
+          "type": "integer"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}",
+   "documented": true,
+   "summary": "Delete Scope",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections",
+   "documented": true,
+   "summary": "List Collections",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "data"
+     ],
+     "properties": {
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "name": {
+          "type": "string"
+         },
+         "maxTTL": {
+          "type": "integer"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections",
+   "documented": true,
+   "summary": "Create Collection",
+   "responses": {
+    "201": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections/{collectionName}",
+   "documented": true,
+   "summary": "Get Collection",
+   "responses": {
+    "200": {
+     "type": "object",
+     "properties": {
+      "name": {
+       "type": "string"
+      },
+      "maxTTL": {
+       "type": "integer"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections/{collectionName}",
+   "documented": true,
+   "summary": "Update Collection",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/scopes/{scopeName}/collections/{collectionName}",
+   "documented": true,
+   "summary": "Delete Collection",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users",
+   "documented": true,
+   "summary": "List Database Credentials",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "cursor",
+      "data"
+     ],
+     "properties": {
+      "cursor": {
+       "type": "object",
+       "required": [
+        "pages",
+        "hrefs"
+       ],
+       "properties": {
+        "pages": {
+         "type": "object",
+         "required": [
+          "page",
+          "last",
+          "perPage",
+          "totalItems"
+         ],
+         "properties": {
+          "page": {
+           "type": "integer"
+          },
+          "next": {
+           "type": "integer"
+          },
+          "previous": {
+           "type": "integer"
+          },
+          "last": {
+           "type": "integer"
+          },
+          "perPage": {
+           "type": "integer"
+          },
+          "totalItems": {
+           "type": "integer"
+          }
+         }
+        },
+        "hrefs": {
+         "type": "object",
+         "required": [
+          "first",
+          "last",
+          "previous",
+          "next"
+         ],
+         "properties": {
+          "first": {
+           "type": "string",
+           "format": "uri"
+          },
+          "last": {
+           "type": "string",
+           "format": "uri"
+          },
+          "previous": {
+           "type": "string",
+           "format": "uri"
+          },
+          "next": {
+           "type": "string",
+           "format": "uri"
+          }
+         }
+        }
+       }
+      },
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "id",
+         "name",
+         "access",
+         "audit"
+        ],
+        "properties": {
+         "id": {
+          "type": "string",
+          "format": "uuid"
+         },
+         "name": {
+          "type": "string"
+         },
+         "audit": {
+          "type": "object",
+          "required": [
+           "createdBy",
+           "createdAt",
+           "modifiedBy",
+           "modifiedAt",
+           "version"
+          ],
+          "properties": {
+           "createdBy": {
+            "type": "string"
+           },
+           "createdAt": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "modifiedBy": {
+            "type": "string"
+           },
+           "modifiedAt": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "version": {
+            "type": "integer"
+           }
+          }
+         },
+         "access": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "required": [
+            "privileges"
+           ],
+           "properties": {
+            "privileges": {
+             "type": "array",
+             "items": {
+              "type": "string"
+             }
+            },
+            "resources": {
+             "type": "object",
+             "properties": {
+              "buckets": {
+               "type": "array",
+               "items": {
+                "type": "object",
+                "required": [
+                 "name"
+                ],
+                "properties": {
+                 "name": {
+                  "type": "string"
+                 },
+                 "scopes": {
+                  "type": "array",
+                  "items": {
+                   "type": "object",
+                   "required": [
+                    "name"
+                   ],
+                   "properties": {
+                    "name": {
+                     "type": "string"
+                    },
+                    "collections": {
+                     "type": "array",
+                     "items": {
+                      "type": "string"
+                     }
+                    }
+                   }
+                  }
+                 }
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         },
+         "userRoles": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users",
+   "documented": true,
+   "summary": "Create Database Credentials",
+   "responses": {
+    "201": {
+     "type": "object",
+     "required": [
+      "id",
+      "password"
+     ],
+     "properties": {
+      "id": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "password": {
+       "type": "string"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users/{userId}",
+   "documented": true,
+   "summary": "Get Database Credentials",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "id",
+      "name",
+      "access",
+      "audit"
+     ],
+     "properties": {
+      "id": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "name": {
+       "type": "string"
+      },
+      "audit": {
+       "type": "object",
+       "required": [
+        "createdBy",
+        "createdAt",
+        "modifiedBy",
+        "modifiedAt",
+        "version"
+       ],
+       "properties": {
+        "createdBy": {
+         "type": "string"
+        },
+        "createdAt": {
+         "type": "string",
+         "format": "date-time"
+        },
+        "modifiedBy": {
+         "type": "string"
+        },
+        "modifiedAt": {
+         "type": "string",
+         "format": "date-time"
+        },
+        "version": {
+         "type": "integer"
+        }
+       }
+      },
+      "access": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "privileges"
+        ],
+        "properties": {
+         "privileges": {
+          "type": "array",
+          "items": {
+           "type": "string"
+          }
+         },
+         "resources": {
+          "type": "object",
+          "properties": {
+           "buckets": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "required": [
+              "name"
+             ],
+             "properties": {
+              "name": {
+               "type": "string"
+              },
+              "scopes": {
+               "type": "array",
+               "items": {
+                "type": "object",
+                "required": [
+                 "name"
+                ],
+                "properties": {
+                 "name": {
+                  "type": "string"
+                 },
+                 "collections": {
+                  "type": "array",
+                  "items": {
+                   "type": "string"
+                  }
+                 }
+                }
+               }
+              }
+             }
+            }
+           }
+          }
+         }
+        }
+       }
+      },
+      "userRoles": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users/{userId}",
+   "documented": true,
+   "summary": "Update Database Credentials",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/users/{userId}",
+   "documented": true,
+   "summary": "Delete Database Credentials",
+   "responses": {
+    "204": null
+   }
+  }
+ ]
+}

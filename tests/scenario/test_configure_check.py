@@ -28,7 +28,7 @@ def interactive(monkeypatch):
 def test_configure_check_ac1_org_mismatch_reported(fake, run, write_config):
     seed_healthy(fake)
     p = write_config(OTHER)
-    r = run("configure", input=f"{KEY}\n", no_env=True)
+    r = run("configure", "--api-key-stdin", input=f"{KEY}\n", no_env=True)
     assert r.exit_code == 0, r.output
     assert "profile 'default' saved" in r.output
     assert "capella.yaml is for organization org-other, but this key is for Nova Corp (org-1)" in r.output
@@ -67,7 +67,7 @@ def test_configure_check_ac2_default_keeps_file(fake, run, write_config, tmp_pat
 def test_configure_check_ac3_missing_project_reported(fake, run, write_config):
     seed_healthy(fake)
     write_config(TWO_PROJECTS)
-    r = run("configure", input=f"{KEY}\n", no_env=True)
+    r = run("configure", "--api-key-stdin", input=f"{KEY}\n", no_env=True)
     assert r.exit_code == 0, r.output
     assert ("capella.yaml declares project free-proj, which is not in organization Nova Corp (projects: nova-dev)"
             in r.output)
@@ -80,7 +80,7 @@ def test_configure_check_ac4_matching_file_quiet(fake, run, write_config):
     seed_healthy(fake)
     for text in (MINIMAL.replace("${CAPELLA_ORG_ID}", "org-1"), MINIMAL):
         write_config(text)
-        r = run("configure", input=f"{KEY}\n", no_env=True, extra_env={"CAPELLA_ORG_ID": "org-1"})
+        r = run("configure", "--api-key-stdin", input=f"{KEY}\n", no_env=True, extra_env={"CAPELLA_ORG_ID": "org-1"})
         assert r.exit_code == 0, r.output
         assert "capella.yaml already exists; to refresh it from Capella: capellactl import --force" in r.output
         assert "warning" not in r.output
@@ -91,7 +91,7 @@ def test_configure_check_ac4_matching_file_quiet(fake, run, write_config):
 def test_configure_check_ac4_unresolved_org_ref_quiet(fake, run, write_config):
     seed_healthy(fake)
     write_config(MINIMAL)  # ${CAPELLA_ORG_ID} is not set: the profile supplies the organization
-    r = run("configure", input=f"{KEY}\n", no_env=True)
+    r = run("configure", "--api-key-stdin", input=f"{KEY}\n", no_env=True)
     assert r.exit_code == 0, r.output
     assert "is for organization" not in r.output and "warning" not in r.output
 

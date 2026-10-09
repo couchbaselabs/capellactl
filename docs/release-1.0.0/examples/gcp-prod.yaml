@@ -1,0 +1,58 @@
+# Production on Google Cloud: multi-zone, separate query and index nodes, deletion protection on, always on
+# (no hibernation schedule). GCP disks are pd-ssd; storage is set per node (at least 50 GB).
+#
+#   export CAPELLA_ORG_ID=… ORDERS_APP_PASSWORD=…
+#   capellactl validate && capellactl plan && capellactl apply
+
+apiVersion: capellactl/v1
+organizationId: ${CAPELLA_ORG_ID}
+
+project:
+  name: nova-prod
+  description: Nova production
+
+clusters:
+  - name: nova-prod-gcp
+    description: Production cluster (GCP)
+    deletionProtection: true                 # turn off with 'capellactl cluster protect NAME --off' before deleting
+    cloudProvider:
+      type: gcp
+      region: us-east1                       # GCP region names: us-east1, europe-west1, asia-south1 …
+      cidr: 10.40.0.0/24
+    availability:
+      type: multi
+    support:
+      plan: enterprise
+      timezone: ET
+    serviceGroups:
+      - node:
+          compute: { cpu: 8, ram: 32 }
+          disk: { type: pd-ssd, storage: 256 }
+        numOfNodes: 3
+        services: [data]
+      - node:
+          compute: { cpu: 8, ram: 32 }
+          disk: { type: pd-ssd, storage: 128 }
+        numOfNodes: 2
+        services: [index, query]
+    allowedCidrs:
+      - cidr: 198.51.100.0/24
+        comment: Application subnet (replace with yours)
+    buckets:
+      - name: orders
+        memoryAllocationInMb: 4096
+        replicas: 2
+        durabilityLevel: majority
+        scopes:
+          - name: billing
+            collections:
+              - name: invoices
+              - name: payments
+    databaseCredentials:
+      - name: orders_app
+        password: ${ORDERS_APP_PASSWORD}
+        access:
+          - privileges: [data_reader, data_writer]
+            resources:
+              buckets:
+                - name: orders

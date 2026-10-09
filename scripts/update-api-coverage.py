@@ -68,7 +68,8 @@ cmd("cluster create", "CAP-011, CAP-038, CAP-041")
 cmd("cluster update", "CAP-012, CAP-017", "Lowering RAM runs the CAP-016 memory guard (CAP-017 AC6).")
 cmd("cluster scale", "CAP-015, CAP-016, CAP-018",
     "Scale out and in (capacity checks); `--step ±1` within `--min/--max`, `--all-groups`.")
-cmd("cluster clone", "CAP-049", "Not built: copy a cluster (size, services, buckets, scopes, collections) to another region.")
+cmd("cluster clone", "CAP-049", "Copies size, services, buckets, scopes and collections to another region; "
+    "`--with-cidrs`, `--with-credentials` (new passwords).")
 cmd("cluster delete", "CAP-014, CAP-041")
 cmd("cluster protect", "CAP-013")
 cmd("cluster power on", "CAP-019", "Waits until healthy; `--with-app-service`; `apply --power-on`.")
@@ -178,7 +179,7 @@ op("PUT", PRJ, "project update", "CLI changes the description; a rename goes thr
 op("DELETE", PRJ, "project delete", "`--cascade` deletes the project's clusters first.")
 # Clusters
 op("GET", PRJ + "/clusters", "cluster list")
-op("POST", PRJ + "/clusters", "cluster create")
+op("POST", PRJ + "/clusters", "cluster create / cluster clone")
 op("GET", CLU, "cluster get")
 op("PUT", CLU, "cluster update / cluster scale", "Description, support, scale out/in/up/down (capacity-checked), "
    "step scaling.")

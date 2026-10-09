@@ -43,8 +43,8 @@ def tty(monkeypatch):
 def test_init_ac1_interactive_writes_valid_file(fake, run, tmp_path, tty):
     r = run("init", input=answers())
     assert r.exit_code == 0, r.output
-    text = (tmp_path / "capella.yaml").read_text()
-    assert text == GOLDEN.read_text()
+    text = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
+    assert text == GOLDEN.read_text(encoding="utf-8")
     assert "✔ Wrote capella.yaml (validated)" in r.output
     assert "Next: export ORDERS_APP_PASSWORD=…   then   capellactl plan" in r.output
     r = run("validate", extra_env={"ORDERS_APP_PASSWORD": PASSWORD})
@@ -134,7 +134,7 @@ def test_init_ac5_backup_written(fake, run, tmp_path, tty):
     r = run("init", input="y\n" + answers())
     assert r.exit_code == 0, r.output
     assert (tmp_path / "capella.yaml.bak").read_text() == "# mine\n"
-    assert (tmp_path / "capella.yaml").read_text() == GOLDEN.read_text()
+    assert (tmp_path / "capella.yaml").read_text(encoding="utf-8") == GOLDEN.read_text(encoding="utf-8")
 
 
 @pytest.mark.story("CAP-035", "AC6")
@@ -149,14 +149,14 @@ def test_init_ac6_invalid_answers_reprompted(fake, run, tmp_path, tty, question,
     assert r.exit_code == 0, r.output
     assert message in r.output
     assert "Please answer again." in r.output
-    assert (tmp_path / "capella.yaml").read_text() == GOLDEN.read_text()
+    assert (tmp_path / "capella.yaml").read_text(encoding="utf-8") == GOLDEN.read_text(encoding="utf-8")
 
 
 @pytest.mark.story("CAP-035", "AC7")
 def test_init_ac7_non_interactive_matches_interactive(fake, run, tmp_path):
     r = run("init", "--non-interactive", *FLAGS)
     assert r.exit_code == 0, r.output
-    assert (tmp_path / "capella.yaml").read_text() == GOLDEN.read_text()
+    assert (tmp_path / "capella.yaml").read_text(encoding="utf-8") == GOLDEN.read_text(encoding="utf-8")
     assert fake.writes() == []
 
 
@@ -164,7 +164,7 @@ def test_init_ac7_non_interactive_matches_interactive(fake, run, tmp_path):
 def test_init_ac7_dry_run_stdout_only(fake, run, tmp_path):
     r = run("init", "--non-interactive", "--dry-run", *FLAGS)
     assert r.exit_code == 0, r.output
-    assert GOLDEN.read_text().rstrip("\n") in r.stdout
+    assert GOLDEN.read_text(encoding="utf-8").rstrip("\n") in r.stdout
     assert not (tmp_path / "capella.yaml").exists()
 
 

@@ -17,7 +17,7 @@ from capellactl.api import endpoints as ep
 from capellactl.api.errors import NotFound
 from capellactl.cli import console
 from capellactl.cli.cluster_ops import change_and_apply, locate, open_editor
-from capellactl.cli.console import err, out
+from capellactl.cli.console import note, out
 from capellactl.cli.env import pass_state
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.groups import SuggestingGroup
@@ -177,7 +177,7 @@ def _record_paused(state: AppState, name: str, project: str | None, paused: bool
     else:
         hib.pop("paused", None)
     backup = ed.save()
-    err(f"{path.name} updated: {'paused: true' if paused else 'paused removed'} for {name} "
+    note(f"{path.name} updated: {'paused: true' if paused else 'paused removed'} for {name} "
         f"(previous version kept as {backup.name})")
 
 
@@ -239,14 +239,10 @@ def schedule_delete(state: AppState, name: str, project: str | None) -> None:
         body = None
     if body is not None:
         out(f"  - schedule {name}  {week_summary(body)}")
-        if not state.auto_approve:
-            if not console.is_interactive():
-                raise CliExit(ExitCode.ERROR, "refusing to delete the schedule without --auto-approve in a "
-                                              "non-interactive session")
-            if not click.confirm(f"Delete the on/off schedule of {name}? The cluster stays in its current state.",
-                                 default=False):
-                out("Cancelled; the schedule is unchanged.")
-                return
+        if not console.confirm(state, f"Delete the on/off schedule of {name}? The cluster stays in its current "
+                                      "state.", "delete the schedule"):
+            out("Cancelled; the schedule is unchanged.")
+            return
         ep.delete_schedule(client, pid, str(cl["id"]))
         out(f"deleted the on/off schedule of {name}")
     else:
@@ -261,4 +257,4 @@ def schedule_delete(state: AppState, name: str, project: str | None) -> None:
         if found is not None and "hibernation" in found[1]:
             del found[1]["hibernation"]
             backup = ed.save()
-            err(f"{path.name} updated: hibernation removed for {name} (previous version kept as {backup.name})")
+            note(f"{path.name} updated: hibernation removed for {name} (previous version kept as {backup.name})")

@@ -39,7 +39,7 @@ def test_project_create_ac2_auto_approve(fake, run, tmp_path):
 @pytest.mark.story("CAP-039", "AC2")
 def test_project_create_ac2_needs_auto_approve(fake, run, tmp_path):
     r = run("project", "create", "nova-qa", "--description", "QA")
-    assert r.exit_code == 1 and "without --auto-approve in a non-interactive session" in r.output
+    assert r.exit_code == 1 and "without approval; pass --auto-approve" in r.output
     assert fake.writes() == [] and not (tmp_path / "capella.yaml").exists()
 
 

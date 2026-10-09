@@ -13,11 +13,20 @@ capellactl keeps `capella.yaml`, a description of your environment, in step with
 
 ## Install
 
-Requires Python 3.10 or later. Until the package is published, install from the repository:
+Requires Python 3.10 or later. Each [GitHub Release](https://github.com/couchbaselabs/capellactl/releases) has the wheel, the source archive and `SHA256SUMS`:
+
+```bash
+sha256sum -c SHA256SUMS                          # macOS: shasum -a 256 -c SHA256SUMS
+pipx install ./capellactl-1.0.0-py3-none-any.whl  # or: pip install ./capellactl-1.0.0.tar.gz
+capellactl --version
+```
+
+From a clone of the repository:
 
 ```bash
 python3.12 -m venv .venv && .venv/bin/pip install -e .
 source .venv/bin/activate && capellactl --version
+make dist                                        # builds dist/: source archive, wheel and SHA256SUMS
 ```
 
 Standalone executables (no Python needed) are planned in [CAP-045](docs/release-1.0.0/CAP-045-standalone-executables.md).
@@ -48,7 +57,7 @@ capellactl credential create nova-dev-02 orders_app --privileges read+write --bu
 capellactl sync                            # pick up changes made in the Capella UI
 ```
 
-For CI, set `CAPELLA_API_KEY` and `CAPELLA_ORG_ID` instead of running `configure`, and pass `--auto-approve`.
+For CI, set `CAPELLA_API_KEY` and `CAPELLA_ORG_ID` instead of running `configure`, and pass `--auto-approve` (or `-y`); `--quiet` keeps pipeline logs short. `capellactl help ci` has GitHub Actions and GitLab CI examples.
 
 ## Commands
 
@@ -65,7 +74,7 @@ capellactl collection list | create | update | delete
 capellactl credential list | get | create | update [--rotate-password] | delete
 ```
 
-Global flags: `--config`, `--profile`, `-o text|json`, `--log-level`, `--auto-approve`, `--no-wait`, `--timeout`. `capellactl help topics` lists the guides built into the tool; `capellactl help exit-codes` explains exit codes.
+Global flags: `--config`, `--profile`, `-o text|json`, `--log-level`, `--auto-approve` (`--yes`, `-y`), `--quiet` (`-q`), `--no-wait`, `--timeout`. `capellactl help topics` lists the guides built into the tool; `capellactl help exit-codes` explains exit codes.
 
 Passwords are never written to `capella.yaml` or printed: give them as `--password-env VAR` or `--password-file PATH` (recorded as `${VAR}`). A password Capella generates is saved once to `.capellactl/credentials/` with owner-only permissions.
 
@@ -74,13 +83,15 @@ Passwords are never written to `capella.yaml` or printed: give them as `--passwo
 | Document | For |
 |---|---|
 | [Getting started](docs/getting-started.md) | Step-by-step walkthrough with example output, from install to deleting a cluster, and troubleshooting |
-| [Cheatsheet](docs/release-1.0.0/cheatsheet.md) | Copy-paste commands and a 15-minute demo script |
-| [Example capella.yaml](docs/release-1.0.0/examples/capella.yaml) | Every supported field, annotated |
+| [Runbook](docs/runbook.md) | Day-2 tasks with the exact command and expected output, a copy-paste reference of every command, and a 20-minute demo script |
+| [capella.yaml reference](docs/reference.md) | Every field: type, default, whether it can change, API mapping (generated from the schema) |
+| [Examples](docs/release-1.0.0/examples/) | [Annotated reference](docs/release-1.0.0/examples/capella.yaml), [single-node dev](docs/release-1.0.0/examples/single-node-dev.yaml), [GCP production](docs/release-1.0.0/examples/gcp-prod.yaml), [Azure production](docs/release-1.0.0/examples/azure-prod.yaml), [minimal](docs/release-1.0.0/examples/minimal-cluster.yaml) |
+| [Migrating from the scale script](docs/migrating-from-scale-script.md) | `scale_capella_cluster.sh` → capellactl |
 | [Architecture](docs/release-1.0.0/00-architecture.md) | Design, idempotency rules, test conventions |
 | [INDEX.md](docs/release-1.0.0/INDEX.md) | Release plan and user stories |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to build, test and change the project |
 
-Couchbase also publishes an official Terraform provider for Capella; teams already on Terraform may prefer it.
+Couchbase also publishes an official Terraform provider for Capella; [capellactl or Terraform?](docs/terraform.md) explains when to prefer it.
 
 ## Project structure
 
@@ -94,7 +105,7 @@ Couchbase also publishes an official Terraform provider for Capella; teams alrea
 | [capellactl/importer/](capellactl/importer/), [output/](capellactl/output/), [help/](capellactl/help/) | `import`/`sync` writer; rendering, redaction and passwords; `capellactl help` pages |
 | [tests/](tests/) | `unit/`, `contract/` (mocked HTTP), `scenario/` (CLI against [the fake Capella](tests/fakes/capella.py)), `integration/` (real Capella) |
 | [scripts/](scripts/) | Generators and CI checks: story index, API coverage, AC coverage, third-party notices |
-| [docs/](docs/) | [Architecture](docs/release-1.0.0/00-architecture.md), user stories (`CAP-NNN-*.md`), [INDEX.md](docs/release-1.0.0/INDEX.md), [API coverage](docs/release-1.0.0/API-COVERAGE.md), [cheatsheet](docs/release-1.0.0/cheatsheet.md), [examples](docs/release-1.0.0/examples/) |
+| [docs/](docs/) | [Architecture](docs/release-1.0.0/00-architecture.md), user stories (`CAP-NNN-*.md`), [INDEX.md](docs/release-1.0.0/INDEX.md), [API coverage](docs/release-1.0.0/API-COVERAGE.md), [runbook](docs/runbook.md), [examples](docs/release-1.0.0/examples/) |
 
 Build, test and documentation conventions: [CONTRIBUTING.md](CONTRIBUTING.md) and the [Makefile](Makefile).
 
