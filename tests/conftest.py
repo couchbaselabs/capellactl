@@ -73,8 +73,10 @@ def pytest_configure(config: pytest.Config) -> None:
 
 @pytest.fixture(autouse=True)
 def _isolate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[MemoryKeyring]:
+    # CI is set by GitHub Actions and most other CI services; it changes refusal messages (CAP-042 AC3).
     for var in ("CAPELLA_API_KEY", "CAPELLA_ORG_ID", "CAPELLA_API_BASE_URL", "CAPELLACTL_CONFIG",
-                "CAPELLACTL_PROFILE", "BEARER_TOKEN", "ORG_ID", "API_BASE_URL"):
+                "CAPELLACTL_PROFILE", "CAPELLACTL_QUIET", "CAPELLACTL_AUTO_APPROVE", "BEARER_TOKEN", "ORG_ID",
+                "API_BASE_URL", "CI"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("CAPELLACTL_HOME", str(tmp_path / ".capellactl-home"))
     monkeypatch.chdir(tmp_path)
@@ -165,7 +167,7 @@ def file_projects(path: Path) -> list[dict[str, Any]]:
 
     from capellactl.importer import to_projects_form
 
-    return list(to_projects_form(yaml.safe_load(path.read_text()) or {}).get("projects") or [])
+    return list(to_projects_form(yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("projects") or [])
 
 
 def file_clusters(path: Path, project: str | None = None) -> list[dict[str, Any]]:

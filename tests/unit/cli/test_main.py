@@ -1,6 +1,11 @@
 """CAP-001: package scaffold and CLI skeleton."""
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import click
 import pytest
 
@@ -82,3 +87,12 @@ def test_cli_ac3_invalid_output_format(run):
     r = run("-o", "yaml", "validate")
     assert r.exit_code == 2
     assert "text" in r.output and "json" in r.output
+
+
+def test_cli_output_survives_a_non_utf8_pipe():
+    """A Windows pipe or redirect defaults to cp1252, which has no → (used by `help topics`)."""
+    root = Path(__file__).resolve().parents[3]
+    env = {**os.environ, "PYTHONIOENCODING": "cp1252", "PYTHONPATH": str(root)}
+    r = subprocess.run([sys.executable, "-m", "capellactl", "help", "topics"], env=env, capture_output=True, timeout=60)
+    assert r.returncode == 0, r.stderr.decode("utf-8", "replace")
+    assert "→" in r.stdout.decode("utf-8")

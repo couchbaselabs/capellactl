@@ -90,5 +90,5 @@ def test_ci_ac8_help_topic(run):
     for s in ("--auto-approve", "--yes", "-y", "--quiet", "CAPELLACTL_QUIET", "plan --detailed-exitcode",
               "GitHub Actions", "GitLab CI", "There is no environment variable or profile setting for it"):
         assert s in r.output, s
-    readme = (Path(__file__).resolve().parents[3] / "README.md").read_text()
+    readme = (Path(__file__).resolve().parents[3] / "README.md").read_text(encoding="utf-8")
     assert "capellactl help ci" in readme

@@ -38,7 +38,7 @@ def test_schedule_set_ac3_records_and_creates(fake, run, tmp_path):
     assert r.exit_code == 0, r.output
     assert "+ schedule nova-dev-01  US/Pacific · Mon–Thu 08:00–18:00 · Fri 08:00–14:30 · Sat–Sun off" in r.output
     assert fake.schedules[cid]["days"] == expand(HIB)["days"]
-    hib = yaml.safe_load((tmp_path / "capella.yaml").read_text())["projects"][0]["clusters"][0]["hibernation"]
+    hib = yaml.safe_load((tmp_path / "capella.yaml").read_text(encoding="utf-8"))["projects"][0]["clusters"][0]["hibernation"]
     assert hib == HIB
     assert "already in sync" in run("sync").output
     r = run("--auto-approve", "cluster", "schedule", "set", "nova-dev-01", "--friday", "08:00-18:00")
@@ -50,8 +50,8 @@ def test_schedule_delete_ac6_removes_from_capella_and_file(fake, run, tmp_path):
     _, cid = seed_healthy(fake)
     fake.schedules[cid] = {"activationStatus": "active", **expand(HIB)}
     assert run("import").exit_code == 0
-    assert "hibernation" in (tmp_path / "capella.yaml").read_text()
+    assert "hibernation" in (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     r = run("--auto-approve", "cluster", "schedule", "delete", "nova-dev-01")
     assert r.exit_code == 0 and "deleted the on/off schedule of nova-dev-01" in r.output, r.output
-    assert cid not in fake.schedules and "hibernation" not in (tmp_path / "capella.yaml").read_text()
+    assert cid not in fake.schedules and "hibernation" not in (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert "already in sync" in run("sync").output

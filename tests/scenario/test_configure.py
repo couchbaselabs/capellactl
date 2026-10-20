@@ -26,7 +26,7 @@ def test_configure_ac1_saves_profile_and_keychain(fake, run, keychain, monkeypat
     assert r.exit_code == 0, r.output
     assert "profile 'default' saved (org Nova Labs)" in r.output
     p = profiles_path()
-    data = yaml.safe_load(p.read_text())
+    data = yaml.safe_load(p.read_text(encoding="utf-8"))
     assert data["profiles"]["default"]["organizationId"] == "org-2"
     assert keychain.store[("capellactl", "default")] == KEY
     if os.name == "posix":
@@ -39,7 +39,7 @@ def test_configure_ac1_key_not_echoed(fake, run):
     r = run("configure", "--api-key-stdin", input=f"{KEY}\n", no_env=True)
     assert r.exit_code == 0
     assert_no_secret(r.output, KEY)
-    assert_no_secret(profiles_path().read_text(), KEY)
+    assert_no_secret(profiles_path().read_text(encoding="utf-8"), KEY)
 
 
 @pytest.mark.story("CAP-037", "AC2")
@@ -81,7 +81,7 @@ def test_configure_ac4_no_keychain_never_writes_key(fake, run, tmp_path):
     assert "no OS keychain available; set CAPELLA_API_KEY" in r.output
     for f in Path(tmp_path).rglob("*"):
         if f.is_file():
-            assert KEY not in f.read_text(errors="ignore"), f
+            assert KEY not in f.read_text(errors="ignore", encoding="utf-8"), f
 
 
 @pytest.mark.story("CAP-037", "AC6")
@@ -91,7 +91,7 @@ def test_configure_ac6_remove_profile_and_key(fake, run, keychain):
     r = run("configure", "--profile", "dev", "remove", no_env=True)
     assert r.exit_code == 0 and "profile 'dev' removed (keychain entry deleted)" in r.output
     assert ("capellactl", "dev") not in keychain.store
-    assert "dev" not in (yaml.safe_load(profiles_path().read_text())["profiles"])
+    assert "dev" not in (yaml.safe_load(profiles_path().read_text(encoding="utf-8"))["profiles"])
     r = run("configure", "--profile", "dev", "remove", no_env=True)
     assert r.exit_code == 0 and "nothing to remove" in r.output
 

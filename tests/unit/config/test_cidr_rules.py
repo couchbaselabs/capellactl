@@ -29,7 +29,7 @@ def test_cidr_validate_ac2_host_bits_rejected(tmp_path):
 
 @pytest.mark.story("CAP-022", "AC2")
 def test_cidr_validate_ac2_cli_exit_3(tmp_path, run):
-    (tmp_path / "capella.yaml").write_text(textwrap.dedent(MINIMAL) + "    allowedCidrs:\n      - cidr: 10.0.0.5/24\n")
+    (tmp_path / "capella.yaml").write_text(textwrap.dedent(MINIMAL) + "    allowedCidrs:\n      - cidr: 10.0.0.5/24\n", encoding="utf-8")
     r = run("validate")
     assert r.exit_code == 3 and "did you mean 10.0.0.0/24?" in r.output
 

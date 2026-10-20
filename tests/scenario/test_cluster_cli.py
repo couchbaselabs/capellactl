@@ -52,10 +52,10 @@ def test_cluster_create_ac2_flags_and_defaults(fake, run, imported):
 
 @pytest.mark.story("CAP-038", "AC2")
 def test_cluster_create_ac2_non_interactive_needs_auto_approve(fake, run, imported):
-    before = imported.read_text()
+    before = imported.read_text(encoding="utf-8")
     r = run("cluster", "create", "nova-qa-01")
     assert r.exit_code == 1 and "refusing to change capella.yaml and Capella without approval; pass --auto-approve" in r.output
-    assert imported.read_text() == before and fake.writes() == []
+    assert imported.read_text(encoding="utf-8") == before and fake.writes() == []
 
 
 @pytest.mark.story("CAP-038", "AC4")
@@ -70,10 +70,10 @@ def test_cluster_create_ac2_non_interactive_needs_auto_approve(fake, run, import
     (["--cidr", "10.10.0.0/24"], "overlaps the network of cluster 'nova-dev-01'"),
 ])
 def test_cluster_create_ac4_invalid_input_writes_nothing(fake, run, imported, args, msg):
-    before = imported.read_text()
+    before = imported.read_text(encoding="utf-8")
     r = run("--auto-approve", "cluster", "create", "bad-01", *args)
     assert r.exit_code == 3 and msg in r.output, r.output
-    assert imported.read_text() == before and fake.writes() == []
+    assert imported.read_text(encoding="utf-8") == before and fake.writes() == []
 
 
 @pytest.mark.story("CAP-038", "AC4")
@@ -89,13 +89,13 @@ def test_cluster_create_ac4_interactive_reasks(fake, run, imported, monkeypatch)
 @pytest.mark.story("CAP-038", "AC4")
 def test_cluster_create_ac4_interactive_flag_conflict_not_reasked(fake, run, imported, monkeypatch):
     monkeypatch.setattr(console, "is_interactive", lambda: True)
-    before = imported.read_text()
+    before = imported.read_text(encoding="utf-8")
     # --size dev --availability multi conflict: only the CIDR is asked, then the command exits instead of re-asking
     r = run("cluster", "create", "bad-01", "--provider", "azure", "--region", "eastus", "--size", "dev",
             "--availability", "multi", "--support-plan", "developer pro", input="\n")
     assert r.exit_code == 3 and "singleNode clusters must use availability: single" in r.output, r.output
     assert "Please try again." not in r.output and "Cloud provider" not in r.output
-    assert imported.read_text() == before and fake.writes() == []
+    assert imported.read_text(encoding="utf-8") == before and fake.writes() == []
 
 
 @pytest.mark.story("CAP-038", "AC5")
@@ -149,18 +149,18 @@ def test_cluster_update_ac7_interactive_asks(fake, run, imported, monkeypatch):
 @pytest.mark.story("CAP-038", "AC8")
 def test_cluster_cli_ac8_decline_writes_nothing(fake, run, imported, monkeypatch):
     monkeypatch.setattr(console, "is_interactive", lambda: True)
-    before = imported.read_text()
+    before = imported.read_text(encoding="utf-8")
     r = run("cluster", "scale", "nova-dev-01", "--nodes", "4", input="n\n")
     assert "Cancelled; capella.yaml and Capella are unchanged." in r.output
-    assert imported.read_text() == before and fake.writes() == []
+    assert imported.read_text(encoding="utf-8") == before and fake.writes() == []
 
 
 @pytest.mark.story("CAP-038", "AC8")
 def test_cluster_cli_ac8_no_apply_and_comments_kept(fake, run, imported):
-    imported.write_text(imported.read_text().replace("projects:\n", "# my note about projects\nprojects:\n"))
+    imported.write_text(imported.read_text(encoding="utf-8").replace("projects:\n", "# my note about projects\nprojects:\n"), encoding="utf-8")
     r = run("--auto-approve", "cluster", "scale", "nova-dev-01", "--nodes", "4", "--no-apply")
     assert r.exit_code == 0 and "Not applied (--no-apply)" in r.output
-    text = imported.read_text()
+    text = imported.read_text(encoding="utf-8")
     assert "# my note about projects" in text and "# Imported by capellactl" in text and "numOfNodes: 4" in text
     assert (imported.parent / "capella.yaml.bak").exists()
     assert fake.writes() == []
@@ -168,10 +168,10 @@ def test_cluster_cli_ac8_no_apply_and_comments_kept(fake, run, imported):
 
 @pytest.mark.story("CAP-038", "AC8")
 def test_cluster_cli_blocked_change_writes_nothing(fake, run, imported):
-    before = imported.read_text()
+    before = imported.read_text(encoding="utf-8")
     r = run("--auto-approve", "cluster", "scale", "nova-dev-01", "--nodes", "2")
     assert r.exit_code in (3, 4)  # below the limit (3) or scale-in (4): never written
-    assert imported.read_text() == before and fake.writes() == []
+    assert imported.read_text(encoding="utf-8") == before and fake.writes() == []
 
 
 @pytest.mark.story("CAP-038", "AC11")
@@ -191,13 +191,13 @@ def test_cluster_create_needs_capella_yaml(fake, run):
 
 @pytest.mark.story("CAP-038", "AC8")
 def test_cluster_cli_ac8_rejected_create_restores_file(fake, run, imported):
-    before = imported.read_text()
+    before = imported.read_text(encoding="utf-8")
     fake.fail_next("POST", "*/clusters", 500)
     r = run("--auto-approve", "cluster", "create", "nova-qa-01", "--provider", "azure", "--region", "eastus")
     assert r.exit_code == 1, r.output
     assert "Capella did not accept the change, so capella.yaml was restored" in r.output
     assert "re-run apply" not in r.output
-    assert imported.read_text() == before
+    assert imported.read_text(encoding="utf-8") == before
 
 
 @pytest.mark.story("CAP-038", "AC8")
@@ -269,7 +269,7 @@ def test_cluster_cli_ac8_new_keys_in_import_order(fake, run, tmp_path, monkeypat
             extra_env={"APP_PW": "S3cure-Passw0rd!"})
     assert r.exit_code == 0, r.output
     assert run("cluster", "protect", "nova-dev-01", "--on", extra_env={"APP_PW": "S3cure-Passw0rd!"}).exit_code == 0
-    keys = [ln.strip().split(":")[0] for ln in (tmp_path / "capella.yaml").read_text().splitlines()
+    keys = [ln.strip().split(":")[0] for ln in (tmp_path / "capella.yaml").read_text(encoding="utf-8").splitlines()
             if ln.startswith("        ") and not ln.startswith("         ") and ":" in ln]
     keys = [k.lstrip("- ") for k in keys]
     assert keys.index("description") == keys.index("name") + 1

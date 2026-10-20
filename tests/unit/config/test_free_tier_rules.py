@@ -19,7 +19,7 @@ projects:
 
 def _check(tmp_path, text):
     p = tmp_path / "c.yaml"
-    p.write_text(text)
+    p.write_text(text, encoding="utf-8")
     return load_config(p, env={})
 
 

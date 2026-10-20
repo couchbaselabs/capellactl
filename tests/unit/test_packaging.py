@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 @pytest.mark.story("CAP-001", "AC6")
 def test_image_ac6_dockerfile_non_root_entrypoint():
-    text = (ROOT / "Dockerfile").read_text()
+    text = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     assert "USER 10001" in text
     assert 'ENTRYPOINT ["capellactl"]' in text
     assert "python:3.12-slim" in text
@@ -19,7 +19,7 @@ def test_image_ac6_dockerfile_non_root_entrypoint():
 
 @pytest.mark.story("CAP-001", "AC6")
 def test_image_ac6_ci_checks_size_and_user():
-    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert "image-smoke" in ci and "52428800" in ci and "--entrypoint id capellactl:ci -u" in ci
 
 
@@ -61,12 +61,12 @@ LOCAL_FILES = {"capella.yaml": "organizationId: org-1\n", "capella.yaml.bak": "o
 
 def _git(tree: Path, *args: str) -> str:
     return subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false",
-                           *args], cwd=tree, check=True, capture_output=True, text=True).stdout.strip()
+                           *args], cwd=tree, check=True, capture_output=True, text=True, encoding="utf-8").stdout.strip()
 
 
 def _dist(tree: Path, out: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run([sys.executable, str(tree / "scripts" / "build-dist.py"), "--outdir", str(out)],
-                          cwd=tree, capture_output=True, text=True)
+                          cwd=tree, capture_output=True, text=True, encoding="utf-8")
 
 
 def _members(archive: Path) -> list[str]:
@@ -87,7 +87,7 @@ def tree(tmp_path_factory):
     _git(t, "commit", "-q", "-m", "release candidate")
     for rel, text in LOCAL_FILES.items():
         (t / rel).parent.mkdir(parents=True, exist_ok=True)
-        (t / rel).write_text(text)
+        (t / rel).write_text(text, encoding="utf-8")
     return t
 
 
@@ -104,10 +104,10 @@ def test_dist_ac1_make_dist_outputs(built):
     names = sorted(p.name for p in built.iterdir())
     assert len(names) == 3 and "SHA256SUMS" in names
     assert any(n.endswith(".tar.gz") for n in names) and any(n.endswith("-py3-none-any.whl") for n in names)
-    for line in (built / "SHA256SUMS").read_text().splitlines():  # sha256sum -c
+    for line in (built / "SHA256SUMS").read_text(encoding="utf-8").splitlines():  # sha256sum -c
         digest, name = line.split("  ")
         assert hashlib.sha256((built / name).read_bytes()).hexdigest() == digest
-    assert "dist:" in (ROOT / "Makefile").read_text() and "scripts/build-dist.py" in (ROOT / "Makefile").read_text()
+    assert "dist:" in (ROOT / "Makefile").read_text(encoding="utf-8") and "scripts/build-dist.py" in (ROOT / "Makefile").read_text(encoding="utf-8")
 
 
 @pytest.mark.story("CAP-043", "AC2")
@@ -123,10 +123,10 @@ def test_dist_ac2_install_from_sdist(built, tmp_path, kind):
 
     def cap(*args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run([sys.executable, "-m", "capellactl", *args], cwd=tmp_path, env=env, capture_output=True,
-                              text=True)
+                              text=True, encoding="utf-8")
 
     where = subprocess.run([sys.executable, "-c", "import capellactl; print(capellactl.__file__)"], env=env,
-                           capture_output=True, text=True).stdout
+                           capture_output=True, text=True, encoding="utf-8").stdout
     assert where.startswith(str(target)), where  # the installed copy, not this source tree
     version = archive.name.removeprefix("capellactl-").split("-py3")[0].removesuffix(".tar.gz")
     assert cap("--version").stdout.startswith(f"capellactl {version} ")
@@ -171,7 +171,7 @@ def test_dist_ac3_archive_outside_allowlist_fails(tmp_path):
         for rel, text in files.items():
             p = tmp_path / "src" / rel
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(text)
+            p.write_text(text, encoding="utf-8")
             t.add(p, arcname=f"capellactl-1.0.0/{rel}")
     problems = bd.check_sdist(sdist)
     assert any("docs/secrets/pw.txt must never ship" in p for p in problems)
@@ -187,7 +187,7 @@ def test_dist_ac4_license_files(built):
     assert any(n.endswith(".dist-info/licenses/LICENSE") for n in wheel)
     assert any(n.endswith(".dist-info/licenses/NOTICE") for n in wheel)
     r = subprocess.run([sys.executable, "-m", "twine", "check", "--strict", *map(str, built.glob("capellactl-*"))],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding="utf-8")
     assert r.returncode == 0, r.stdout + r.stderr
 
 
@@ -200,7 +200,7 @@ def test_dist_ac5_version_from_tag(tree, built, tmp_path):
     assert r.returncode == 1 and "CHANGELOG.md has no '## 1.0.0' section" in r.stderr
     _git(tree, "tag", "-d", "v1.0.0")
     changelog = tree / "CHANGELOG.md"
-    changelog.write_text(changelog.read_text().replace("## Unreleased", "## 1.0.0 — 2026-10-08"))
+    changelog.write_text(changelog.read_text(encoding="utf-8").replace("## Unreleased", "## 1.0.0 — 2026-10-08"), encoding="utf-8")
     _git(tree, "commit", "-q", "-am", "1.0.0")
     _git(tree, "tag", "v1.0.0")
     out = tmp_path / "tagged"
@@ -211,9 +211,9 @@ def test_dist_ac5_version_from_tag(tree, built, tmp_path):
     with zipfile.ZipFile(out / "capellactl-1.0.0-py3-none-any.whl") as z:
         meta = z.read("capellactl-1.0.0.dist-info/METADATA").decode()
     assert "Version: 1.0.0" in meta.splitlines()
-    (tree / "README.md").write_text((tree / "README.md").read_text() + "\n")
+    (tree / "README.md").write_text((tree / "README.md").read_text(encoding="utf-8") + "\n", encoding="utf-8")
     _git(tree, "commit", "-q", "-am", "after the release")
-    after = subprocess.run([sys.executable, str(tree / "scripts" / "version.py")], capture_output=True, text=True)
+    after = subprocess.run([sys.executable, str(tree / "scripts" / "version.py")], capture_output=True, text=True, encoding="utf-8")
     assert after.stdout.strip() == f"1.0.1.dev1+g{_git(tree, 'rev-parse', '--short=7', 'HEAD')}"
     _git(tree, "checkout", "-q", "v1.0.0")
 
@@ -225,12 +225,12 @@ def test_dist_ac6_reproducible_build(tree, tmp_path):
     assert _dist(tree, first).returncode == 0
     os.utime(tree / "README.md")  # a later checkout: file times differ, the archives must not
     assert _dist(tree, second).returncode == 0
-    assert (first / "SHA256SUMS").read_text() == (second / "SHA256SUMS").read_text()
+    assert (first / "SHA256SUMS").read_text(encoding="utf-8") == (second / "SHA256SUMS").read_text(encoding="utf-8")
 
 
 @pytest.mark.story("CAP-043", "AC7")
 def test_dist_ac7_release_workflow():
-    wf = (ROOT / ".github" / "workflows" / "release.yml").read_text()
+    wf = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
     for s in ('tags: ["v[0-9]+.[0-9]+.[0-9]+"]', "make check", "make dist", "sha256sum -c SHA256SUMS",
               "ubuntu-latest, macos-latest, windows-latest", "needs: install", "gh release create",
               "workflow_dispatch:", "if: github.event_name == 'push'      # a manual run is a dry run"):
@@ -239,9 +239,9 @@ def test_dist_ac7_release_workflow():
 
 @pytest.mark.story("CAP-043", "AC8")
 def test_dist_ac8_single_build_path():
-    docker = (ROOT / "Dockerfile").read_text()
+    docker = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     assert "COPY dist/capellactl-*.whl" in docker and "python -m build" not in docker
-    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert "scripts/build-dist.py" in ci and "python -m build" not in ci
-    make = (ROOT / "Makefile").read_text()
+    make = (ROOT / "Makefile").read_text(encoding="utf-8")
     assert "build: dist" in make and "image: dist" in make and "pip wheel" not in make

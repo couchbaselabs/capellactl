@@ -63,7 +63,7 @@ def test_vertical_ac3_disk_shrink_blocked(fake, run, write_config):
 @pytest.mark.story("CAP-017", "AC4")
 def test_vertical_validate_ac4_disk_type_provider(tmp_path):
     p = tmp_path / "c.yaml"
-    p.write_text(MINIMAL.replace("type: gp3", "type: P20"))
+    p.write_text(MINIMAL.replace("type: gp3", "type: P20"), encoding="utf-8")
     with pytest.raises(ConfigError, match="disk type P20 is not valid for aws"):
         load_config(p, env={"CAPELLA_ORG_ID": "o"})
 

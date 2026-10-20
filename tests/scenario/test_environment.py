@@ -43,7 +43,7 @@ def _runs(kinds):
 def example(tmp_path):
     shutil.copy(EXAMPLE, tmp_path / "capella.yaml")
     (tmp_path / "secrets").mkdir()
-    (tmp_path / "secrets" / "reporting_ro.txt").write_text("R3port!ng-pw")
+    (tmp_path / "secrets" / "reporting_ro.txt").write_text("R3port!ng-pw", encoding="utf-8")
     return tmp_path / "capella.yaml"
 
 
@@ -110,7 +110,7 @@ def test_env_ac4_destroy_reverse_order(fake, run, built, monkeypatch, tmp_path):
     assert "cluster nova-dev-01: deleted (" in r.output and "Destroy complete in" in r.output
     assert fake.projects == {} and fake.clusters == {}
     # the ids of what was deleted are dropped (a pinned id that is gone stops apply); the rest of the file stays
-    assert "id:" not in (tmp_path / "capella.yaml").read_text()
+    assert "id:" not in (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     r = run("plan", extra_env=ENV)
     assert r.exit_code == 0 and "+ project nova-dev" in r.output and "+ cluster nova-dev-01" in r.output
 

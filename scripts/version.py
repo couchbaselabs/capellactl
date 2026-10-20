@@ -19,7 +19,7 @@ TAG = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
 
 def _git(*args: str) -> str | None:
     try:
-        r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, timeout=10)
+        r = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, timeout=10, encoding="utf-8")
     except (OSError, subprocess.SubprocessError):
         return None
     return r.stdout.strip() if r.returncode == 0 else None

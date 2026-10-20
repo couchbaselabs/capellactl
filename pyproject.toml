@@ -68,6 +68,9 @@ markers = [
   "integration: runs against a real Capella sandbox organization",
 ]
 addopts = "-m 'not integration'"
+# Windows decodes files and pipes as cp1252 unless told otherwise. With PYTHONWARNDEFAULTENCODING=1 (make test, CI)
+# any text I/O in our code without an explicit encoding fails on every OS, not just on Windows.
+filterwarnings = ["error::EncodingWarning:(capellactl|tests|scripts)"]
 
 [tool.ruff]
 line-length = 110

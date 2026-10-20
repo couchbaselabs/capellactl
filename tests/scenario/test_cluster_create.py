@@ -17,7 +17,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "cluster_create_body.json"
 def _example(tmp_path):
     shutil.copy(EXAMPLE, tmp_path / "capella.yaml")
     (tmp_path / "secrets").mkdir(exist_ok=True)
-    (tmp_path / "secrets" / "reporting_ro.txt").write_text("R3port!ng-pw")
+    (tmp_path / "secrets" / "reporting_ro.txt").write_text("R3port!ng-pw", encoding="utf-8")
     return {"ORDERS_APP_PASSWORD": "Orders#App-123"}
 
 
@@ -28,7 +28,7 @@ def test_cluster_ac1_create_body_matches_fixture(fake, run, tmp_path):
     r = run("--auto-approve", "apply", extra_env=env)
     assert r.exit_code == 0, r.output
     post = fake.calls("POST", "*/clusters")[0]
-    assert post.body == json.loads(FIXTURE.read_text())
+    assert post.body == json.loads(FIXTURE.read_text(encoding="utf-8"))
 
 
 @pytest.mark.story("CAP-011", "AC1")
@@ -111,7 +111,7 @@ CREATE_RULES = [
 def test_cluster_validate_ac5_rules(tmp_path, old, new, msg):
     p = tmp_path / "c.yaml"
     assert old in MINIMAL
-    p.write_text(MINIMAL.replace(old, new, 1))
+    p.write_text(MINIMAL.replace(old, new, 1), encoding="utf-8")
     with pytest.raises(ConfigError) as ei:
         load_config(p, env={"CAPELLA_ORG_ID": "o"})
     assert msg in str(ei.value) or (msg == "must be between 50" and "must be >= 50" in str(ei.value))

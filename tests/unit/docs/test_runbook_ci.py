@@ -11,7 +11,7 @@ RUNBOOK = Path(__file__).resolve().parents[3] / "docs" / "runbook.md"
 
 @pytest.mark.story("CAP-042", "AC8")
 def test_ci_ac8_runbook_ci_section():
-    text = RUNBOOK.read_text()
+    text = RUNBOOK.read_text(encoding="utf-8")
     intro = text.split("\n# Part 1", 1)[0]
     assert "-y" in intro and "--quiet" in intro and "capellactl help ci" in intro
     section = re.search(r"^## CI/CD\n(.*?)(?=^## )", text, flags=re.S | re.M)

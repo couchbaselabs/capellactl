@@ -10,7 +10,7 @@ typecheck:
 	$(PY) -m mypy capellactl
 
 test:
-	$(PY) -m pytest
+	PYTHONWARNDEFAULTENCODING=1 $(PY) -m pytest
 
 test-integration:
 	$(PY) -m pytest -m integration

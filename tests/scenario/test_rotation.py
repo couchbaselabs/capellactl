@@ -54,15 +54,15 @@ def test_rotation_ac2_generated_saved_with_backup(fake, run, write_config, clust
     d = tmp_path / ".capellactl" / "credentials"
     d.mkdir(parents=True)
     old = d / "nova-dev-01.orders_app.json"
-    old.write_text(json.dumps({"password": "Old!Passw0rd-xyz"}))
+    old.write_text(json.dumps({"password": "Old!Passw0rd-xyz"}), encoding="utf-8")
     write_config(MINIMAL + ORDERS_BUCKET + NO_PW)
     r = run("--auto-approve", "credential", "update", "nova-dev-01", "orders_app", "--rotate-password")
     assert r.exit_code == 0, r.output
     new = fake.users[uid]["_password"]
     assert new != "Old!Passw0rd-xyz" and len(new) == 32 and meets_rules(new)
-    assert json.loads(old.read_text())["password"] == new
+    assert json.loads(old.read_text(encoding="utf-8"))["password"] == new
     bak = d / "nova-dev-01.orders_app.json.bak"
-    assert json.loads(bak.read_text()) == {"password": "Old!Passw0rd-xyz"}
+    assert json.loads(bak.read_text(encoding="utf-8")) == {"password": "Old!Passw0rd-xyz"}
     if os.name == "posix":
         assert stat.S_IMODE(bak.stat().st_mode) == 0o600 and stat.S_IMODE(old.stat().st_mode) == 0o600
     assert "password rotated for orders_app" in r.output and "password saved to" in r.output
@@ -76,12 +76,12 @@ def test_rotation_ac2_failed_send_restores_file(fake, run, write_config, cluster
     d = tmp_path / ".capellactl" / "credentials"
     d.mkdir(parents=True)
     old = d / "nova-dev-01.orders_app.json"
-    old.write_text('{"password": "Old!Passw0rd-xyz"}')
+    old.write_text('{"password": "Old!Passw0rd-xyz"}', encoding="utf-8")
     write_config(MINIMAL + ORDERS_BUCKET + NO_PW)
     fake.fail_next("PUT", "*/users/*", status=400)
     r = run("--auto-approve", "credential", "update", "nova-dev-01", "orders_app", "--rotate-password")
     assert r.exit_code == 1, r.output
-    assert old.read_text() == '{"password": "Old!Passw0rd-xyz"}'
+    assert old.read_text(encoding="utf-8") == '{"password": "Old!Passw0rd-xyz"}'
     assert not (d / "nova-dev-01.orders_app.json.bak").exists()
 
 

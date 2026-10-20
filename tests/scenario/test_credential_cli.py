@@ -48,7 +48,7 @@ def test_credential_cli_ac2_get(fake, run, write_config, cluster, tmp_path):
     write_config(MINIMAL + ORDERS_BUCKET)
     secret = tmp_path / ".capellactl" / "credentials" / "nova-dev-01.orders_app.json"
     secret.parent.mkdir(parents=True)
-    secret.write_text('{"password": "Gen3rated!Pw-local"}')
+    secret.write_text('{"password": "Gen3rated!Pw-local"}', encoding="utf-8")
     r = run("credential", "get", "nova-dev-01", "orders_app")
     assert r.exit_code == 0, r.output
     lines = [" ".join(x.split()) for x in r.output.splitlines()]

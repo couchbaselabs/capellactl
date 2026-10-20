@@ -22,7 +22,7 @@ def test_validate_ac1_exit_code_3(run, write_config):
 def test_validate_ac6_example_is_valid_offline(run, tmp_path, monkeypatch):
     shutil.copy(EXAMPLE, tmp_path / "capella.yaml")
     (tmp_path / "secrets").mkdir()
-    (tmp_path / "secrets" / "reporting_ro.txt").write_text("R3port!ng-pw\n")
+    (tmp_path / "secrets" / "reporting_ro.txt").write_text("R3port!ng-pw\n", encoding="utf-8")
 
     def no_network(*a, **k):
         raise AssertionError("validate must not use the network")

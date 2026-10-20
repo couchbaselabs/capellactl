@@ -26,7 +26,7 @@ def _script():
 def test_licence_ac1_file_matches_pyproject():
     text = (ROOT / "LICENSE").read_bytes()
     assert hashlib.sha256(text).hexdigest() == APACHE_SHA256  # the unmodified Apache License 2.0
-    pyproject = (ROOT / "pyproject.toml").read_text()
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     assert re.search(r'^license = "Apache-2.0"$', pyproject, re.M)
     assert 'license-files = ["LICENSE", "NOTICE"]' in pyproject
     from capellactl import LICENSE
@@ -36,7 +36,7 @@ def test_licence_ac1_file_matches_pyproject():
 
 @pytest.mark.story("CAP-044", "AC2")
 def test_licence_ac2_notice_and_version_line(run):
-    notice = (ROOT / "NOTICE").read_text()
+    notice = (ROOT / "NOTICE").read_text(encoding="utf-8")
     assert notice.splitlines()[:3] == ["capellactl", "Copyright 2026 Couchbase, Inc.",
                                        "Author: Anuj Sahni, Principal Cloud & Solutions Architect"]
     assert "Apache License, Version 2.0" in notice and "THIRD_PARTY_NOTICES.md" in notice
@@ -48,7 +48,7 @@ def test_licence_ac2_notice_and_version_line(run):
 @pytest.mark.story("CAP-044", "AC3")
 def test_licence_ac3_third_party_notices_current():
     tpn = _script()
-    text = (ROOT / "THIRD_PARTY_NOTICES.md").read_text()
+    text = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
     installed = tpn.collect(offline=True)
     assert {"click", "requests", "pyyaml", "jsonschema", "rich", "keyring", "ruamel-yaml"} <= {
         tpn.canonicalize_name(d.name) for d in installed}
@@ -59,7 +59,7 @@ def test_licence_ac3_third_party_notices_current():
 def test_licence_ac3_stale_file_detected():
     tpn = _script()
     installed = tpn.collect(offline=True)
-    text = (ROOT / "THIRD_PARTY_NOTICES.md").read_text()
+    text = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
     without_click = "\n".join(line for line in text.splitlines() if not line.startswith("| click |"))
     assert any("click" in p and "not in THIRD_PARTY_NOTICES.md" in p
                for p in tpn.check(without_click, installed, tpn.load_policy()))

@@ -95,7 +95,7 @@ def not_git_ignored(path: str | Path) -> bool:
         probe = probe.parent
     try:
         inside = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], cwd=probe,
-                                capture_output=True, text=True, timeout=10)
+                                capture_output=True, text=True, timeout=10, encoding="utf-8")
         if inside.returncode != 0 or inside.stdout.strip() != "true":
             return False
         ignored = subprocess.run(["git", "check-ignore", "-q", str(p)], cwd=probe, capture_output=True, timeout=10)

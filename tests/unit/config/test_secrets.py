@@ -23,7 +23,7 @@ SECRET = "S3cret!Value-xyz"
 
 def _write(tmp_path, pw: str):
     p = tmp_path / "c.yaml"
-    p.write_text(MINIMAL + CRED.format(pw=pw))
+    p.write_text(MINIMAL + CRED.format(pw=pw), encoding="utf-8")
     return p
 
 
@@ -44,7 +44,7 @@ def test_loader_ac2_unset_env_names_variable(tmp_path):
 @pytest.mark.story("CAP-002", "AC2")
 def test_loader_ac2_file_reference_resolved_relative_to_config(tmp_path):
     (tmp_path / "secrets").mkdir()
-    (tmp_path / "secrets" / "pw.txt").write_text(SECRET + "\n")
+    (tmp_path / "secrets" / "pw.txt").write_text(SECRET + "\n", encoding="utf-8")
     cfg = load_config(_write(tmp_path, "${file:./secrets/pw.txt}"), env={"CAPELLA_ORG_ID": "o"})
     assert cfg.clusters[0]["databaseCredentials"][0]["password"] == SECRET
 
@@ -60,7 +60,7 @@ def test_loader_ac2_missing_file_names_path(tmp_path):
 def test_loader_ac2_errors_never_contain_value(tmp_path):
     # A schema error elsewhere in the file must not echo the resolved secret.
     p = tmp_path / "c.yaml"
-    p.write_text((MINIMAL + CRED.format(pw="${APP_PW}")).replace("numOfNodes: 3", "numOfNodes: 99"))
+    p.write_text((MINIMAL + CRED.format(pw="${APP_PW}")).replace("numOfNodes: 3", "numOfNodes: 99"), encoding="utf-8")
     with pytest.raises(ConfigError) as ei:
         load_config(p, env={"CAPELLA_ORG_ID": "o", "APP_PW": SECRET})
     assert_no_secret(str(ei.value), SECRET)

@@ -15,7 +15,7 @@ CLI = Path(__file__).resolve().parents[3] / "capellactl" / "cli"
 
 def _direct_prompts(path: Path) -> list[str]:
     found = []
-    for node in ast.walk(ast.parse(path.read_text())):
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
         if isinstance(node, ast.Attribute) and node.attr in ("confirm", "prompt") \
                 and isinstance(node.value, ast.Name) and node.value.id == "click":
             found.append(f"{path.name}:{node.lineno} click.{node.attr}")

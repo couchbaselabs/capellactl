@@ -55,11 +55,11 @@ def test_bucket_cli_ac1_create_records_and_applies(fake, run, write_config, tmp_
 def test_bucket_cli_ac8_rejected_create_restores_file(fake, run, write_config, tmp_path):
     seed_healthy(fake)
     write_config()
-    before = (tmp_path / "capella.yaml").read_text()
+    before = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     fake.fail_next("POST", "*/buckets", 422)
     r = run("--auto-approve", "bucket", "create", "nova-dev-01", "orders", "--memory", "1024")
     assert r.exit_code == 1 and "capella.yaml was restored" in r.output, r.output
-    assert (tmp_path / "capella.yaml").read_text() == before
+    assert (tmp_path / "capella.yaml").read_text(encoding="utf-8") == before
 
 
 @pytest.mark.story("CAP-023", "AC1")

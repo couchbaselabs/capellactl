@@ -8,14 +8,14 @@ from capellactl.config.settings import ConfigDiscoveryError, discover_config_fil
 
 @pytest.mark.story("CAP-037", "AC5")
 def test_discovery_ac5_yml_used(tmp_path):
-    (tmp_path / "capella.yml").write_text("x")
+    (tmp_path / "capella.yml").write_text("x", encoding="utf-8")
     assert discover_config_file(None, {}, {}, tmp_path).value == "capella.yml"
 
 
 @pytest.mark.story("CAP-037", "AC5")
 def test_discovery_ac5_both_present_error(tmp_path):
-    (tmp_path / "capella.yml").write_text("x")
-    (tmp_path / "capella.yaml").write_text("x")
+    (tmp_path / "capella.yml").write_text("x", encoding="utf-8")
+    (tmp_path / "capella.yaml").write_text("x", encoding="utf-8")
     with pytest.raises(ConfigDiscoveryError, match="both capella.yaml and capella.yml found; pass --config"):
         discover_config_file(None, {}, {}, tmp_path)
 
@@ -29,7 +29,7 @@ def test_discovery_ac5_profile_config_file(tmp_path):
 
 @pytest.mark.story("CAP-037", "AC5")
 def test_discovery_ac5_both_present_cli_exit_3(run, tmp_path):
-    (tmp_path / "capella.yml").write_text("x")
-    (tmp_path / "capella.yaml").write_text("x")
+    (tmp_path / "capella.yml").write_text("x", encoding="utf-8")
+    (tmp_path / "capella.yaml").write_text("x", encoding="utf-8")
     r = run("validate")
     assert r.exit_code == 3 and "both capella.yaml and capella.yml found" in r.output

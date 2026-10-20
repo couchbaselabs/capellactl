@@ -35,22 +35,22 @@ def test_sync_ac9_keeps_local_only_values(fake, run, imported):
     fake.users["u-1"] = {"id": "u-1", "_cluster": cid, "name": "app", "access": [
         {"privileges": ["data_reader"], "resources": {"buckets": [{"name": "orders"}]}}]}
     assert run("sync").exit_code == 0
-    data = yaml.safe_load(imported.read_text())
+    data = yaml.safe_load(imported.read_text(encoding="utf-8"))
     data["organizationId"] = "${CAPELLA_ORG_ID}"
     data["credentialsOutput"] = "./secrets/creds"
     cl0 = data["projects"][0]["clusters"][0]
     cl0["allowAnyIp"] = True
     cl0["databaseCredentials"][0]["password"] = "${APP_PASSWORD}"
-    imported.write_text(yaml.safe_dump(data, sort_keys=False))
+    imported.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
     fake.clusters[cid]["body"]["description"] = "changed"
     r = run("sync")
     assert r.exit_code == 0, r.output
-    new = yaml.safe_load(imported.read_text())
+    new = yaml.safe_load(imported.read_text(encoding="utf-8"))
     assert new["organizationId"] == "${CAPELLA_ORG_ID}" and new["credentialsOutput"] == "./secrets/creds"
     ncl = new["projects"][0]["clusters"][0]
     assert ncl["allowAnyIp"] is True and ncl["databaseCredentials"][0]["password"] == "${APP_PASSWORD}"
     assert "kept password reference for nova-dev-01/app" in r.output
-    assert "password reference kept from the previous capella.yaml" in imported.read_text()
+    assert "password reference kept from the previous capella.yaml" in imported.read_text(encoding="utf-8")
 
 
 @pytest.mark.story("CAP-038", "AC9")
@@ -64,11 +64,11 @@ def test_sync_ac9_second_run_in_sync(fake, run, imported):
 @pytest.mark.story("CAP-038", "AC10")
 def test_sync_ac10_dry_run_exit_codes(fake, run, imported):
     assert run("sync", "--dry-run").exit_code == 0
-    before = imported.read_text()
+    before = imported.read_text(encoding="utf-8")
     fake.clusters[next(iter(fake.clusters))]["body"]["description"] = "changed"
     r = run("sync", "--dry-run")
     assert r.exit_code == 2 and "out of sync with Capella (nothing written" in r.output
-    assert imported.read_text() == before
+    assert imported.read_text(encoding="utf-8") == before
 
 
 @pytest.mark.story("CAP-038", "AC11")
@@ -103,7 +103,7 @@ def test_sync_ac13_removes_project_deleted_in_capella(fake, run, imported):
     r = run("sync")
     assert r.exit_code == 0, r.output
     assert "project nova-dev no longer exists in Capella; removed from capella.yaml with its clusters" in r.output
-    names = [p["name"] for p in yaml.safe_load(imported.read_text())["projects"]]
+    names = [p["name"] for p in yaml.safe_load(imported.read_text(encoding="utf-8"))["projects"]]
     assert names == ["nova-qa"]
     assert "already in sync" in run("sync").output
 
@@ -114,7 +114,7 @@ def test_sync_ac13_last_project_deleted_leaves_valid_file(fake, run, imported):
     fake.clusters.clear()
     r = run("sync")
     assert r.exit_code == 0, r.output
-    text = imported.read_text()
+    text = imported.read_text(encoding="utf-8")
     assert yaml.safe_load(text)["projects"] == [] and "capellactl project create NAME" in text
     assert run("validate").exit_code == 0
     assert "already in sync" in run("sync").output
@@ -122,12 +122,12 @@ def test_sync_ac13_last_project_deleted_leaves_valid_file(fake, run, imported):
 
 @pytest.mark.story("CAP-038", "AC13")
 def test_sync_ac13_keeps_project_never_deployed(fake, run, imported):
-    data = yaml.safe_load(imported.read_text())
+    data = yaml.safe_load(imported.read_text(encoding="utf-8"))
     data["projects"].append({"name": "nova-new", "clusters": []})
-    imported.write_text(yaml.safe_dump(data, sort_keys=False))
+    imported.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
     r = run("sync")
     assert "project nova-new is not in Capella yet; kept as it is" in r.output
-    names = [p["name"] for p in yaml.safe_load(imported.read_text())["projects"]]
+    names = [p["name"] for p in yaml.safe_load(imported.read_text(encoding="utf-8"))["projects"]]
     assert "nova-new" in names
 
 
@@ -144,7 +144,7 @@ def test_sync_ac13_removes_cluster_deleted_in_capella(fake, run, imported, args)
     assert r.exit_code == 0, r.output
     assert "cluster nova-dev-01 no longer exists in Capella; removed from capella.yaml with its buckets" in r.output
     assert [c["name"] for c in file_clusters(imported)] == ["other"]
-    assert "orders" not in imported.read_text()
+    assert "orders" not in imported.read_text(encoding="utf-8")
 
 
 @pytest.mark.story("CAP-038", "AC9")
@@ -160,7 +160,7 @@ def test_sync_ac9_whole_bucket_wildcard_not_written(fake, run, imported):
                "--password-env", "RO_PW", extra_env=pw).exit_code == 0
     r = run("sync", extra_env=pw)
     assert r.exit_code == 0, r.output
-    assert "'*'" not in imported.read_text() and '"*"' not in imported.read_text()
+    assert "'*'" not in imported.read_text(encoding="utf-8") and '"*"' not in imported.read_text(encoding="utf-8")
     r = run("--auto-approve", "credential", "create", "nova-dev-01", "airline_app", "--privileges", "read+write",
             "--bucket", "demo", "--scope", "inventory", "--collection", "airline", "--password-env", "AIRLINE_PW",
             extra_env=pw)
@@ -173,8 +173,8 @@ def test_sync_ac9_file_with_wildcard_still_loads(fake, run, imported):
     cid = next(iter(fake.clusters))
     fake.seed_bucket(cid, "demo", memoryAllocationInMb=512)
     assert run("sync").exit_code == 0
-    data = yaml.safe_load(imported.read_text())
+    data = yaml.safe_load(imported.read_text(encoding="utf-8"))
     data["projects"][0]["clusters"][0]["databaseCredentials"] = [{"name": "demo_ro", "access": [
         {"privileges": ["data_reader"], "resources": {"buckets": [{"name": "demo", "scopes": [{"name": "*"}]}]}}]}]
-    imported.write_text(yaml.safe_dump(data, sort_keys=False))
+    imported.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
     assert run("validate").exit_code == 0

@@ -82,7 +82,7 @@ def test_protection_cli_ac5_off_records_in_file(fake, run, write_config, tmp_pat
     assert r.exit_code == 0, r.output
     assert "deletion protection off for nova-dev-01" in r.output
     assert "capella.yaml updated: deletionProtection removed for nova-dev-01" in r.output
-    assert "deletionProtection" not in (tmp_path / "capella.yaml").read_text()
+    assert "deletionProtection" not in (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert [(c.method, c.path, c.body) for c in fake.writes()] == [
         ("PUT", f"/v4/organizations/org-1/projects/{pid}/clusters/{cid}/deletionProtection",
          {"deletionProtection": False})]
@@ -132,7 +132,7 @@ def test_protection_cli_ac5_on_records_in_file(fake, run, tmp_path):
     r = run("cluster", "protect", "nova-dev-01", "--on")
     assert r.exit_code == 0, r.output
     assert "capella.yaml updated: deletionProtection: true for nova-dev-01" in r.output
-    cfg = yaml.safe_load((tmp_path / "capella.yaml").read_text())
+    cfg = yaml.safe_load((tmp_path / "capella.yaml").read_text(encoding="utf-8"))
     assert cfg["projects"][0]["clusters"][0]["deletionProtection"] is True
     fake.reset_calls()
     assert "No changes" in run("--auto-approve", "apply").output and fake.writes() == []

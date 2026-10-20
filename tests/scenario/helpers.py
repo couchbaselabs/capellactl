@@ -40,8 +40,8 @@ def validate_json(name: str, text: str) -> dict[str, Any]:
     data = json.loads(text)
     registry: Registry = Registry()
     for f in SCHEMAS.glob("*.json"):
-        registry = registry.with_resource(f.name, Resource.from_contents(json.loads(f.read_text())))
-    schema = json.loads((SCHEMAS / name).read_text())
+        registry = registry.with_resource(f.name, Resource.from_contents(json.loads(f.read_text(encoding="utf-8"))))
+    schema = json.loads((SCHEMAS / name).read_text(encoding="utf-8"))
     Draft202012Validator(schema, registry=registry).validate(data)
     return data  # type: ignore[no-any-return]
 

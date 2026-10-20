@@ -27,7 +27,7 @@ INVALID = [
 def test_loader_ac1_error_has_path_and_line(tmp_path, old, new, expected):
     assert old in MINIMAL
     p = tmp_path / "c.yaml"
-    p.write_text(MINIMAL.replace(old, new, 1))
+    p.write_text(MINIMAL.replace(old, new, 1), encoding="utf-8")
     with pytest.raises(ConfigError) as ei:
         load_config(p, env=ENV)
     text = str(ei.value)
@@ -38,7 +38,7 @@ def test_loader_ac1_error_has_path_and_line(tmp_path, old, new, expected):
 @pytest.mark.story("CAP-002", "AC7")
 def test_loader_ac7_unknown_api_version(tmp_path):
     p = tmp_path / "c.yaml"
-    p.write_text(MINIMAL.replace("capellactl/v1", "capellactl/v2"))
+    p.write_text(MINIMAL.replace("capellactl/v1", "capellactl/v2"), encoding="utf-8")
     with pytest.raises(ConfigError) as ei:
         load_config(p, env=ENV)
     assert "this file needs capellactl supporting capellactl/v2; installed version supports capellactl/v1" in str(ei.value)

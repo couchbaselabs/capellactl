@@ -19,7 +19,7 @@ TASKS = {
 
 @pytest.mark.story("CAP-033", "AC4")
 def test_docs_ac4_runbook_sections():
-    text = RUNBOOK.read_text()
+    text = RUNBOOK.read_text(encoding="utf-8")
     sections = dict(re.findall(r"^## (.+?)\n(.*?)(?=^## |\Z)", text, flags=re.S | re.M))
     for heading, command in TASKS.items():
         assert heading in sections, f"no '## {heading}' section"

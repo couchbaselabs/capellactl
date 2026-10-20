@@ -45,7 +45,7 @@ def test_import_ac1_all_kinds_exported(fake, run, tmp_path):
     assert r.exit_code == 0, r.output
     assert ("Imported 1 project, 1 cluster, 2 buckets, 2 scopes, 3 collections, 2 credentials, 1 allowed CIDR, "
             "1 hibernation schedule into capella.yaml") in r.output
-    data = yaml.safe_load((tmp_path / "capella.yaml").read_text())
+    data = yaml.safe_load((tmp_path / "capella.yaml").read_text(encoding="utf-8"))
     cl = data["projects"][0]["clusters"][0]
     assert data["projects"][0]["name"] == "nova-dev" and cl["name"] == "nova-dev-01" and cl["deletionProtection"] is True
     assert cl["hibernation"] == {"timezone": "US/Pacific", "weekdays": "08:00-18:00", "weekend": "off"}
@@ -66,7 +66,7 @@ def test_import_ac1_expired_cidr_skipped(fake, run, tmp_path):
 def test_import_ac1_advanced_credential_commented(fake, run, tmp_path):
     _rich(fake)
     run("import")
-    text = (tmp_path / "capella.yaml").read_text()
+    text = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert "# dba is an advanced credential (userRoles)" in text
     assert "      # - name: dba" in text and "admin_role" in text
     assert "dba" not in [u["name"] for u in yaml.safe_load(text)["projects"][0]["clusters"][0]["databaseCredentials"]]
@@ -134,7 +134,7 @@ def test_import_ac3_only_gets(fake, run):
 def test_import_ac4_no_secrets(fake, run, tmp_path):
     _rich(fake)
     r = run("import")
-    text = (tmp_path / "capella.yaml").read_text()
+    text = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert "password:" not in text.replace("add password:", "")
     assert text.count("# password not exported (Capella never returns it)") == 2
     assert_no_secret(text + r.output, PASS, "test-api-key-0123456789")
@@ -178,7 +178,7 @@ def test_import_ac6_full_has_all_fields(fake, run, tmp_path):
     _, cid = seed_healthy(fake)
     fake.seed_bucket(cid, "plain", memoryAllocationInMb=512)
     run("import", "--full")
-    data = yaml.safe_load((tmp_path / "capella.yaml").read_text())
+    data = yaml.safe_load((tmp_path / "capella.yaml").read_text(encoding="utf-8"))
     cl0 = data["projects"][0]["clusters"][0]
     b = cl0["buckets"][0]
     for f in ("type", "replicas", "durabilityLevel", "timeToLiveInSeconds", "flushEnabled", "priority",
@@ -191,7 +191,7 @@ def test_import_ac6_full_has_all_fields(fake, run, tmp_path):
 def test_import_ac7_schedule_compacted(fake, run, tmp_path):
     _rich(fake)
     run("import")
-    text = (tmp_path / "capella.yaml").read_text()
+    text = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert "weekdays: 08:00-18:00" in text and "weekend: 'off'" in text
 
 
@@ -213,15 +213,15 @@ def test_import_ac7_schedule_irregular_per_day(fake, run, tmp_path):
 @pytest.mark.story("CAP-036", "AC8")
 def test_import_ac8_existing_file_and_stdout(fake, run, tmp_path, monkeypatch):
     seed_healthy(fake)
-    (tmp_path / "capella.yaml").write_text("old content\n")
+    (tmp_path / "capella.yaml").write_text("old content\n", encoding="utf-8")
     r = run("import")
     assert r.exit_code == 1 and "already exists and is not a capellactl file; pass --force" in r.output
     monkeypatch.setattr(console, "is_interactive", lambda: True)
     r = run("import", input="n\n")
     assert "Import cancelled; nothing was written." in r.output
-    assert (tmp_path / "capella.yaml").read_text() == "old content\n"
+    assert (tmp_path / "capella.yaml").read_text(encoding="utf-8") == "old content\n"
     r = run("import", input="y\n")
-    assert r.exit_code == 0 and (tmp_path / "capella.yaml.bak").read_text() == "old content\n"
+    assert r.exit_code == 0 and (tmp_path / "capella.yaml.bak").read_text(encoding="utf-8") == "old content\n"
     r = run("import", "--stdout")
     assert r.exit_code == 0 and r.stdout.startswith("# Imported by capellactl")
     assert yaml.safe_load(r.stdout)["projects"][0]["name"] == "nova-dev"
@@ -234,7 +234,7 @@ def test_import_ac9_turned_off_cluster(fake, run, tmp_path):
     r = run("import")
     assert r.exit_code == 0, r.output
     assert "warning: cluster nova-dev-01: buckets not imported (422)" in r.output
-    text = (tmp_path / "capella.yaml").read_text()
+    text = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert "# not imported: buckets (Capella returned 422 while the cluster is turnedOff;" in text
     cl = yaml.safe_load(text)["projects"][0]["clusters"][0]
     assert "hibernation" in cl and "buckets" not in cl
@@ -246,4 +246,4 @@ def test_import_empty_project_points_to_cluster_create(fake, run, tmp_path):
     assert r.exit_code == 0, r.output
     assert file_projects(tmp_path / "capella.yaml")[0]["clusters"] == []
     assert "Next: capellactl cluster create NAME" in r.output
-    assert "To create one, run: capellactl cluster create NAME" in (tmp_path / "capella.yaml").read_text()
+    assert "To create one, run: capellactl cluster create NAME" in (tmp_path / "capella.yaml").read_text(encoding="utf-8")

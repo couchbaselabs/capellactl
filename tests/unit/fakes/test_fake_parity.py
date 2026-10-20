@@ -18,7 +18,7 @@ from capellactl.api.endpoints import INVENTORY
 from tests.fakes.capella import bucket_id
 
 SNAPSHOT = Path(__file__).resolve().parents[3] / "docs" / "api" / "management-api-v4.0-responses.json"
-SPEC = {(o["method"], o["path"]): o for o in json.loads(SNAPSHOT.read_text())["operations"]}
+SPEC = {(o["method"], o["path"]): o for o in json.loads(SNAPSHOT.read_text(encoding="utf-8"))["operations"]}
 TYPES = {"string": str, "integer": int, "number": (int, float), "boolean": bool, "object": dict, "array": list}
 
 GROUPS = [{"node": {"compute": {"cpu": 4, "ram": 16}, "disk": {"type": "gp3", "storage": 50, "iops": 3000}},

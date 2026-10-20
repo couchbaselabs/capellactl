@@ -82,7 +82,7 @@ def test_scaling_classify_ac3_order_insensitive():
 ])
 def test_scale_out_validate_ac4_limits(tmp_path, text, msg):
     p = tmp_path / "c.yaml"
-    p.write_text(text)
+    p.write_text(text, encoding="utf-8")
     with pytest.raises(ConfigError) as ei:
         load_config(p, env={"CAPELLA_ORG_ID": "o"})
     assert msg in str(ei.value)
@@ -118,7 +118,7 @@ def test_scale_cli_ac6_file_updated_no_drift(fake, run, write_config, tmp_path):
     write_config()
     r = run("--auto-approve", "cluster", "scale", "nova-dev-01", "--nodes", "5")
     assert r.exit_code == 0, r.output
-    assert "numOfNodes: 5" in (tmp_path / "capella.yaml").read_text()
+    assert "numOfNodes: 5" in (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     fake.reset_calls()
     assert run("plan", "--detailed-exitcode").exit_code == 0 and fake.writes() == []
 

@@ -48,7 +48,7 @@ def test_credential_delete_ac2_secret_file_kept(fake, run, write_config, cluster
     write_config(MINIMAL + ORDERS_BUCKET + REPORTING)
     secret = tmp_path / ".capellactl" / "credentials" / "nova-dev-01.reporting_ro.json"
     secret.parent.mkdir(parents=True)
-    secret.write_text("{}")
+    secret.write_text("{}", encoding="utf-8")
     r = run("--auto-approve", "credential", "delete", "nova-dev-01", "reporting_ro")
     assert r.exit_code == 0, r.output
     assert secret.exists()

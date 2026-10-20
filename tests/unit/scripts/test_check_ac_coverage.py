@@ -30,7 +30,7 @@ def _setup(tmp_path: Path, tagged: list[str]) -> tuple[Path, Path]:
     tests.mkdir()
     (docs / "CAP-999-fixture.md").write_text(STORY, encoding="utf-8")
     body = "\n".join(f'@pytest.mark.story("CAP-999", "{ac}")\ndef test_x_{ac.lower()}(): ...' for ac in tagged)
-    (tests / "test_fixture.py").write_text("import pytest\n" + body)
+    (tests / "test_fixture.py").write_text("import pytest\n" + body, encoding="utf-8")
     return docs, tests
 
 

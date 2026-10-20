@@ -64,10 +64,10 @@ def test_init_ac2_lists_orgs_and_projects(fake, run, tmp_path, tty):
     assert r.exit_code == 0, r.output
     assert "  1. Nova Corp (org-1)" in r.output and "  2. Other Corp (org-2)" in r.output
     assert "  3. nova-qa" in r.output
-    text = (tmp_path / "capella.yaml").read_text()
+    text = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert f"project:\n  id: {second}\n  name: nova-dev\n" in text and first not in text
     r = run("--auto-approve", "init", "--force", input=answers(start=["", "1"], project="3"))
-    text = (tmp_path / "capella.yaml").read_text()
+    text = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert "project:\n  name: nova-qa\n" in text  # unique name: no id: pin
     assert any(c.path == "/v4/organizations" for c in fake.calls("GET"))
     assert any(c.path == "/v4/organizations/org-1/projects" for c in fake.calls("GET"))
@@ -78,7 +78,7 @@ def test_init_ac2_without_key_typed_org(fake, run, tmp_path, tty):
     r = run("init", input=answers(start=["", "org-9"]), no_env=True)
     assert r.exit_code == 0, r.output
     assert "run 'capellactl configure'" in r.output
-    assert "organizationId: org-9\n" in (tmp_path / "capella.yaml").read_text()
+    assert "organizationId: org-9\n" in (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert fake.calls() == []
 
 
@@ -95,7 +95,7 @@ def test_init_ac2_existing_cluster_name_reasked(fake, run, tmp_path, tty):
     r = run("init", input=answers(project="1", cluster=["", "nova-dev-02"]))
     assert r.exit_code == 0, r.output
     assert "cluster nova-dev-01 already exists in project nova-dev" in r.output
-    text = (tmp_path / "capella.yaml").read_text()
+    text = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert "- name: nova-dev-02" in text
     assert "cidr: 10.0.0.0/24" in text  # the first free /24; nova-dev-01 uses 10.10.0.0/24
 
@@ -104,7 +104,7 @@ def test_init_ac2_existing_cluster_name_reasked(fake, run, tmp_path, tty):
 def test_init_ac4_no_secrets_in_file(fake, run, tmp_path, tty):
     r = run("init", input=answers(), extra_env={"ORDERS_APP_PASSWORD": PASSWORD})
     assert r.exit_code == 0, r.output
-    text = (tmp_path / "capella.yaml").read_text()
+    text = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert "password: ${ORDERS_APP_PASSWORD}" in text
     assert_no_secret(text, API_KEY, PASSWORD)
     assert_no_secret(r.output, API_KEY, PASSWORD)
@@ -112,28 +112,28 @@ def test_init_ac4_no_secrets_in_file(fake, run, tmp_path, tty):
 
 @pytest.mark.story("CAP-035", "AC5")
 def test_init_ac5_existing_file_prompt(fake, run, tmp_path, tty):
-    (tmp_path / "capella.yaml").write_text("# mine\n")
+    (tmp_path / "capella.yaml").write_text("# mine\n", encoding="utf-8")
     r = run("init", input="n\n")
     assert r.exit_code == 0
     assert "capella.yaml exists. Overwrite? [y/N]" in r.output and "Nothing was written." in r.output
-    assert (tmp_path / "capella.yaml").read_text() == "# mine\n"
+    assert (tmp_path / "capella.yaml").read_text(encoding="utf-8") == "# mine\n"
     assert fake.calls() == []
 
 
 @pytest.mark.story("CAP-035", "AC5")
 def test_init_ac5_non_interactive_requires_force(fake, run, tmp_path):
-    (tmp_path / "capella.yaml").write_text("# mine\n")
+    (tmp_path / "capella.yaml").write_text("# mine\n", encoding="utf-8")
     r = run("init", "--non-interactive", *FLAGS)
     assert r.exit_code == 1 and "pass --force" in r.output
-    assert (tmp_path / "capella.yaml").read_text() == "# mine\n"
+    assert (tmp_path / "capella.yaml").read_text(encoding="utf-8") == "# mine\n"
 
 
 @pytest.mark.story("CAP-035", "AC5")
 def test_init_ac5_backup_written(fake, run, tmp_path, tty):
-    (tmp_path / "capella.yaml").write_text("# mine\n")
+    (tmp_path / "capella.yaml").write_text("# mine\n", encoding="utf-8")
     r = run("init", input="y\n" + answers())
     assert r.exit_code == 0, r.output
-    assert (tmp_path / "capella.yaml.bak").read_text() == "# mine\n"
+    assert (tmp_path / "capella.yaml.bak").read_text(encoding="utf-8") == "# mine\n"
     assert (tmp_path / "capella.yaml").read_text(encoding="utf-8") == GOLDEN.read_text(encoding="utf-8")
 
 
@@ -185,7 +185,7 @@ def test_init_ac8_delegates_to_import(fake, run, tmp_path, tty):
     r = run("init", input="import\n1\nnova-dev-01\n")
     assert r.exit_code == 0, r.output
     assert "Imported 1 project, 1 cluster" in r.output
-    text = (tmp_path / "capella.yaml").read_text()
+    text = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert "name: nova-dev-01" in text and "nova-dev-02" not in text
     assert fake.writes() == []
     assert run("plan", "--detailed-exitcode").exit_code == 0

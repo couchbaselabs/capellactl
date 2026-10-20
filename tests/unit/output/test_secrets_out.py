@@ -21,7 +21,7 @@ def test_secrets_out_ac2_file_mode_and_content(tmp_path):
     p = write_generated_credential(tmp_path / ".capellactl" / "credentials", "nova-dev-01", "web_sessions", "u-1",
                                    "Gen3rated!Pw-1")
     assert p.name == "nova-dev-01.web_sessions.json"
-    data = json.loads(p.read_text())
+    data = json.loads(p.read_text(encoding="utf-8"))
     assert set(data) == {"cluster", "name", "id", "password", "createdAt"} and data["password"] == "Gen3rated!Pw-1"
     if os.name == "posix":
         assert stat.S_IMODE(p.stat().st_mode) == 0o600
@@ -45,4 +45,4 @@ def test_secrets_out_ac3_preflight_refuses_overwrite(tmp_path):
     assert preflight(tmp_path, "c", "n", force=True).exists()
     with pytest.raises(SecretFileExists):
         write_generated_credential(tmp_path, "c", "n", "u-1", "Another!Pw-4")
-    assert json.loads((tmp_path / "c.n.json").read_text())["password"] == "Gen3rated!Pw-3"
+    assert json.loads((tmp_path / "c.n.json").read_text(encoding="utf-8"))["password"] == "Gen3rated!Pw-3"

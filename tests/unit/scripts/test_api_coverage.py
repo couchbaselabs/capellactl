@@ -10,7 +10,7 @@ SCRIPT = ROOT / "scripts" / "update-api-coverage.py"
 
 
 def test_api_coverage_reports_up_to_date():
-    r = subprocess.run([sys.executable, str(SCRIPT), "--check"], capture_output=True, text=True, cwd=ROOT)
+    r = subprocess.run([sys.executable, str(SCRIPT), "--check"], capture_output=True, text=True, cwd=ROOT, encoding="utf-8")
     assert r.returncode == 0, r.stderr + r.stdout
 
 

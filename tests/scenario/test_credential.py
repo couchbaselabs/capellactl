@@ -51,7 +51,7 @@ def test_credential_ac2_generated_password_saved(fake, run, write_config, cluste
     (post,) = _user_writes(fake)
     assert "password" not in post.body
     saved = tmp_path / ".capellactl" / "credentials" / "nova-dev-01.orders_app.json"
-    data = json.loads(saved.read_text())
+    data = json.loads(saved.read_text(encoding="utf-8"))
     generated = next(iter(fake.users.values()))["_password"]
     assert data["password"] == generated and data["name"] == "orders_app" and data["cluster"] == "nova-dev-01"
     if os.name == "posix":
@@ -67,7 +67,7 @@ def test_credential_ac2_existing_secret_file_blocks_create(fake, run, write_conf
     write_config(MINIMAL + ORDERS_BUCKET + ORDERS_APP.replace("        password: ${ORDERS_APP_PASSWORD}\n", ""))
     d = tmp_path / ".capellactl" / "credentials"
     d.mkdir(parents=True)
-    (d / "nova-dev-01.orders_app.json").write_text("{}")
+    (d / "nova-dev-01.orders_app.json").write_text("{}", encoding="utf-8")
     r = run("--auto-approve", "apply")
     assert r.exit_code == 1 and "refusing to overwrite" in r.output
     assert _user_writes(fake) == []

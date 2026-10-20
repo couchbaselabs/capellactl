@@ -108,7 +108,7 @@ def build(outdir: Path) -> list[Path]:
     env = {**os.environ, "SOURCE_DATE_EPOCH": version_mod.source_date_epoch()}
     # sdist first, then the wheel built from the sdist: proves the source archive is complete (AC2).
     r = subprocess.run([sys.executable, "-m", "build", "--no-isolation", "--outdir", str(outdir), str(ROOT)],
-                       env=env, capture_output=True, text=True)
+                       env=env, capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
         raise BuildError("build failed:\n" + r.stdout[-3000:] + r.stderr[-3000:])
     sdists, wheels = sorted(outdir.glob("*.tar.gz")), sorted(outdir.glob("*.whl"))
@@ -119,7 +119,7 @@ def build(outdir: Path) -> list[Path]:
     if problems:
         raise BuildError("archive check failed:\n  " + "\n  ".join(problems))
     r = subprocess.run([sys.executable, "-m", "twine", "check", "--strict", str(sdists[0]), str(wheels[0])],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, encoding="utf-8")
     if r.returncode != 0:
         raise BuildError("twine check failed:\n" + r.stdout + r.stderr)
     files = [sdists[0], wheels[0]]

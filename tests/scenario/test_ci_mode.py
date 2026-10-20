@@ -80,10 +80,10 @@ def test_ci_ac1_flag_aliases(fake, run, environment, flag):
 
 @pytest.mark.story("CAP-042", "AC1")
 def test_ci_ac1_env_var_is_not_approval(fake, run, environment):
-    before = environment.read_text()
+    before = environment.read_text(encoding="utf-8")
     r = run("bucket", "delete", "nova-dev-01", "orders", extra_env={"CAPELLACTL_AUTO_APPROVE": "true"})
     assert r.exit_code == 1 and "refusing to delete a bucket without approval" in r.output
-    assert fake.writes() == [] and environment.read_text() == before
+    assert fake.writes() == [] and environment.read_text(encoding="utf-8") == before
 
 
 @pytest.mark.story("CAP-042", "AC2")
@@ -110,12 +110,12 @@ def test_ci_ac2_missing_required_answer_exits_3(fake, run):
 @pytest.mark.story("CAP-042", "AC3")
 @pytest.mark.parametrize("args,verb", WRITE_COMMANDS, ids=IDS)
 def test_ci_ac3_uniform_refusal(fake, run, environment, args, verb):
-    before = environment.read_text()
+    before = environment.read_text(encoding="utf-8")
     r = run(*args)
     assert r.exit_code == 1, r.output
     assert f"refusing to {verb} without approval; pass --auto-approve" in r.output
     assert "pipeline step" not in r.output
-    assert fake.writes() == [] and environment.read_text() == before
+    assert fake.writes() == [] and environment.read_text(encoding="utf-8") == before
     r = run(*args, extra_env={"CI": "true"})
     assert r.exit_code == 1 and "add --auto-approve to this pipeline step" in r.output
     assert fake.writes() == []

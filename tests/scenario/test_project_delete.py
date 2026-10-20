@@ -100,7 +100,7 @@ def test_project_delete_ac8_removed_from_file(fake, run, two):
     before = file_projects(two)[0]
     assert run("--auto-approve", "project", "delete", "non-prod").exit_code == 0
     assert file_projects(two) == [before]
-    assert "non-prod" in (two.parent / "capella.yaml.bak").read_text()
+    assert "non-prod" in (two.parent / "capella.yaml.bak").read_text(encoding="utf-8")
     fake.reset_calls()
     assert run("plan", "--detailed-exitcode").exit_code == 0 and fake.writes() == []
     assert run("--auto-approve", "project", "delete", "nova-dev", "--cascade").exit_code == 0

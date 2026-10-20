@@ -87,7 +87,7 @@ def test_planner_ac6_unsupported_kinds_deferred(fake, run, tmp_path):
     seed_healthy(fake, configurationType="multiNode")
     shutil.copy(EXAMPLE, tmp_path / "capella.yaml")
     (tmp_path / "secrets").mkdir()
-    (tmp_path / "secrets" / "reporting_ro.txt").write_text("R3port!ng-pw")
+    (tmp_path / "secrets" / "reporting_ro.txt").write_text("R3port!ng-pw", encoding="utf-8")
     r = run("plan", extra_env={"ORDERS_APP_PASSWORD": "Orders#App-123"})
     assert r.exit_code == 0, r.output
     assert "  + bucket nova-dev-01/orders  couchbase · magma · 1024 MB · 1 replica · durability majority" in r.output

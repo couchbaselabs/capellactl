@@ -29,7 +29,7 @@ def test_project_update_records_and_applies(fake, run, write_config, tmp_path):
     r = run("--auto-approve", "project", "update", "nova-dev", "--description", "Nova dev, renamed")
     assert r.exit_code == 0, r.output
     assert fake.projects[pid]["description"] == "Nova dev, renamed"
-    assert "description: Nova dev, renamed" in (tmp_path / "capella.yaml").read_text()
+    assert "description: Nova dev, renamed" in (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert [c.method for c in fake.writes()] == ["PUT"]  # the project only, not its clusters
 
 
@@ -45,13 +45,13 @@ def test_hidden_apply_aliases_still_work(fake, run, write_config):
 def test_project_update_cluster_name_given_points_to_project(fake, run, write_config):
     seed_healthy(fake)
     p = write_config()
-    before = p.read_text()
+    before = p.read_text(encoding="utf-8")
     r = run("project", "update", "nova-dev-01", "--description", "Live demo")
     assert r.exit_code == 3
     assert ("nova-dev-01 is a cluster in project nova-dev, not a project. Did you mean: "
             'capellactl project update nova-dev --description "Live demo"') in r.output
     assert "import --project nova-dev-01" not in r.output
-    assert p.read_text() == before and fake.writes() == []
+    assert p.read_text(encoding="utf-8") == before and fake.writes() == []
     r = run("project", "get", "nova-dev-01")
     assert r.exit_code == 1 and "is a cluster in project nova-dev, not a project. Did you mean: project nova-dev" in r.output
     r = run("project", "update", "nope", "--description", "x")

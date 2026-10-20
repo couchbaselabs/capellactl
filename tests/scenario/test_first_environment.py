@@ -30,7 +30,7 @@ def _end_state(fake, run, cfg):
     assert fake.cluster_state(cluster["body"]["id"]) == "healthy"
     assert any(b["name"] == "orders" for (cid, _), b in fake.buckets.items() if cid == cluster["body"]["id"])
     assert any(u["name"] == "orders_app" for u in fake.users.values())
-    text = cfg.read_text()
+    text = cfg.read_text(encoding="utf-8")
     assert "nova-dev-01" in text and "orders" in text and "${ORDERS_APP_PASSWORD}" in text
     assert "Orders-Passw0rd" not in text and KEY not in text  # no secret in the file
     fake.reset_calls()
@@ -79,7 +79,7 @@ def test_docs_ac5_first_environment_with_init(fake, run, tmp_path, monkeypatch):
     """The guide's "starting from scratch" path: init writes capella.yaml, then validate → plan → apply."""
     guide = _guide_commands()
     for cmd in ("capellactl init --non-interactive", "capellactl validate", "capellactl plan", "capellactl apply"):
-        assert cmd in guide or cmd in GUIDE.read_text(), cmd
+        assert cmd in guide or cmd in GUIDE.read_text(encoding="utf-8"), cmd
     cfg = tmp_path / "capella.yaml"
     monkeypatch.setattr(console, "is_interactive", lambda: True)
     assert run("configure", input=f"{KEY}\nn\n", no_env=True).exit_code == 0

@@ -35,7 +35,7 @@ def _resolve(args: list[str]) -> tuple[click.Command, set[str]]:
 
 @pytest.mark.story("CAP-018", "AC7")
 def test_docs_ac7_migration_guide_commands_valid(run):
-    commands = _commands(GUIDE.read_text())
+    commands = _commands(GUIDE.read_text(encoding="utf-8"))
     assert len(commands) >= 5
     for args in commands:
         cmd, opts = _resolve(args)
@@ -57,7 +57,7 @@ DOCS = [*sorted(GUIDE.parents[0].glob("*.md")), GUIDE.parents[1] / "README.md",
 def _doc_lines() -> list[tuple[str, str]]:
     out = []
     for doc in DOCS:
-        for block in re.findall(r"```bash\n(.*?)```", doc.read_text(), flags=re.S):
+        for block in re.findall(r"```bash\n(.*?)```", doc.read_text(encoding="utf-8"), flags=re.S):
             for line in block.replace("\\\n", " ").splitlines():  # join continued lines
                 line = line.strip()
                 if not line.startswith("capellactl ") and "| capellactl " not in line:

@@ -22,7 +22,7 @@ def _rename(fake, pid, name="nova-dev-renamed"):
 @pytest.mark.story("CAP-048", "AC1")
 def test_track_by_id_ac1_import_pins_ids(fake, run, imported):
     pid, cid, path = imported
-    proj = yaml.safe_load(path.read_text())["projects"][0]
+    proj = yaml.safe_load(path.read_text(encoding="utf-8"))["projects"][0]
     assert proj["id"] == pid and proj["clusters"][0]["id"] == cid
     r = run("plan", "--detailed-exitcode")
     assert r.exit_code == 0, r.output
@@ -47,7 +47,7 @@ def test_track_by_id_ac3_sync_adopts_new_name(fake, run, imported):
     _rename(fake, pid)
     r = run("sync")
     assert r.exit_code == 0, r.output
-    proj = yaml.safe_load(path.read_text())["projects"][0]
+    proj = yaml.safe_load(path.read_text(encoding="utf-8"))["projects"][0]
     assert (proj["id"], proj["name"]) == (pid, "nova-dev-renamed")
     r = run("plan", "--detailed-exitcode")
     assert r.exit_code == 0, r.output
@@ -85,7 +85,7 @@ def test_track_by_id_ac5_sync_adopts_unpinned_rename(fake, run, write_config, tm
     r = run("sync")
     assert r.exit_code == 0, r.output
     assert "project nova-dev was renamed in Capella to nova-dev-renamed" in r.output
-    proj = yaml.safe_load((tmp_path / "capella.yaml").read_text())["projects"][0]
+    proj = yaml.safe_load((tmp_path / "capella.yaml").read_text(encoding="utf-8"))["projects"][0]
     assert (proj["id"], proj["name"], proj["clusters"][0]["id"]) == (pid, "nova-dev-renamed", cid)
     r = run("plan", "--detailed-exitcode")
     assert r.exit_code == 0, r.output

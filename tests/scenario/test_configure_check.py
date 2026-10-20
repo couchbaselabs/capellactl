@@ -34,7 +34,7 @@ def test_configure_check_ac1_org_mismatch_reported(fake, run, write_config):
     assert "capella.yaml is for organization org-other, but this key is for Nova Corp (org-1)" in r.output
     assert "capellactl import --force" in r.output and "capellactl configure --profile NAME" in r.output
     assert "Back up" not in r.output
-    assert p.read_text() == OTHER
+    assert p.read_text(encoding="utf-8") == OTHER
     assert fake.writes() == []
 
 
@@ -45,8 +45,8 @@ def test_configure_check_ac2_reimport_on_yes(fake, run, write_config, tmp_path, 
     r = run("configure", input=f"{KEY}\ny\n", no_env=True)
     assert r.exit_code == 0, r.output
     assert "Back up capella.yaml and re-import it for Nova Corp?" in r.output
-    assert (tmp_path / "capella.yaml.bak").read_text() == OTHER
-    data = yaml.safe_load(p.read_text())
+    assert (tmp_path / "capella.yaml.bak").read_text(encoding="utf-8") == OTHER
+    data = yaml.safe_load(p.read_text(encoding="utf-8"))
     assert data["organizationId"] == "org-1"
     assert [x["name"] for x in data["projects"]] == ["nova-dev"]
     assert fake.writes() == []
@@ -59,7 +59,7 @@ def test_configure_check_ac2_default_keeps_file(fake, run, write_config, tmp_pat
     for answer in ("n\n", "\n"):
         r = run("configure", input=f"{KEY}\n{answer}", no_env=True)
         assert r.exit_code == 0, r.output
-        assert p.read_text() == OTHER
+        assert p.read_text(encoding="utf-8") == OTHER
         assert not (tmp_path / "capella.yaml.bak").exists()
 
 
@@ -104,11 +104,11 @@ def test_configure_check_ac5_import_refuses_other_org(fake, run, write_config, t
     assert r.exit_code == 3, r.output
     assert "capella.yaml is for organization org-other, not org-1" in r.output
     assert "--force" in r.output and "--file PATH" in r.output
-    assert p.read_text() == OTHER
+    assert p.read_text(encoding="utf-8") == OTHER
     r = run("import", "--stdout")
     assert r.exit_code == 0, r.output
-    assert "organizationId: org-1" in r.output and p.read_text() == OTHER
+    assert "organizationId: org-1" in r.output and p.read_text(encoding="utf-8") == OTHER
     r = run("import", "--force")
     assert r.exit_code == 0, r.output
-    assert yaml.safe_load(p.read_text())["organizationId"] == "org-1"
-    assert (tmp_path / "capella.yaml.bak").read_text() == OTHER
+    assert yaml.safe_load(p.read_text(encoding="utf-8"))["organizationId"] == "org-1"
+    assert (tmp_path / "capella.yaml.bak").read_text(encoding="utf-8") == OTHER

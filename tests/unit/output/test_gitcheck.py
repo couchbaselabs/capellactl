@@ -27,7 +27,7 @@ def test_gitcheck_ac4_warns_when_not_ignored(tmp_path):
 @pytest.mark.story("CAP-008", "AC4")
 def test_gitcheck_ac4_silent_when_ignored(tmp_path):
     d = _repo(tmp_path)
-    (tmp_path / ".gitignore").write_text(".capellactl/\n")
+    (tmp_path / ".gitignore").write_text(".capellactl/\n", encoding="utf-8")
     assert git_warning(d) is None
 
 

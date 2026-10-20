@@ -80,7 +80,7 @@ def test_readme_walkthrough_steps(fake, run, tmp_path, monkeypatch):
     r = run("--auto-approve", "credential", "create", "nova-dev-01", "orders_app", "--privileges",        # step 9
             "read+write", "--bucket", "orders", "--password-env", "ORDERS_APP_PW", extra_env=pw, no_env=True)
     assert r.exit_code == 0 and "+ credential nova-dev-01/orders_app  read+write · orders" in r.output, r.output
-    assert "${ORDERS_APP_PW}" in cfg.read_text() and "Orders-Passw0rd" not in cfg.read_text()
+    assert "${ORDERS_APP_PW}" in cfg.read_text(encoding="utf-8") and "Orders-Passw0rd" not in cfg.read_text(encoding="utf-8")
     assert "orders_app" in run("credential", "list", "nova-dev-01", extra_env=pw, no_env=True).output
     pw = {"ORDERS_APP_PW": "Orders-Passw0rd-2026-v2!"}
     r = run("--auto-approve", "credential", "update", "nova-dev-01", "orders_app", "--rotate-password", extra_env=pw,

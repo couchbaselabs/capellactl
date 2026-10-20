@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 import traceback
 from typing import Any
 
@@ -138,5 +139,13 @@ def _register() -> None:
 _register()
 
 
+def _utf8_streams() -> None:
+    """Output uses characters such as → and ✔; a Windows pipe or file defaults to cp1252, which cannot encode them."""
+    for stream in (sys.stdout, sys.stderr):
+        if (getattr(stream, "encoding", "") or "").lower().replace("-", "") != "utf8" and hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+
+
 def main() -> None:
+    _utf8_streams()
     cli(prog_name="capellactl")

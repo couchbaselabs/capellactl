@@ -51,7 +51,7 @@ def test_sync_ac9_keeps_access_capella_lost(fake, run, airline):
     r = run("sync", extra_env=PW)
     assert r.exit_code == 0, r.output
     assert "credential nova-dev-01/airline_app has no access in Capella; kept its access" in r.output
-    cred = next(u for u in yaml.safe_load(cfg.read_text())["projects"][0]["clusters"][0]["databaseCredentials"]
+    cred = next(u for u in yaml.safe_load(cfg.read_text(encoding="utf-8"))["projects"][0]["clusters"][0]["databaseCredentials"]
                 if u["name"] == "airline_app")
     assert cred["password"] == "${AIRLINE_PW}" and cred["access"][0]["resources"]["buckets"][0]["name"] == "demo"
     assert run("validate", extra_env=PW).exit_code == 0
@@ -62,7 +62,7 @@ def test_import_ac1_credential_without_access_listed_as_comment(fake, run, airli
     user, cfg = airline
     user["access"] = []
     assert run("import", "--force").exit_code == 0
-    text = cfg.read_text()
+    text = cfg.read_text(encoding="utf-8")
     assert "airline_app has no access in Capella, so it is listed here for reference" in text
     r = run("validate")
     assert r.exit_code == 0, r.output + text

@@ -30,10 +30,10 @@ def test_multi_ac2_converted_on_first_write(fake, run, write_config, tmp_path):
     seed_healthy(fake)
     write_config(MINIMAL)
     assert run("--auto-approve", "cluster", "scale", "nova-dev-01", "--nodes", "4").exit_code == 0
-    text = (tmp_path / "capella.yaml").read_text()
+    text = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert "projects:" in text and "\nproject:" not in text
     assert file_clusters(tmp_path / "capella.yaml")[0]["serviceGroups"][0]["numOfNodes"] == 4
-    assert "\nproject:" in (tmp_path / "capella.yaml.bak").read_text()
+    assert "\nproject:" in (tmp_path / "capella.yaml.bak").read_text(encoding="utf-8")
     assert run("plan", "--detailed-exitcode").exit_code == 0
 
 
@@ -61,9 +61,9 @@ def test_multi_ac3_target_qualified_cluster(fake, run, tmp_path):
     fake.seed_cluster(np, "main")
     run("import")
     path = tmp_path / "capella.yaml"
-    text = path.read_text()
+    text = path.read_text(encoding="utf-8")
     i = text.index("name: non-prod")
-    path.write_text(text[:i] + text[i:].replace("numOfNodes: 3", "numOfNodes: 4", 1))
+    path.write_text(text[:i] + text[i:].replace("numOfNodes: 3", "numOfNodes: 4", 1), encoding="utf-8")
     r = run("plan", "--target", "cluster/non-prod/main")
     assert "~ cluster main" in r.output and r.output.count("cluster main") == 1
     r = run("plan", "--target", "cluster/demo/main")
@@ -97,7 +97,7 @@ def test_multi_ac5_import_merges_missing(fake, run, tmp_path):
     _two_projects(fake)
     assert run("import", "--project", "nova-dev").exit_code == 0
     path = tmp_path / "capella.yaml"
-    path.write_text(path.read_text().replace("projects:\n", "# my note\nprojects:\n"))
+    path.write_text(path.read_text(encoding="utf-8").replace("projects:\n", "# my note\nprojects:\n"), encoding="utf-8")
     before = file_projects(path)[0]
     r = run("import")
     assert r.exit_code == 0, r.output
@@ -105,7 +105,7 @@ def test_multi_ac5_import_merges_missing(fake, run, tmp_path):
     assert "Already in capella.yaml (left as is; 'capellactl sync' refreshes them): nova-dev" in r.output
     projects = file_projects(path)
     assert projects[0] == before and [p["name"] for p in projects] == ["nova-dev", "non-prod"]
-    assert "# my note" in path.read_text()
+    assert "# my note" in path.read_text(encoding="utf-8")
     r = run("import")
     assert "already describes nova-dev, non-prod; nothing to add" in r.output
     assert run("plan", "--detailed-exitcode").exit_code == 0

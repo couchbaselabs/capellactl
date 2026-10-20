@@ -123,4 +123,4 @@ def test_schedule_pause_ac7_recorded_in_file(fake, run, write_config, tmp_path):
     assert "No changes" in run("--auto-approve", "apply").output and fake.writes() == []
     r = run("cluster", "schedule", "resume", "nova-dev-01")
     assert "capella.yaml updated: paused removed for nova-dev-01" in r.output
-    assert "paused" not in (tmp_path / "capella.yaml").read_text()
+    assert "paused" not in (tmp_path / "capella.yaml").read_text(encoding="utf-8")

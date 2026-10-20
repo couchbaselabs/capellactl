@@ -15,7 +15,7 @@ DUMMY_ENV = {"ORDERS_APP_PASSWORD": "Orders!Passw0rd-2026", "REPORTING_RO_PASSWO
 def test_docs_ac1_examples_validate(run, tmp_path, example):
     shutil.copy(EXAMPLES / example, tmp_path / example)
     (tmp_path / "secrets").mkdir()
-    (tmp_path / "secrets" / "reporting_ro.txt").write_text("Rep0rting!pw-2026\n")  # ${file:./secrets/…} references
+    (tmp_path / "secrets" / "reporting_ro.txt").write_text("Rep0rting!pw-2026\n", encoding="utf-8")  # ${file:./secrets/…} references
     r = run("-c", str(tmp_path / example), "validate", extra_env=DUMMY_ENV)
     assert r.exit_code == 0, r.output
     assert "Configuration valid" in r.output

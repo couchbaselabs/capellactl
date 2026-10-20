@@ -21,9 +21,9 @@ def test_project_create_ac1_interactive(fake, run, tmp_path, monkeypatch):
     assert "Create project nova-qa in Capella and write capella.yaml? [y/N]" in r.output
     posts = fake.calls("POST", "*/projects")
     assert len(posts) == 1 and posts[0].body == {"name": "nova-qa", "description": "QA environment"}
-    data = yaml.safe_load((tmp_path / "capella.yaml").read_text())
+    data = yaml.safe_load((tmp_path / "capella.yaml").read_text(encoding="utf-8"))
     assert data["projects"] == [{"name": "nova-qa", "description": "QA environment", "clusters": []}]
-    assert "capellactl cluster create NAME" in (tmp_path / "capella.yaml").read_text()
+    assert "capellactl cluster create NAME" in (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert r.output.rstrip().endswith("Next: capellactl cluster create NAME --project nova-qa    "
                                       "(deploys the first cluster of this project)")
 
@@ -80,5 +80,5 @@ def test_project_create_ac5_then_cluster_create(fake, run, tmp_path):
 @pytest.mark.story("CAP-039", "AC6")
 def test_project_create_ac6_help_and_readme(run):
     assert "  create  " in run("project", "--help").output
-    readme = GUIDE.read_text()
+    readme = GUIDE.read_text(encoding="utf-8")
     assert "capellactl project create" in readme and "capellactl project list" in readme

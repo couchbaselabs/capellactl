@@ -64,7 +64,7 @@ def test_cluster_clone_ac1_flags_copies_settings(fake, run, demo):
     assert body["couchbaseServer"] == {"version": "7.6.2"}
     clone = next(c for c in file_clusters(demo["file"]) if c["name"] == "nova-demo-weu")
     assert clone["id"] and clone["cloudProvider"]["region"] == "westeurope"
-    assert "# cloned from nova-demo-01 (nova-demo, eastus)" in demo["file"].read_text()
+    assert "# cloned from nova-demo-01 (nova-demo, eastus)" in demo["file"].read_text(encoding="utf-8")
 
 
 @pytest.mark.story("CAP-049", "AC2")
@@ -93,7 +93,7 @@ def test_cluster_clone_ac3_region_bound_values_reset(fake, run, demo):
         for d in ("monday", "tuesday", "wednesday", "thursday", "friday")] + [
         {"day": d, "state": "off"} for d in ("saturday", "sunday")]}
     assert run("--auto-approve", "sync").exit_code == 0
-    assert "hibernation" in demo["file"].read_text()
+    assert "hibernation" in demo["file"].read_text(encoding="utf-8")
     fake.reset_calls()
     r = run("--auto-approve", "cluster", "clone", "nova-demo-01", "nova-demo-weu", "--region", "westeurope")
     assert r.exit_code == 0, r.output
@@ -136,7 +136,7 @@ def test_cluster_clone_ac4_with_credentials_new_passwords(fake, run, demo, tmp_p
     assert len(created) == 1
     assert created[0]["access"] == fake.users["u-seed-1"]["access"]
     saved = tmp_path / ".capellactl" / "credentials" / "nova-demo-weu.demo_app.json"
-    password = json.loads(saved.read_text())["password"]
+    password = json.loads(saved.read_text(encoding="utf-8"))["password"]
     assert password and password != fake.users["u-seed-1"]["_password"] and password not in r.output
 
 
@@ -148,17 +148,17 @@ def test_cluster_clone_ac5_to_project_with_overrides(fake, run, demo):
     assert r.exit_code == 0, r.output
     body = _clone_post(fake, dr)
     assert body["support"]["plan"] == "developer pro" and body["cloudProvider"]["cidr"] == "10.20.0.0/24"
-    projects = {p["name"]: p for p in yaml.safe_load(demo["file"].read_text())["projects"]}
+    projects = {p["name"]: p for p in yaml.safe_load(demo["file"].read_text(encoding="utf-8"))["projects"]}
     assert [c["name"] for c in projects["nova-dr"]["clusters"]] == ["nova-dr-01"]
 
 
 @pytest.mark.story("CAP-049", "AC5")
 def test_cluster_clone_ac5_missing_target_project(fake, run, demo):
-    before = demo["file"].read_text()
+    before = demo["file"].read_text(encoding="utf-8")
     r = run("--auto-approve", "cluster", "clone", "nova-demo-01", "nova-dr-01", "--region", "westus2",
             "--to-project", "nova-dr")
     assert r.exit_code == 3 and "capellactl project create nova-dr" in r.output
-    assert fake.writes() == [] and demo["file"].read_text() == before
+    assert fake.writes() == [] and demo["file"].read_text(encoding="utf-8") == before
 
 
 @pytest.mark.story("CAP-049", "AC6")
@@ -174,23 +174,23 @@ def test_cluster_clone_ac6_invalid_input_writes_nothing(fake, run, demo, setup, 
         fake.seed_free_cluster(demo["pid"], "try-01")
     elif setup == "deploying":
         fake.seed_cluster(demo["pid"], "new-01", state="deploying")
-    before = demo["file"].read_text()
+    before = demo["file"].read_text(encoding="utf-8")
     r = run("--auto-approve", "cluster", "clone", *args)
     assert r.exit_code == code, r.output
     assert msg in r.output
-    assert fake.writes() == [] and demo["file"].read_text() == before
+    assert fake.writes() == [] and demo["file"].read_text(encoding="utf-8") == before
 
 
 @pytest.mark.story("CAP-049", "AC7")
 @pytest.mark.parametrize("status", [422, 500])
 def test_cluster_clone_ac7_rejected_create_restores_file(fake, run, demo, status):
-    before = demo["file"].read_text()
+    before = demo["file"].read_text(encoding="utf-8")
     fake.fail_next("POST", "*/clusters", status)
     r = run("--auto-approve", "cluster", "clone", "nova-demo-01", "nova-demo-weu", "--region", "westeurope")
     assert r.exit_code == 1, r.output
     assert "Failed: cluster nova-demo-weu" in r.output and "was restored" in r.output
     assert "--server-version latest" in r.output
-    assert demo["file"].read_text() == before
+    assert demo["file"].read_text(encoding="utf-8") == before
     fake.reset_calls()
     r = run("--auto-approve", "cluster", "clone", "nova-demo-01", "nova-demo-weu", "--region", "westeurope")
     assert r.exit_code == 0, r.output
