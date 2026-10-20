@@ -51,6 +51,8 @@ import sys  # noqa: E402
 import tarfile  # noqa: E402
 import zipfile  # noqa: E402
 
+from tests.conftest import child_env  # noqa: E402
+
 IGNORE = shutil.ignore_patterns(".venv", ".git", "dist", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
                                 "*.swp", ".capellactl", "capella.yaml*", "CLAUDE.md", ".claude", "*.egg-info")
 SECRET = f"never-shipped-{os.getpid()}-{id(object())}"  # made at run time: this file itself ships in the sdist
@@ -118,16 +120,17 @@ def test_dist_ac2_install_from_sdist(built, tmp_path, kind):
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "--no-deps", "--no-build-isolation", "--target",
                     str(target), str(archive)], check=True, capture_output=True)
     shutil.copy(ROOT / "docs" / "release-1.0.0" / "examples" / "minimal-cluster.yaml", tmp_path / "capella.yaml")
-    env = {"PATH": os.environ.get("PATH", ""), "PYTHONPATH": str(target), "HOME": str(tmp_path),
-           "CAPELLACTL_HOME": str(tmp_path / "home"), "CAPELLA_ORG_ID": "org-1"}
+    env = child_env(PATH=os.environ.get("PATH", ""), PYTHONPATH=str(target), HOME=str(tmp_path),
+                    CAPELLACTL_HOME=str(tmp_path / "home"), CAPELLA_ORG_ID="org-1")
 
     def cap(*args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run([sys.executable, "-m", "capellactl", *args], cwd=tmp_path, env=env, capture_output=True,
                               text=True, encoding="utf-8")
 
-    where = subprocess.run([sys.executable, "-c", "import capellactl; print(capellactl.__file__)"], env=env,
-                           capture_output=True, text=True, encoding="utf-8").stdout
-    assert where.startswith(str(target)), where  # the installed copy, not this source tree
+    probe = subprocess.run([sys.executable, "-c", "import capellactl; print(capellactl.__file__)"], env=env,
+                           capture_output=True, text=True, encoding="utf-8")
+    where = probe.stdout
+    assert where.startswith(str(target)), where + probe.stderr  # the installed copy, not this source tree
     version = archive.name.removeprefix("capellactl-").split("-py3")[0].removesuffix(".tar.gz")
     assert cap("--version").stdout.startswith(f"capellactl {version} ")
     assert "getting-started" in cap("help", "topics").stdout

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
 import textwrap
 from collections.abc import Iterator
 from pathlib import Path
@@ -66,6 +68,32 @@ class MemoryKeyring(KeyringBackend):
         del self.store[(service, username)]
 
 
+class ChildEnv(dict[str, str]):
+    """A minimal child-process environment that still starts on Windows: built by child_env()."""
+
+
+def child_env(**env: str) -> ChildEnv:
+    # Windows' interpreter cannot start without SYSTEMROOT (empty stdout, no traceback); USERPROFILE is its HOME
+    keep = {k: os.environ[k] for k in ("SYSTEMROOT", "SystemRoot", "WINDIR", "TEMP", "TMP") if k in os.environ}
+    if "HOME" in env:
+        keep["USERPROFILE"] = env["HOME"]
+    return ChildEnv(keep | env)
+
+
+def _guard_child_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fail on every OS, not only on the Windows runners, when a child gets a hand-built env."""
+    init = subprocess.Popen.__init__
+
+    def checked(self: subprocess.Popen[Any], *args: Any, **kwargs: Any) -> None:
+        env = kwargs.get("env")
+        if env is not None and not isinstance(env, ChildEnv) and not set(os.environ) <= set(env):
+            raise AssertionError("pass env={**os.environ, ...} or tests.conftest.child_env(...) to a subprocess: "
+                                 "a hand-built env cannot start Python on Windows")
+        init(self, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess.Popen, "__init__", checked)
+
+
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "story(id, ac): links a test to a story acceptance criterion")
     config.addinivalue_line("markers", "integration: runs against a real Capella sandbox organization")
@@ -80,6 +108,7 @@ def _isolate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Memory
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("CAPELLACTL_HOME", str(tmp_path / ".capellactl-home"))
     monkeypatch.chdir(tmp_path)
+    _guard_child_env(monkeypatch)
     monkeypatch.setattr(console, "is_interactive", lambda: False)
     redactor.clear()
     kr = MemoryKeyring()
