@@ -50,6 +50,32 @@ at every point, not only at the end of a release.
 - When a story is finished, add an **Implementation notes (as built)** section: deviations from the
   original text, and the tests for each AC.
 
+## How changes reach main
+
+`main` is protected by GitHub rulesets kept in `.github/rulesets/` (CAP-050). Direct pushes, force-pushes and
+deleting `main` are rejected for everyone, admins included.
+
+1. Branch from `main`, commit, and push the branch. Contributors outside the organisation fork the repository
+   and push to their fork.
+2. Open a pull request into `main` and fill in the template (story, tests, checklist).
+3. It can merge only when the six `test (<os>, <python>)` CI checks pass on a branch that is up to date with
+   `main`, every review conversation is resolved, and a code owner (`.github/CODEOWNERS`) has approved the latest
+   push. New commits dismiss an earlier approval.
+4. Merge with **squash** or **rebase**; merge commits are disabled and the merged branch is deleted.
+
+While there is one maintainer, they merge their own pull requests with the admin bypass of the `main-review`
+ruleset (no second approval; each bypass is in the audit log). The `main` ruleset has no bypass, so CI must pass
+for them too. Pull requests from first-time contributors' forks need a maintainer's approval before their
+workflows run (Settings → Actions → General); fork workflows never receive secrets.
+
+Release tags `v*` can be created only by the repository admin role, and nobody can move or delete one: a broken
+release gets a new version, not a re-tag.
+
+The protection is code: change the JSON in `.github/rulesets/` (or `SETTINGS` in `scripts/github-rulesets.py`)
+in a pull request, then run `make rulesets` (repository admin, with `gh auth login`). `make rulesets-check`
+reports drift, and a release tag fails when GitHub differs from the files (secret `RULESETS_TOKEN`: a
+fine-grained token for this repository with Administration read-only).
+
 ## Dependencies and licences
 
 capellactl is licensed under Apache-2.0 (`LICENSE`, copyright in `NOTICE`); source files carry no licence
@@ -68,12 +94,14 @@ make notices      # regenerate THIRD_PARTY_NOTICES.md after a dependency change
 make docs         # regenerate docs/reference.md after a schema change
 make dist         # source archive, wheel and SHA256SUMS in dist/ (version from the git tag)
 make image        # build the container image
+make rulesets     # apply .github/rulesets to GitHub (repository admin); make rulesets-check reports drift
 ```
 
 ## Releasing
 
-1. Rename `## Unreleased` in `CHANGELOG.md` to `## X.Y.Z — date`, commit, and tag the commit `vX.Y.Z`.
-   The version comes only from the tag (`scripts/version.py`); never edit it in a file.
+1. Rename `## Unreleased` in `CHANGELOG.md` to `## X.Y.Z — date` in a pull request, merge it, and tag the
+   merged commit on `main` `vX.Y.Z`. The version comes only from the tag (`scripts/version.py`); never edit it in
+   a file. Tags can't be moved or deleted (CAP-050).
 2. Push the tag. `.github/workflows/release.yml` runs the checks, builds with `make dist`, installs the
    archives on Linux, macOS and Windows, and attaches them with `SHA256SUMS` to the GitHub Release.
    A manual run of the workflow (Run workflow) is a dry run that publishes nothing.

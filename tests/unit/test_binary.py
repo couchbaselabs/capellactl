@@ -149,19 +149,21 @@ def test_binary_ac1_release_builds_five_platforms():
     assert 'ls executables | wc -l)" -eq 5' in steps and "update-downloads.py --check" in steps
 
 
-@pytest.mark.story("CAP-045", "AC6")
-def test_binary_ac6_release_signs_or_fails():
+@pytest.mark.story("CAP-045", "AC1")
+def test_binary_ac1_release_ships_unsigned_signs_when_secrets_exist():
+    """AC6 was removed (2026-10-21): a release is unsigned unless the certificate secrets are set."""
     steps = _release()["binary"]["steps"]
     by_name = {s.get("name", ""): s for s in steps}
-    assert "xcrun notarytool submit" in by_name["notarize (macOS, AC6)"]["run"]
-    assert "Get-AuthenticodeSignature" in by_name["sign (Windows, AC6)"]["run"]
-    gate = by_name["a release tag needs signed executables (AC6)"]
-    assert gate["if"] == "github.event_name == 'push' && vars.ALLOW_UNSIGNED != 'true'" and "exit 1" in gate["run"]
+    notarize, sign = by_name["notarize (macOS, when the secrets exist)"], by_name["sign (Windows, when the secrets exist)"]
+    assert "xcrun notarytool submit" in notarize["run"] and "MACOS_CERTIFICATE_P12 != ''" in notarize["if"]
+    assert "Get-AuthenticodeSignature" in sign["run"] and "WINDOWS_CERTIFICATE_PFX != ''" in sign["if"]
+    assert not any("ALLOW_UNSIGNED" in str(s) for s in steps)  # no step fails a tag for being unsigned
     order = [s.get("name", "") for s in steps]
-    assert order.index("build (make binary)") < order.index("notarize (macOS, AC6)") \
-        < order.index("smoke tests on the final file (AC2, AC5, AC7, AC8)")  # the smoke tests run on the signed file
+    assert order.index("build (make binary)") < order.index("notarize (macOS, when the secrets exist)") \
+        < order.index("smoke tests on the final file (AC2, AC5, AC7, AC8)")  # the smoke tests run on the final file
     spec = (ROOT / "capellactl.spec").read_text(encoding="utf-8")
     assert "codesign_identity=identity" in spec and "entitlements.plist" in spec
+    assert "Unblock-File" in dl.HOW_TO and "com.apple.quarantine" in dl.HOW_TO  # how customers allow the file
 
 
 @pytest.mark.story("CAP-045", "AC4")

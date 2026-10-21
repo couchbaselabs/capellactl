@@ -2,7 +2,7 @@
 
 | Epic | Priority | Points | Depends on | Status |
 |---|---|---|---|---|
-| E9 Lifecycle & release | P0 | 3 | CAP-001, CAP-043 | Not started |
+| E9 Lifecycle & release | P0 | 3 | CAP-001, CAP-043 | In progress |
 
 ## User story
 As the **maintainer opening capellactl to the public after release 1.0.0**, I want every change to `main` to arrive through a pull request from a branch that has been reviewed and has passed CI, so that no one, including me or another admin, can push or merge unreviewed code into the branch that releases are tagged from.
@@ -97,6 +97,47 @@ Add to the 1.0.0 checklist in `scripts/update-story-index.py`: "`main` and `v*` 
 
 ## Open questions
 - ~~**Who reviews the maintainer's own pull requests?**~~ Answered (2026-10-20): the maintainer is a bypass actor in `pull_request` mode only, until a second code owner exists. Their changes still need a pull request and green CI, just no second approval, and each bypass is visible in the audit log. `main.json`'s `bypass_actors` therefore holds that one entry (`bypass_mode: pull_request`), and AC1's test checks exactly that instead of an empty list.
-- Is a break-glass bypass wanted for org admins (for example to fix a broken release workflow), and who holds it?
-- Does the `couchbaselabs/capellactl-maintainers` team exist, and who is in it?
-- Apply the rulesets before the repository becomes public (recommended, so it's never public and unprotected), or as the first step afterwards? Rulesets on a private repository need a paid GitHub plan for the organisation.
+- ~~Is a break-glass bypass wanted for org admins (for example to fix a broken release workflow), and who holds it?~~ Answered (2026-10-21): no. The maintainer's pull-request bypass of the approvals covers a broken release workflow; nothing bypasses CI.
+- ~~Does the `couchbaselabs/capellactl-maintainers` team exist, and who is in it?~~ Answered (2026-10-21): no. The maintainer owns the repository but not the `couchbaselabs` organisation, so can't create a team. CODEOWNERS names `@sahnianuj`; the bypass and tag-creation actor is the repository's **admin role** (rulesets accept roles, teams and apps as bypass actors, not individual users). Replace both with a team if one is created.
+- ~~Apply the rulesets before the repository becomes public, or as the first step afterwards?~~ Answered (2026-10-21): before, as recommended. If the organisation's plan doesn't allow rulesets on a private repository, `make rulesets` fails with an error from GitHub; apply them as the first step after making it public.
+
+## Implementation notes (as built)
+- **Still open:** applying the rulesets to GitHub, then the manual AC1 check. As the repository admin:
+  `brew install gh && gh auth login`, `make rulesets`, then `make rulesets-check` (green) and
+  `git push origin HEAD:main` (refused). Add the secret `RULESETS_TOKEN` (a fine-grained token for this repository,
+  Administration: read-only), which the release workflow needs on a tag. Then set the story to Implemented.
+- **Four rulesets instead of two** (`.github/rulesets/`). A ruleset bypass skips every rule in that ruleset, so a
+  single `main` ruleset with the maintainer as a bypass actor would also let them merge with failing CI. Split:
+  - `main`: no bypass. Pull request required (no approval count; resolved conversations; squash or rebase), the
+    six CI checks (strict: up to date with `main`), no force-push, no deletion, linear history.
+  - `main-review`: the approvals (1, code owner, latest push approved by someone else, stale approvals
+    dismissed, resolved conversations). The admin role bypasses it in `pull_request` mode only.
+  - `release-tags`: no one may update or delete a `v*` tag, with no bypass.
+  - `release-tags-create`: only the admin role may create a `v*` tag (bypass `always` for creation only).
+- Required check names are the job names, `test (<os>, <python>)`, not `ci / test (…)`: rulesets match the check
+  run's name. Each is tied to GitHub Actions (`integration_id` 15368), so no other app can report it.
+- `scripts/github-rulesets.py` (`make rulesets`, `make rulesets-check`): compares by ruleset name. Fields the files
+  leave out are API defaults and are not compared. Rulesets on GitHub that are not in the files count as drift.
+  It also applies and checks the repository settings: merge commits off, squash and rebase on, merged branches
+  deleted, and a read-only workflow token that may still open pull requests (the CAP-045 downloads PR).
+  The fork-PR approval setting for first-time contributors isn't in this API, so CONTRIBUTING lists it as a
+  manual setting.
+- `release.yml`: the `check` job runs `--check` (report-only on a manual run; a tag fails if `RULESETS_TOKEN` is
+  missing or anything drifted). `publish` starts `ci.yml` on the downloads branch with `gh workflow run`, since
+  a pull request opened with the workflow token starts no workflow and the required checks would never appear.
+  The maintainer merges that pull request through the `main-review` bypass.
+- `.github/CODEOWNERS` (`*`, `/.github/`, `/scripts/github-rulesets.py`, `/scripts/licence-policy.json` →
+  `@sahnianuj`), `.github/pull_request_template.md`, and CONTRIBUTING.md **How changes reach main** (also: the
+  Releasing steps now go through a pull request and tag the merged commit). The release checklist item was
+  already in `scripts/update-story-index.py`.
+
+### Tests by AC
+
+| AC | Tests |
+|---|---|
+| AC1 | `test_rulesets_ac1_main_blocks_push_force_and_delete`; manual push check after `make rulesets` (still to do) |
+| AC2 | `test_rulesets_ac2_review_rules`, `test_rulesets_ac2_required_checks_match_ci_matrix` |
+| AC3 | `test_rulesets_ac3_codeowners_cover_sensitive_paths` |
+| AC4 | `test_rulesets_ac4_release_tags_immutable` |
+| AC5 | `test_rulesets_ac5_apply_idempotent`, `test_rulesets_ac5_check_reports_drift`, `test_rulesets_ac5_release_workflow_checks_protection` |
+| AC6 | `test_rulesets_ac6_contributing_and_pr_template` |

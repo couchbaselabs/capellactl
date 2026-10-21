@@ -1,0 +1,9 @@
+# CAP-050: every change to main needs a code owner's approval (ruleset main-review). Until a second maintainer
+# exists, the repository owner is the only code owner and merges their own pull requests through the admin bypass
+# of main-review; the CI checks of ruleset main still have to pass. Add a maintainer by listing them on each line.
+*                               @sahnianuj
+
+# Named explicitly: the protection itself, CI and releases, and the licence policy.
+/.github/                       @sahnianuj
+/scripts/github-rulesets.py     @sahnianuj
+/scripts/licence-policy.json    @sahnianuj

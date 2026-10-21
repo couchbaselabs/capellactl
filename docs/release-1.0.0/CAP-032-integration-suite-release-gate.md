@@ -65,6 +65,38 @@ As a **maintainer**, I want an automated run against a real Capella sandbox ever
 ## Open questions
 - Which sandbox organization and budget will host the nightly runs? **Still open, and it blocks the first real run.**
 - ~~A project per run, or a standing sandbox project and cluster?~~ Answered (2026-10-20): a project per run, as proposed.
+- **Is the nightly design right for a single maintainer?** Raised 2026-10-21; **still open**, to revisit with the
+  questions below. Each run creates real clusters: a shared 3-node cluster (scaled to 4 and back, powered off and
+  on, a schedule set and removed) and single-node clusters for the lifecycle and clone tests, then deletes them.
+  That is roughly 1–3 hours of cluster time per run, about 30 runs a month, whether or not anything changed. Cost
+  is about (3–4 nodes × 2–3 h + the single-node hours) × the sandbox's hourly rate × 30; the rate was not known.
+  - What it gives: Capella API changes and timing differences that the fake (CAP-004) cannot show, found within a
+    day rather than by a customer; scaling, power and schedules proven on real clusters.
+  - What it costs one maintainer: the nightly cluster spend; slower releases, because AC5 needs three green
+    nights in a row, the newest on the tagged commit, so any last fix waits at least a night and one bad night
+    on Capella's side restarts the count; and every red night to triage alone.
+  - **Proposed** (not yet agreed; would change AC5): keep the suite, but run it **weekly plus on demand**
+    (Actions → nightly → Run workflow) before a release, and change the gate to **one green run, scheduled or
+    manual, on the commit being tagged**. Dropping real runs entirely is not recommended: the fake cannot catch
+    Capella-side changes.
+- **Where does the API token live?** Raised 2026-10-21; **still open**. Never in a file in the repository.
+  - **A. GitHub Actions secrets** (what `nightly.yml` expects): `gh secret set CAPELLA_SANDBOX_API_KEY` and
+    `gh secret set CAPELLA_SANDBOX_ORG_ID` (or Settings → Secrets and variables → Actions). Stored encrypted,
+    given to the job only while it runs, masked in logs, never given to fork pull requests; AC4 also scans the
+    logs for the key. GitHub-hosted runners have changing IPs, so the key's allowed IP list must be `0.0.0.0/0`.
+    That is acceptable only for a key of a dedicated **sandbox organization** with no customer data, with an
+    expiry date and regular rotation.
+  - **B. Run from the maintainer's machine**: export both variables and run `make test-integration`; the key can
+    stay limited to one IP and never reaches GitHub. But the release gate reads GitHub's record of nightly runs,
+    so a local run doesn't count, and AC5 would need another form of evidence, such as a checklist step or a
+    file recording the commit that passed. That's weaker, since nothing proves the run happened.
+  - Recommended for a single maintainer: A with a dedicated sandbox organization, together with the weekly
+    schedule proposed above. B if the company does not allow Capella keys in GitHub.
+- **Pre-releases before the gate can pass** (agreed in principle 2026-10-21, not yet built): a tag such as
+  `v1.0.0-rc1` would publish a GitHub Release marked as a pre-release, so customers get the CAP-045 executables
+  from stable links. `release.yml` and `scripts/release-gate.py` accept only `vX.Y.Z` today; the proposal is that
+  pre-release tags skip the gate and `v1.0.0` still needs it. The README Download section is filled only from a
+  Release, never from workflow-run artifacts (they need repository access to download and expire after 90 days).
 
 ## Implementation notes (as built)
 - **Still open:** the first real run. Create a sandbox organization and an API key for it (Project Owner role

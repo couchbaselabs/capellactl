@@ -2,7 +2,7 @@
 
 | Epic | Priority | Points | Depends on | Status |
 |---|---|---|---|---|
-| E9 Lifecycle & release | P1 | 5 | CAP-043, CAP-044 | In progress |
+| E9 Lifecycle & release | P1 | 5 | CAP-043, CAP-044 | Implemented |
 
 ## User story
 As a **customer operator**, I want to download one file for my computer and run it, without installing Python, pip or Docker, so that I can start using capellactl in minutes on a locked-down laptop or a CI runner.
@@ -44,7 +44,7 @@ downloads/
 - Release workflow (extends CAP-043's `.github/workflows/release.yml`), on tag `vX.Y.Z`:
   - a build matrix of `macos-14` (arm64), `macos-13` (x86_64), `ubuntu-22.04` building inside a `manylinux_2_28` container (x86_64), `ubuntu-22.04-arm` (arm64) and `windows-2022` (x86_64). Each job runs `make binary` and uploads its executable;
   - a final job collects the five files into `downloads/`, runs `update-downloads.py`, commits `downloads/` and the README block to the release branch, and attaches the executables and `SHA256SUMS` to the GitHub Release next to CAP-043's archives.
-- **Signing:** macOS executables are signed with the Developer ID certificate and notarized, so Gatekeeper opens them without the "unidentified developer" block. The Windows `.exe` is Authenticode-signed. Credentials come from CI secrets and never from the repository.
+- ~~**Signing:** macOS executables are signed with the Developer ID certificate and notarized, so Gatekeeper opens them without the "unidentified developer" block. The Windows `.exe` is Authenticode-signed. Credentials come from CI secrets and never from the repository.~~ Removed (2026-10-21, with AC6): releases ship unsigned and customers allow the file on their side. The signing steps stay in the workflow and run only when the certificate secrets are set.
 
 ### README
 The root `README.md` gets a **Download** section, placed before **Install**. Its generated block is a table:
@@ -97,12 +97,10 @@ The table is followed by three-line run instructions per OS (`chmod +x`, then ru
 |---|---|---|
 | `test_binary_ac5_keychain_and_exit_codes` | `tests/binary/test_smoke.py` | Store and read a dummy token, then remove it; `validate` on an invalid file exits 3 |
 
-### AC6 — Opens without security warnings
-**Given** a downloaded macOS executable, **then** `spctl --assess --type execute` accepts it (signed and notarized). **Given** the Windows `.exe`, **then** `Get-AuthenticodeSignature` reports `Valid`. On a release tag, the release fails if signing credentials are missing.
-
-| Test | Location | Verifies |
-|---|---|---|
-| release workflow signing steps | `.github/workflows/release.yml` | `spctl`, `Get-AuthenticodeSignature` |
+### ~~AC6 — Opens without security warnings~~ (removed)
+Removed by the code owner (2026-10-21): no code-signing certificates for now. Releases are unsigned; customers
+check the SHA-256 and allow the file on their machine (`downloads/README.md` says how on macOS and Windows).
+Signing remains possible later by adding the certificate secrets; the workflow then signs and notarizes.
 
 ### AC7 — Nothing local or secret is bundled
 **Given** a working tree containing `capella.yaml`, `.capellactl/credentials`, `secrets/`, `.env` and assistant files, **when** the executable is built, **then** its bundled file list (`pyi-archive_viewer`) contains only the package, its dependencies and the allowed data and licence files. `LICENSE`, `NOTICE` and `THIRD_PARTY_NOTICES.md` are inside it and next to it in `downloads/`.
@@ -125,15 +123,23 @@ The table is followed by three-line run instructions per OS (`chmod +x`, then ru
 
 ## Open questions
 - ~~Is Git LFS available …?~~ Decided (2026-10-20), as the fallback above: no LFS. `downloads/` keeps `README.md`, `SHA256SUMS` and `manifest.json` in Git; the executables are attached to the GitHub Release (about 150 MB per release would otherwise grow the repository and use up LFS quota), and every link points there.
-- Who owns the Apple Developer ID and Windows code-signing certificates, and are they available to CI? **Still open; blocks AC6.** Note: Windows code-signing certificates issued since June 2023 keep their key in hardware (a token or a cloud HSM such as Azure Trusted Signing or DigiCert KeyLocker), so a `.pfx` secret may not be possible; the Windows signing step then changes to that service's action.
-- Is the Linux minimum glibc 2.28 acceptable (it rules out RHEL/CentOS 7)?
-- **New: macOS start-up.** An unsigned one-file build takes about 7 s per command on macOS (measured on macOS 26, Apple silicon; the installed tool takes 0.2 s): it unpacks its libraries to a new folder on every start and macOS assesses them each time. A one-folder build is assessed only on its first start (then 0.2 s). Signed and notarized builds are expected to start quickly; this is checked by AC8 on the first signed release build. If they don't, ship macOS as a one-folder `.tar.gz` instead of one file.
+- ~~Who owns the Apple Developer ID and Windows code-signing certificates, and are they available to CI?~~ Decided (2026-10-21): none for now; AC6 is removed and releases are unsigned. If certificates come later: Windows certificates issued since June 2023 keep their key in hardware (a token or a cloud HSM such as Azure Trusted Signing or DigiCert KeyLocker), so a `.pfx` secret may not be possible and the Windows signing step changes to that service's action.
+- ~~Is the Linux minimum glibc 2.28 acceptable (it rules out RHEL/CentOS 7)?~~ Accepted (2026-10-21).
+- ~~Bundling CPython (PSF-2.0) and the PyInstaller bootloader (GPL-2.0 with its bootloader exception), listed in `BINARY_NOTICES.md`?~~ Approved by the code owner (2026-10-21), as CONTRIBUTING requires for licence-policy decisions.
+- **New: macOS start-up.** An unsigned one-file build takes about 7 s per command on macOS (measured on macOS 26, Apple silicon; the installed tool takes 0.2 s): it unpacks its libraries to a new folder on every start and macOS assesses them each time. A one-folder build is assessed only on its first start (then 0.2 s). Signing was expected to fix this; with releases now unsigned it is **still open**: the CI runners pass AC8, but a customer's Mac may take seconds per command. If customers report it, ship macOS as a one-folder `.tar.gz` instead of one file.
 
 ## Implementation notes (as built)
-- **Still open:** AC6 (certificates, see above) and the first run of the five-platform build on GitHub (Actions →
-  release → Run workflow; a manual run builds, smoke-tests and collects everything and publishes nothing). Until
-  the certificates exist, a release tag fails at "a release tag needs signed executables" unless the repository
-  variable `ALLOW_UNSIGNED` is `true`.
+- Unsigned releases (AC6 removed, 2026-10-21): the "a release tag needs signed executables" step and the
+  `ALLOW_UNSIGNED` variable are gone. The signing and notarizing steps run only when their secrets are set.
+  `downloads/README.md` tells customers to check the SHA-256 and then allow the file (macOS:
+  `xattr -d com.apple.quarantine` or *Allow Anyway*; Windows: `Unblock-File` or SmartScreen's *Run anyway*).
+- First five-platform run on GitHub (2026-10-21, manual dry run of the release workflow): all five executables
+  built and passed AC2, AC5, AC7 and AC8 on their runners (macOS arm64 14.4 MB, macOS Intel 15 MB, Linux x86-64
+  20.1 MB, Linux ARM64 19.9 MB, Windows 15.3 MB); `binary-clean-linux` and `downloads` passed. The earlier runs
+  found three defects, all fixed: `configure remove --profile` was rejected (the option is now accepted after
+  `show` and `remove` too, as documented), the Windows bundle lists backslash paths (the AC7 test now normalises
+  them, which the leak check also needed), and `update-downloads.py` rejected a dry run's `X.Y.Z.devN+gSHA`
+  names.
 - Built and smoke-tested here on macOS arm64 (`make binary`): 15 MB; AC2, AC5 and AC7 pass; AC8's 2-second
   start-up is reported as an expected failure for the unsigned local build (see the open question).
 - `capellactl.spec` (PyInstaller 6, one file, the `binary` extra: `pip install -e ".[binary]"`): bundles the schema,
@@ -161,18 +167,18 @@ The table is followed by three-line run instructions per OS (`chmod +x`, then ru
 - Keychain (AC5): the smoke tests store, read and remove a dummy token in the real keychain on the macOS and
   Windows runners. Linux runners have no Secret Service, so there the test checks the no-keychain message, which
   matches the installed tool's.
-- AC6 on macOS: `codesign --verify --strict` and notarization `status: Accepted`. `spctl --assess --type execute`,
-  as first written, rejects every command-line tool that is not an app bundle, so it is not used.
+- Signing on macOS, when enabled: `codesign --verify --strict` and notarization `status: Accepted`.
+  `spctl --assess --type execute` rejects every command-line tool that is not an app bundle, so it is not used.
 
 ### Tests by AC
 
 | AC | Tests |
 |---|---|
-| AC1 | `test_binary_ac1_name_for_platform`, `test_binary_ac1_unsupported_platform`, `test_binary_ac1_release_builds_five_platforms` |
+| AC1 | `test_binary_ac1_name_for_platform`, `test_binary_ac1_unsupported_platform`, `test_binary_ac1_release_builds_five_platforms`, `test_binary_ac1_release_ships_unsigned_signs_when_secrets_exist` |
 | AC2 | `test_binary_ac2_smoke` (`tests/binary`); `binary-clean-linux` in the release workflow |
 | AC3 | `test_binary_ac3_downloads_folder_contents`, `test_binary_ac3_incomplete_release_fails`, `test_binary_ac3_executables_are_not_kept_in_git` |
 | AC4 | `test_binary_ac4_readme_download_table`, `test_binary_ac4_check_detects_drift`, `test_binary_ac4_repository_is_up_to_date` |
 | AC5 | `test_binary_ac5_keychain_and_exit_codes` |
-| AC6 | `test_binary_ac6_release_signs_or_fails` (static); a signed release build still to do |
+| ~~AC6~~ | removed (2026-10-21) |
 | AC7 | `test_binary_ac7_bundle_allowlist` |
 | AC8 | `test_binary_ac8_size_and_startup` |

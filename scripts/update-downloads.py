@@ -139,6 +139,15 @@ chmod +x capellactl-*-linux-x86_64
 .\\capellactl-*-windows-x86_64.exe --version
 ```
 
+The executables are not code-signed, so check the SHA-256 first (above), then allow the file once:
+
+- **macOS**: a file downloaded in a browser is blocked as from an unidentified developer. Remove the download mark
+  with `xattr -d com.apple.quarantine ./capellactl-*-macos-*`, or run it once and choose *Allow Anyway* in
+  System Settings → Privacy & Security. Files fetched with `curl` are not marked.
+- **Windows**: run `Unblock-File .\\capellactl-*-windows-x86_64.exe` in PowerShell, or choose *More info → Run anyway*
+  when SmartScreen warns. Company policy (AppLocker, WDAC) may need IT to allow the file's hash.
+- **Linux**: nothing more than `chmod +x`.
+
 Each executable carries `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` and `BINARY_NOTICES.md`; the same files are
 attached to the release next to it."""
 

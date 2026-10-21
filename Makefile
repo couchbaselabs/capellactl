@@ -1,7 +1,7 @@
 PY ?= .venv/bin/python
 RELEASE ?= docs/release-1.0.0
 
-.PHONY: lint typecheck test test-integration test-integration-fake janitor ac-coverage index index-check coverage coverage-check notices notices-check docs docs-check dist build image binary downloads downloads-check check
+.PHONY: lint typecheck test test-integration test-integration-fake janitor ac-coverage index index-check coverage coverage-check notices notices-check docs docs-check dist build image binary downloads downloads-check rulesets rulesets-check check
 
 lint:
 	$(PY) -m ruff check capellactl tests scripts
@@ -56,6 +56,12 @@ downloads:       # downloads/ and the README Download section from downloads/man
 
 downloads-check:
 	$(PY) scripts/update-downloads.py --check
+
+rulesets:        # create or update the main and v* tag rulesets on GitHub; needs repository admin (CAP-050)
+	$(PY) scripts/github-rulesets.py apply
+
+rulesets-check:  # fail when the live rulesets or repository settings differ from .github/rulesets (CAP-050)
+	$(PY) scripts/github-rulesets.py --check
 
 dist:            # source archive, wheel and SHA256SUMS in dist/ (CAP-043)
 	$(PY) scripts/build-dist.py
