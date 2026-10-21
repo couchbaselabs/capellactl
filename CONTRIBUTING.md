@@ -2,7 +2,7 @@
 
 ## Progress must always be visible
 
-`docs/release-<version>/INDEX.md` is generated from the header table of each story file
+`docs/release-<version>/README.md` is generated from the header table of each story file
 (`docs/release-<version>/CAP-NNN-*.md`). It must reflect reality
 at every point, not only at the end of a release.
 
@@ -14,7 +14,7 @@ at every point, not only at the end of a release.
 - In the same change, regenerate the API coverage reports: `python3 scripts/update-api-coverage.py` (or
   `make coverage`). `docs/release-1.0.0/API-COVERAGE.md` derives every command's and operation's status from the
   story statuses, so a story that becomes Implemented updates it.
-- Never edit INDEX.md or the API coverage reports by hand. CI runs
+- Never edit README.md or the API coverage reports by hand. CI runs
   `python3 scripts/update-story-index.py --check docs/release-1.0.0` and `python3 scripts/update-api-coverage.py --check`
   and fails when any of them is stale.
 
@@ -88,7 +88,7 @@ the updated `THIRD_PARTY_NOTICES.md`. CI fails when the file is stale or a depen
 ```bash
 python3.12 -m venv .venv && .venv/bin/pip install -e '.[dev]'
 make check        # lint, types, tests, AC coverage, INDEX and API coverage checks
-make index        # regenerate INDEX.md
+make index        # regenerate README.md
 make coverage     # regenerate the API coverage reports (docs/release-*/API-COVERAGE*.md)
 make notices      # regenerate THIRD_PARTY_NOTICES.md after a dependency change
 make docs         # regenerate docs/reference.md after a schema change

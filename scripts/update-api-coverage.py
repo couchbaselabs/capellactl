@@ -646,7 +646,7 @@ def build_db(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> str:
       "[docs/api](../api/management-api-v4.0-operations.json)), the command dictionary in that script and the "
       "**Status** of each story. Every in-scope operation in the spec appears exactly once. Don't edit by hand: "
       "change a story's status and run `make coverage`. CI fails when this file is stale. Story progress: "
-      "[INDEX.md](INDEX.md).\n")
+      "[README.md](README.md).\n")
     w("## Scope\n")
     w(f"The spec has **{len(all_ops)} operations**. Release 1.0.0 is about the operational database, so this report "
       f"covers the **{len(ops)} operational-database operations**. Two groups are left out:\n")

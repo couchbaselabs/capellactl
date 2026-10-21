@@ -29,7 +29,7 @@ TREE_FACTORY = build_tree
 
 def not_yet(story: str, what: str) -> CliExit:
     return CliExit(ExitCode.ERROR, f"{what} is not available in this build yet (planned in {story}; see "
-                                   "docs/release-1.0.0/INDEX.md)")
+                                   "docs/release-1.0.0/README.md)")
 
 
 # ------------------------------------------------------------------ helpers

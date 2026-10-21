@@ -1,6 +1,6 @@
 # capellactl 1.0.0 — Architecture & Technical Decisions
 
-This document is the shared reference for every story in `docs/release-1.0.0`. Stories link back here instead of repeating the language decision, the idempotency model, conventions and the test strategy. The story list and delivery phases are in [INDEX.md](INDEX.md). How to use the tool is in the repository [README.md](../../README.md).
+This document is the shared reference for every story in `docs/release-1.0.0`. Stories link back here instead of repeating the language decision, the idempotency model, conventions and the test strategy. The story list and delivery phases are in the release [README.md](README.md). How to use the tool is in the repository [README.md](../../README.md).
 
 API: Capella Management API v4.0, `https://cloudapi.cloud.couchbase.com` ([reference](https://docs.couchbase.com/cloud/management-api-reference/index.html)). Every endpoint, status code, field and enum named in the stories was taken from the published OpenAPI spec (`openapi.external.generated.yaml`, v4.0).
 
@@ -420,7 +420,7 @@ Every acceptance criterion `ACn` in story `CAP-NNN` has at least one test named
 test_<subject>_ac<n>_<behaviour>
 ```
 
-in the file named in the story's test table, and is tagged `@pytest.mark.story("CAP-NNN", "AC<n>")`. A CI check (CAP-001) fails if an AC of an `Implemented` story has no tagged test, and lists the open ACs of `In progress` stories, so the story files, INDEX.md and the test suite cannot drift apart.
+in the file named in the story's test table, and is tagged `@pytest.mark.story("CAP-NNN", "AC<n>")`. A CI check (CAP-001) fails if an AC of an `Implemented` story has no tagged test, and lists the open ACs of `In progress` stories, so the story files, README.md and the test suite cannot drift apart.
 
 ### 12.3 Standard assertions
 
