@@ -62,6 +62,16 @@ def test_binary_ac3_downloads_folder_contents(release):
 
 
 @pytest.mark.story("CAP-045", "AC3")
+def test_binary_ac3_dry_run_dev_version(release):
+    root, files = release
+    dev = "1.0.0.dev7+g3b456ff"  # what a manual run of the release workflow builds
+    for p in list(files.iterdir()):
+        p.rename(files / p.name.replace("1.0.0", dev))
+    assert dl.main(["--from", str(files)]) == 0 and dl.main(["--check"]) == 0
+    assert json.loads((root / "downloads" / "manifest.json").read_text(encoding="utf-8"))["version"] == dev
+
+
+@pytest.mark.story("CAP-045", "AC3")
 @pytest.mark.parametrize("change,problem", [
     (lambda m: m["files"].pop(), "no executable for windows-x86_64"),
     (lambda m: m["files"].append({**m["files"][0]}), "more than one executable"),

@@ -25,8 +25,9 @@ DOWNLOADS = ROOT / "downloads"
 README = ROOT / "README.md"
 REPO = "couchbaselabs/capellactl"
 START, END = "<!-- downloads:start -->", "<!-- downloads:end -->"
-NAME = re.compile(r"^capellactl-(?P<version>\d+\.\d+\.\d+)-(?P<os>macos|linux|windows)-(?P<arch>arm64|x86_64)"
-                  r"(?P<exe>\.exe)?$")
+# A tag builds X.Y.Z; a dry run of the release workflow builds X.Y.Z.devN+gSHA (scripts/version.py).
+NAME = re.compile(r"^capellactl-(?P<version>\d+\.\d+\.\d+(?:\.dev\d+\+g[0-9a-f]+)?)"
+                  r"-(?P<os>macos|linux|windows)-(?P<arch>arm64|x86_64)(?P<exe>\.exe)?$")
 # (os, arch) → who it is for; the order of the tables. The same words as the file names (AC1, AC4).
 PLATFORMS = {
     ("macos", "arm64"): "macOS 12+, Apple silicon (M1–M4)",
