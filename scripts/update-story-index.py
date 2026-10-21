@@ -56,7 +56,7 @@ RELEASES = {
             ("Phase 3 — Data model & access", "Buckets, scopes, collections and least-privilege database credentials, ready for applications",
              ["CAP-023", "CAP-024", "CAP-025", "CAP-026", "CAP-027", "CAP-046", "CAP-028", "CAP-029"]),
             ("Phase 4 — Adopt, harden & ship", "Import existing clusters with a no-change round trip, one-command build and teardown, drift reporting, nightly integration gate and customer docs",
-             ["CAP-030", "CAP-036", "CAP-047", "CAP-048", "CAP-031", "CAP-042", "CAP-032", "CAP-044", "CAP-043", "CAP-045", "CAP-033"]),
+             ["CAP-030", "CAP-036", "CAP-047", "CAP-048", "CAP-031", "CAP-042", "CAP-032", "CAP-044", "CAP-043", "CAP-045", "CAP-033", "CAP-050"]),
         ],
         "checklist": [
             "All P0 stories are Implemented (and P1 stories are Implemented or explicitly descoped with sign-off)",
@@ -67,6 +67,7 @@ RELEASES = {
             "Import round trip (CAP-036 AC2) shows no changes against at least one real customer-like environment in the sandbox",
             "Time-to-first-environment check done by an engineer new to the tool against a real organization: under 60 minutes (release check; CAP-033 AC5 runs the same guide path against the fake in CI)",
             "Source archive, wheel and SHA256SUMS built with `make dist` and attached to the GitHub Release (CAP-043); container image published; standalone executables for macOS, Linux and Windows in `downloads/` and listed in the README Download section (CAP-045); README, runbook and examples validated (CAP-033)",
+            "`main` and `v*` tag rulesets active and `make rulesets-check` green before the repository is made public (CAP-050)",
         ],
     },
 }

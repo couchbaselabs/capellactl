@@ -37,6 +37,9 @@ dev = [
   "build>=1.2",        # make dist (CAP-043)
   "twine>=5",          # make dist: checks the archives' metadata
 ]
+binary = [             # make binary: the standalone executables (CAP-045)
+  "pyinstaller>=6.10",
+]
 
 [project.urls]
 Homepage = "https://github.com/couchbaselabs/capellactl"
@@ -51,7 +54,8 @@ expression = "get_version()"
 
 [tool.hatch.build.targets.sdist]  # a complete source release; nothing local or secret (CAP-043 AC3)
 only-include = ["capellactl", "tests", "docs", "scripts", "README.md", "CONTRIBUTING.md", "CHANGELOG.md",
-                "LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md", "pyproject.toml", "Makefile", "Dockerfile"]
+                "LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md", "pyproject.toml", "Makefile", "Dockerfile",
+                "capellactl.spec", "BINARY_NOTICES.md", "downloads", "packaging"]
 exclude = ["__pycache__", "*.pyc"]
 
 [tool.hatch.build.targets.wheel]
@@ -66,8 +70,9 @@ testpaths = ["tests"]
 markers = [
   "story(id, ac): links a test to a story acceptance criterion",
   "integration: runs against a real Capella sandbox organization",
+  "binary: runs a built standalone executable (CAPELLACTL_BINARY; make binary)",
 ]
-addopts = "-m 'not integration'"
+addopts = "-m 'not integration and not binary'"
 # Windows decodes files and pipes as cp1252 unless told otherwise. With PYTHONWARNDEFAULTENCODING=1 (make test, CI)
 # any text I/O in our code without an explicit encoding fails on every OS, not just on Windows.
 filterwarnings = ["error::EncodingWarning:(capellactl|tests|scripts)"]

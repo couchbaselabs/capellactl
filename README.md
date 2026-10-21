@@ -11,7 +11,26 @@ capellactl keeps `capella.yaml`, a description of your environment, in step with
 - **Safe:** nothing is deleted unless you ask; changes Capella cannot make in place (for example a cloud region) are refused, never done by delete and re-create.
 - **No hand-editing, no state file:** capellactl writes `capella.yaml` for you; Capella is the source of truth (`capellactl sync` brings in changes made in the Capella UI).
 
+## Download
+
+One file for your computer, nothing else to install: no Python, pip or Docker. Each [GitHub Release](https://github.com/couchbaselabs/capellactl/releases) has an executable per platform:
+
+<!-- downloads:start -->
+| Your computer | File | Size | SHA-256 |
+|---|---|---|---|
+| macOS 12+, Apple silicon (M1–M4) | `capellactl-<version>-macos-arm64` | | |
+| macOS 12+, Intel | `capellactl-<version>-macos-x86_64` | | |
+| Linux x86-64, glibc 2.28+ (RHEL/Rocky 8+, Ubuntu 20.04+, Debian 10+) | `capellactl-<version>-linux-x86_64` | | |
+| Linux ARM64, glibc 2.28+ (AWS Graviton, Ampere) | `capellactl-<version>-linux-arm64` | | |
+| Windows 10/11 and Server 2019+, 64-bit | `capellactl-<version>-windows-x86_64.exe` | | |
+
+Not released yet: from release 1.0.0 each file is attached to its [GitHub Release](https://github.com/couchbaselabs/capellactl/releases), and this table lists its size and SHA-256.
+
+How to pick, verify and run the right file: [downloads/README.md](downloads/README.md).
+<!-- downloads:end -->
+
 ## Install
+
 
 Requires Python 3.10 or later. Each [GitHub Release](https://github.com/couchbaselabs/capellactl/releases) has the wheel, the source archive and `SHA256SUMS`:
 
@@ -28,20 +47,6 @@ python3.12 -m venv .venv && .venv/bin/pip install -e .
 source .venv/bin/activate && capellactl --version
 make dist                                        # builds dist/: source archive, wheel and SHA256SUMS
 ```
-
-Standalone executables (no Python needed) are planned in [CAP-045](docs/release-1.0.0/CAP-045-standalone-executables.md).
-
-<!-- downloads:start -->
-| Your computer | File (from release 1.0.0) |
-|---|---|
-| macOS, Apple silicon (M1–M4) | `capellactl-<version>-macos-arm64` |
-| macOS, Intel | `capellactl-<version>-macos-x86_64` |
-| Linux x86-64 (glibc 2.28+: RHEL/Rocky 8+, Ubuntu 20.04+, Debian 10+) | `capellactl-<version>-linux-x86_64` |
-| Linux ARM64 (glibc 2.28+: AWS Graviton, Ampere) | `capellactl-<version>-linux-arm64` |
-| Windows 10/11 and Server 2019+, 64-bit | `capellactl-<version>-windows-x86_64.exe` |
-
-Not built yet. Once released, this table is generated from `downloads/` with each file's size, SHA-256 checksum and a download link.
-<!-- downloads:end -->
 
 ## Quick start
 

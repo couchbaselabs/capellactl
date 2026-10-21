@@ -13,15 +13,22 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read         # the release gate reads the nightly runs
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: python -m pip install -e ".[dev]"
       - run: make check PY=python
+      - name: release gate (CAP-032 AC5)  # a tag needs 3 green nights, the newest on this commit; a dry run reports
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/release-gate.py --commit ${{ github.sha }} ${{ github.event_name != 'push' && '--report-only' || '' }}
 
   dist:
     needs: check
@@ -29,10 +36,10 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: python -m pip install -e ".[dev]"
@@ -43,7 +50,7 @@ jobs:
         if: github.event_name == 'push'
         run: test "$(python scripts/version.py)" = "${GITHUB_REF_NAME#v}"
       - run: cd dist && sha256sum -c SHA256SUMS
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: dist
           path: dist/
@@ -57,11 +64,11 @@ jobs:
         python: ["3.10", "3.13"]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: dist
           path: dist
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
       - name: install from the source archive and from the wheel, each in a clean virtualenv
@@ -82,21 +89,233 @@ jobs:
           python -m pipx install dist/*.whl
           capellactl --version
 
+  # CAP-045: one standalone executable per platform, each built, signed and smoke-tested on its own runner.
+  binary:
+    needs: check
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { name: macos-arm64, runs-on: macos-15 }
+          - { name: macos-x86_64, runs-on: macos-15-intel }   # the last Intel macOS image (until fall 2027)
+          - { name: windows-x86_64, runs-on: windows-2022 }
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 45
+    env:
+      MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+      WINDOWS_CERTIFICATE_PFX: ${{ secrets.WINDOWS_CERTIFICATE_PFX }}
+      CAPELLACTL_BINARY_KEYCHAIN: "1"      # store, read and remove a dummy token in the runner's keychain (AC5)
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev,binary]"
+      - name: signing identity into a temporary keychain (macOS, AC6)
+        if: runner.os == 'macOS' && env.MACOS_CERTIFICATE_P12 != ''
+        env:
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: |
+          set -euo pipefail
+          kc="$RUNNER_TEMP/signing.keychain-db"; pw="$(uuidgen)"
+          echo "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$pw" "$kc"
+          security set-keychain-settings -lut 21600 "$kc"
+          security unlock-keychain -p "$pw" "$kc"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$kc"
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+          echo "CAPELLACTL_CODESIGN_IDENTITY=$MACOS_SIGNING_IDENTITY" >> "$GITHUB_ENV"
+      - name: build (make binary)
+        run: python scripts/build-binary.py --no-smoke
+      - name: notarize (macOS, AC6)
+        if: runner.os == 'macOS' && env.MACOS_CERTIFICATE_P12 != ''
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          f=$(ls dist/binary/capellactl-*)
+          codesign --verify --strict --verbose=2 "$f"
+          ditto -c -k "$f" "$RUNNER_TEMP/notarize.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" --wait | tee "$RUNNER_TEMP/notary.txt"
+          grep -q "status: Accepted" "$RUNNER_TEMP/notary.txt"
+      - name: sign (Windows, AC6)
+        if: runner.os == 'Windows' && env.WINDOWS_CERTIFICATE_PFX != ''
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP "cert.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_PFX))
+          $f = (Get-ChildItem dist\binary\capellactl-*.exe).FullName
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          & $signtool.FullName sign /f $pfx /p $env:WINDOWS_CERTIFICATE_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 $f
+          Remove-Item $pfx
+          if ((Get-AuthenticodeSignature $f).Status -ne 'Valid') { throw "the Authenticode signature is not valid" }
+      - name: a release tag needs signed executables (AC6)
+        if: github.event_name == 'push' && vars.ALLOW_UNSIGNED != 'true'
+        shell: bash
+        run: |
+          if { [ "$RUNNER_OS" = macOS ] && [ -z "$MACOS_CERTIFICATE_P12" ]; } ||
+             { [ "$RUNNER_OS" = Windows ] && [ -z "$WINDOWS_CERTIFICATE_PFX" ]; }; then
+            echo "::error::no signing certificate for $RUNNER_OS; add the secrets, or set the repository variable ALLOW_UNSIGNED=true"
+            exit 1
+          fi
+      - name: smoke tests on the final file (AC2, AC5, AC7, AC8)
+        shell: bash
+        run: |
+          f=$(ls dist/binary/capellactl-*)
+          CAPELLACTL_BINARY="$PWD/$f" CAPELLACTL_BINARY_VERSION="$(python scripts/version.py)" \
+            python -m pytest -m binary -p no:cacheprovider -rA tests/binary
+      - uses: actions/upload-artifact@v6
+        with:
+          name: binary-${{ matrix.name }}
+          path: dist/binary/capellactl-*
+
+  # Linux: built on AlmaLinux 8 (glibc 2.28), so the executable runs on every Linux from glibc 2.28 on. The
+  # manylinux images have no shared libpython, which PyInstaller needs.
+  binary-linux:
+    needs: check
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { name: linux-x86_64, runs-on: ubuntu-24.04 }
+          - { name: linux-arm64, runs-on: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runs-on }}
+    container: almalinux:8
+    timeout-minutes: 45
+    steps:
+      - run: dnf install -y -q git binutils python3.12 python3.12-pip python3.12-devel
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - run: python3.12 -m venv /opt/venv && /opt/venv/bin/python -m pip install -q -e ".[dev,binary]"
+      - name: build (make binary) and smoke tests (AC2, AC5, AC7, AC8)
+        run: /opt/venv/bin/python scripts/build-binary.py
+      - uses: actions/upload-artifact@v6
+        with:
+          name: binary-${{ matrix.name }}
+          path: dist/binary/capellactl-*
+
+  binary-clean-linux:      # AC2: on machines that have nothing installed, including the oldest supported glibc
+    needs: binary-linux
+    strategy:
+      matrix:
+        arch: [x86_64, arm64]
+        image: ["debian:10-slim", "rockylinux:8"]
+        include:
+          - { arch: x86_64, runs-on: ubuntu-24.04 }
+          - { arch: arm64, runs-on: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
+        with:
+          name: binary-linux-${{ matrix.arch }}
+          path: bin
+      - name: run it in ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          chmod +x bin/capellactl-*
+          f=$(basename bin/capellactl-*)
+          ex=docs/release-1.0.0/examples/single-node-dev.yaml
+          docker run --rm -v "$PWD:/w:ro" -w /tmp -e CAPELLA_ORG_ID=org-x "${{ matrix.image }}" sh -c "
+            /w/bin/$f --version && /w/bin/$f help topics >/dev/null &&
+            /w/bin/$f help config clusters.deletionProtection >/dev/null && /w/bin/$f -c /w/$ex validate &&
+            /w/bin/$f init --non-interactive --dry-run --org-id x --project p --cluster c >/dev/null"
+
+  downloads:
+    needs: [binary, binary-linux, binary-clean-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: binary-*
+          path: executables
+          merge-multiple: true
+      - name: downloads/ from the five executables (AC3, AC4)
+        run: |
+          set -euo pipefail
+          test "$(ls executables | wc -l)" -eq 5
+          python scripts/update-downloads.py --from executables
+          python scripts/update-downloads.py --check
+          test "$(python -c 'import json; print(json.load(open("downloads/manifest.json"))["version"])')" = "$(python scripts/version.py)"
+          cp downloads/SHA256SUMS executables/SHA256SUMS-executables
+          cp BINARY_NOTICES.md executables/
+          (cd executables && sha256sum -c SHA256SUMS-executables)
+      - uses: actions/upload-artifact@v6
+        with:
+          name: release-executables
+          path: executables/
+      - uses: actions/upload-artifact@v6
+        with:
+          name: downloads-manifest
+          path: downloads/manifest.json
+
   publish:
-    needs: install
+    needs: [install, downloads]
     if: github.event_name == 'push'      # a manual run is a dry run
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: dist
           path: dist
-      - name: attach the archives and SHA256SUMS to the GitHub Release
+      - uses: actions/download-artifact@v7
+        with:
+          name: release-executables
+          path: executables
+      - name: attach the archives, the executables and their checksums to the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "capellactl ${GITHUB_REF_NAME#v}" \
-            --notes "See CHANGELOG.md. Verify with: sha256sum -c SHA256SUMS" \
-          || gh release upload "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+          gh release create "$GITHUB_REF_NAME" dist/* executables/* --repo "$GITHUB_REPOSITORY" \
+            --title "capellactl ${GITHUB_REF_NAME#v}" \
+            --notes "See CHANGELOG.md. Verify with: sha256sum -c SHA256SUMS (archives) and sha256sum -c SHA256SUMS-executables --ignore-missing" \
+          || gh release upload "$GITHUB_REF_NAME" dist/* executables/* --repo "$GITHUB_REPOSITORY" --clobber
+      # main is protected (CAP-050), so the new downloads/ and README table arrive as a pull request.
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          path: repo
+      - uses: actions/download-artifact@v7
+        with:
+          name: downloads-manifest
+          path: repo/downloads
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: pull request with downloads/ and the README Download section (AC4)
+        working-directory: repo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python scripts/update-downloads.py
+          branch="release/downloads-$GITHUB_REF_NAME"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add downloads README.md
+          git commit -m "downloads: executables of $GITHUB_REF_NAME (CAP-045)"
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" --title "downloads: executables of $GITHUB_REF_NAME" \
+            --body "Generated by the release workflow: downloads/ and the README Download section for $GITHUB_REF_NAME."

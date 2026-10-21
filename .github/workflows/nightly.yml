@@ -1,0 +1,77 @@
+name: nightly
+# CAP-032: the integration suite against a real Capella sandbox every night, and a weekly janitor for leftovers.
+# Needs the repository secrets CAPELLA_SANDBOX_API_KEY and CAPELLA_SANDBOX_ORG_ID (a sandbox organization, never a
+# customer one). Each run creates its own capellactl-ci-<run id>-* projects and deletes them, pass or fail.
+# A release tag needs three consecutive green scheduled runs, the newest on the tagged commit (scripts/release-gate.py).
+on:
+  schedule:
+    - cron: "0 7 * * *"     # integration suite, every night at 07:00 UTC
+    - cron: "0 9 * * 0"     # janitor, Sundays at 09:00 UTC
+  workflow_dispatch:        # Actions → nightly → Run workflow (a manual run does not count for the release gate)
+    inputs:
+      job:
+        type: choice
+        options: [integration, janitor]
+        default: integration
+
+permissions:
+  contents: read
+
+concurrency:                # never two runs against the same sandbox at once; never cancel one mid-teardown
+  group: nightly-sandbox
+  cancel-in-progress: false
+
+jobs:
+  integration:
+    if: github.event.schedule == '0 7 * * *' || inputs.job == 'integration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    env:
+      CAPELLA_SANDBOX_API_KEY: ${{ secrets.CAPELLA_SANDBOX_API_KEY }}
+      CAPELLA_SANDBOX_ORG_ID: ${{ secrets.CAPELLA_SANDBOX_ORG_ID }}
+      CAPELLACTL_IT_TARGET: sandbox
+      CAPELLACTL_IT_LOG: integration.log
+      CAPELLACTL_IT_REPORT: integration-report.json
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install -e ".[dev]" couchbase    # the SDK: CAP-027 AC8 connects with a new credential
+      - name: allow this runner on the shared cluster (CAP-027 AC8)
+        run: echo "CAPELLA_SANDBOX_CLIENT_CIDR=$(curl -fsS https://api.ipify.org)/32" >> "$GITHUB_ENV"
+      - name: integration suite (teardown runs whatever happens)
+        run: python -m pytest -m integration -p no:cacheprovider -rA --basetemp=it-tmp
+      - name: no secret in the logs (AC4)
+        if: always()
+        run: >
+          python scripts/scan-log-secrets.py integration.log integration-report.json
+          --env CAPELLA_SANDBOX_API_KEY --secrets-dir it-tmp
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: integration-log
+          path: |
+            integration.log
+            integration-report.json
+          if-no-files-found: warn
+
+  janitor:
+    if: github.event.schedule == '0 9 * * 0' || inputs.job == 'janitor'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      CAPELLA_SANDBOX_API_KEY: ${{ secrets.CAPELLA_SANDBOX_API_KEY }}
+      CAPELLA_SANDBOX_ORG_ID: ${{ secrets.CAPELLA_SANDBOX_ORG_ID }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install -e .
+      - name: delete capellactl-ci-* projects older than 24 hours; fail if there were any (AC3)
+        run: python scripts/ci-janitor.py --older-than-hours 24 --fail-on-leftovers

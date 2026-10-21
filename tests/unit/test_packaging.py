@@ -235,7 +235,7 @@ def test_dist_ac6_reproducible_build(tree, tmp_path):
 def test_dist_ac7_release_workflow():
     wf = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
     for s in ('tags: ["v[0-9]+.[0-9]+.[0-9]+"]', "make check", "make dist", "sha256sum -c SHA256SUMS",
-              "ubuntu-latest, macos-latest, windows-latest", "needs: install", "gh release create",
+              "ubuntu-latest, macos-latest, windows-latest", "needs: [install, downloads]", "gh release create",
               "workflow_dispatch:", "if: github.event_name == 'push'      # a manual run is a dry run"):
         assert s in wf, s
 

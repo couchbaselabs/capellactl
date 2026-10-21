@@ -97,6 +97,7 @@ def _guard_child_env(monkeypatch: pytest.MonkeyPatch) -> None:
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "story(id, ac): links a test to a story acceptance criterion")
     config.addinivalue_line("markers", "integration: runs against a real Capella sandbox organization")
+    config.addinivalue_line("markers", "binary: runs a built standalone executable (CAPELLACTL_BINARY)")
 
 
 @pytest.fixture(autouse=True)

@@ -29,6 +29,7 @@ import version as version_mod  # noqa: E402
 # Top-level entries a source archive may contain (pyproject's sdist only-include, plus what the build adds).
 SDIST_TOP = {"capellactl", "tests", "docs", "scripts", "README.md", "CONTRIBUTING.md", "CHANGELOG.md", "LICENSE",
              "NOTICE", "THIRD_PARTY_NOTICES.md", "pyproject.toml", "Makefile", "Dockerfile", "PKG-INFO",
+             "capellactl.spec", "BINARY_NOTICES.md", "downloads", "packaging",
              ".gitignore"}  # hatchling keeps .gitignore so a wheel built from the archive excludes the same files
 # Never in any archive, wherever they are: local environment files, credentials and assistant files.
 FORBIDDEN = ["capella.yaml", "capella.yml", "capella.yaml.*", "capella.yml.*", "*.bak", ".capellactl", ".env",

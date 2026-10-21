@@ -23,8 +23,8 @@ jobs:
       # Text I/O without an explicit encoding fails here on every OS, not only on Windows (pyproject.toml).
       PYTHONWARNDEFAULTENCODING: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
           cache: pip
@@ -33,11 +33,16 @@ jobs:
       - run: python -m ruff check capellactl tests scripts
       - run: python -m mypy capellactl
       - run: python -m pytest
+      - name: integration suite rehearsed against the fake (CAP-032; the nightly job runs it against Capella)
+        run: python -m pytest -m integration -p no:cacheprovider
+        env:
+          CAPELLACTL_IT_TARGET: fake
       - run: python scripts/check-ac-coverage.py
       - run: python scripts/update-story-index.py --check docs/release-1.0.0
       - run: python scripts/update-api-coverage.py --check     # API-COVERAGE.md matches story statuses
       - run: python scripts/third-party-notices.py --check      # CAP-044 AC3/AC4, per OS and Python
       - run: python scripts/update-reference.py --check         # docs/reference.md matches the schema (CAP-033)
+      - run: python scripts/update-downloads.py --check         # downloads/ and the README Download section (CAP-045)
 
   install-smoke:            # CAP-001 AC1
     needs: test
@@ -47,10 +52,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0    # the version comes from git tags (scripts/version.py)
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: python -m pip install -e ".[dev]" pipx
@@ -63,10 +68,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: python -m pip install -e ".[dev]" && python scripts/build-dist.py
