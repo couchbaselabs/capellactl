@@ -93,7 +93,7 @@ Passwords are never written to `capella.yaml` or printed: give them as `--passwo
 | [Examples](docs/release-1.0.0/examples/) | [Annotated reference](docs/release-1.0.0/examples/capella.yaml), [single-node dev](docs/release-1.0.0/examples/single-node-dev.yaml), [GCP production](docs/release-1.0.0/examples/gcp-prod.yaml), [Azure production](docs/release-1.0.0/examples/azure-prod.yaml), [minimal](docs/release-1.0.0/examples/minimal-cluster.yaml) |
 | [Migrating from the scale script](docs/migrating-from-scale-script.md) | `scale_capella_cluster.sh` → capellactl |
 | [Architecture](docs/release-1.0.0/00-architecture.md) | Design, idempotency rules, test conventions |
-| [INDEX.md](docs/release-1.0.0/INDEX.md) | Release plan and user stories |
+| [Release README](docs/release-1.0.0/README.md) | Release plan and user stories |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to build, test and change the project |
 
 Couchbase also publishes an official Terraform provider for Capella; [capellactl or Terraform?](docs/terraform.md) explains when to prefer it.
@@ -110,7 +110,7 @@ Couchbase also publishes an official Terraform provider for Capella; [capellactl
 | [capellactl/importer/](capellactl/importer/), [output/](capellactl/output/), [help/](capellactl/help/) | `import`/`sync` writer; rendering, redaction and passwords; `capellactl help` pages |
 | [tests/](tests/) | `unit/`, `contract/` (mocked HTTP), `scenario/` (CLI against [the fake Capella](tests/fakes/capella.py)), `integration/` (real Capella) |
 | [scripts/](scripts/) | Generators and CI checks: story index, API coverage, AC coverage, third-party notices |
-| [docs/](docs/) | [Architecture](docs/release-1.0.0/00-architecture.md), user stories (`CAP-NNN-*.md`), [INDEX.md](docs/release-1.0.0/INDEX.md), [API coverage](docs/release-1.0.0/API-COVERAGE.md), [runbook](docs/runbook.md), [examples](docs/release-1.0.0/examples/) |
+| [docs/](docs/) | [Architecture](docs/release-1.0.0/00-architecture.md), user stories (`CAP-NNN-*.md`), [release plan](docs/release-1.0.0/README.md), [API coverage](docs/release-1.0.0/API-COVERAGE.md), [runbook](docs/runbook.md), [examples](docs/release-1.0.0/examples/) |
 
 Build, test and documentation conventions: [CONTRIBUTING.md](CONTRIBUTING.md) and the [Makefile](Makefile).
 

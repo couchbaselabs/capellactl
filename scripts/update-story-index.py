@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate docs/<release>/INDEX.md from the story files' header tables.
+"""Regenerate docs/<release>/README.md from the story files' header tables.
 
 Each story file (CAP-NNN-*.md) starts with:
 
@@ -20,7 +20,7 @@ releases, so each release's IDs must be contiguous but needn't start at CAP-001.
 Adapted from omni-data-bus/scripts/update-story-index.py.
 
 Usage: python3 scripts/update-story-index.py [docs/release-1.0.0]
-       python3 scripts/update-story-index.py --check [docs/release-1.0.0]   # CI: fail if INDEX.md is stale
+       python3 scripts/update-story-index.py --check [docs/release-1.0.0]   # CI: fail if README.md is stale
 """
 import re
 import sys
@@ -249,7 +249,7 @@ def main() -> None:
     if sorted(phased) != [s["id"] for s in stories]:
         sys.exit(f"every story must be in exactly one phase; check RELEASES: {sorted(set(s['id'] for s in stories) ^ set(phased))}")
     rendered = render(release, stories)
-    index = release_dir / "INDEX.md"
+    index = release_dir / "README.md"
     if check:
         current = index.read_text(encoding="utf-8") if index.exists() else ""
         if current != rendered:
@@ -259,7 +259,7 @@ def main() -> None:
         return
     index.write_text(rendered, encoding="utf-8")
     live = [s for s in stories if s["status"] != "Descoped"]
-    print(f"INDEX.md updated: {len(live)} stories, {sum(s['points'] for s in live)} points"
+    print(f"README.md updated: {len(live)} stories, {sum(s['points'] for s in live)} points"
           + (f" ({len(stories) - len(live)} descoped)" if len(live) < len(stories) else ""))
 
 

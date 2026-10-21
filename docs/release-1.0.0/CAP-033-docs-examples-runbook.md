@@ -70,7 +70,7 @@ As a **customer engineer new to Capella**, I want clear examples and a short run
 ## Implementation notes (as built)
 - AC5 changed (2026-10-08): the manual timing became an automated end-to-end run of the guide against the fake
   Capella (two paths: create a project and cluster, or `init`), run in CI. The 60-minute walkthrough by a new
-  engineer stays in the release checklist (INDEX.md) as a release check.
+  engineer stays in the release checklist (README.md) as a release check.
 - The cheatsheet was merged into `docs/runbook.md` (2026-10-08) and removed: Part 1 day-2 tasks with expected
   output, Part 2 the command reference, Part 3 the 20-minute demo (Azure). README, getting-started and the CAP-042
   AC8 test point to the runbook.

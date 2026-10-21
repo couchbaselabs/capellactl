@@ -2,7 +2,7 @@
 
 | Epic | Priority | Points | Depends on | Status |
 |---|---|---|---|---|
-| E9 Lifecycle & release | P0 | 3 | CAP-001, CAP-043 | In progress |
+| E9 Lifecycle & release | P0 | 3 | CAP-001, CAP-043 | Implemented |
 
 ## User story
 As the **maintainer opening capellactl to the public after release 1.0.0**, I want every change to `main` to arrive through a pull request from a branch that has been reviewed and has passed CI, so that no one, including me or another admin, can push or merge unreviewed code into the branch that releases are tagged from.
@@ -102,10 +102,15 @@ Add to the 1.0.0 checklist in `scripts/update-story-index.py`: "`main` and `v*` 
 - ~~Apply the rulesets before the repository becomes public, or as the first step afterwards?~~ Answered (2026-10-21): before, as recommended. If the organisation's plan doesn't allow rulesets on a private repository, `make rulesets` fails with an error from GitHub; apply them as the first step after making it public.
 
 ## Implementation notes (as built)
-- **Still open:** applying the rulesets to GitHub, then the manual AC1 check. As the repository admin:
-  `brew install gh && gh auth login`, `make rulesets`, then `make rulesets-check` (green) and
-  `git push origin HEAD:main` (refused). Add the secret `RULESETS_TOKEN` (a fine-grained token for this repository,
-  Administration: read-only), which the release workflow needs on a tag. Then set the story to Implemented.
+- Applied 2026-10-21 by the repository admin with `make rulesets`, while the repository is still private (the
+  organisation's plan allows it). `make rulesets-check` is green against GitHub, and the settings read back as
+  merge commits off and merged branches deleted. AC1's manual check: the admin's `git push origin main` was
+  refused with `GH013: Repository rule violations`: "Changes must be made through a pull request" and
+  "6 of 6 required status checks are expected".
+- **Not yet done (not an AC):** the repository secret `RULESETS_TOKEN` (a fine-grained token for this repository,
+  Administration: read-only). Until it exists, every release tag, `-rc` tags included, fails in the `check` job.
+  Also still manual: Settings → Actions → General → approval for fork pull request workflows from first-time
+  contributors.
 - **Four rulesets instead of two** (`.github/rulesets/`). A ruleset bypass skips every rule in that ruleset, so a
   single `main` ruleset with the maintainer as a bypass actor would also let them merge with failing CI. Split:
   - `main`: no bypass. Pull request required (no approval count; resolved conversations; squash or rebase), the
@@ -135,7 +140,7 @@ Add to the 1.0.0 checklist in `scripts/update-story-index.py`: "`main` and `v*` 
 
 | AC | Tests |
 |---|---|
-| AC1 | `test_rulesets_ac1_main_blocks_push_force_and_delete`; manual push check after `make rulesets` (still to do) |
+| AC1 | `test_rulesets_ac1_main_blocks_push_force_and_delete`; manual push check (2026-10-21: refused, GH013) |
 | AC2 | `test_rulesets_ac2_review_rules`, `test_rulesets_ac2_required_checks_match_ci_matrix` |
 | AC3 | `test_rulesets_ac3_codeowners_cover_sensitive_paths` |
 | AC4 | `test_rulesets_ac4_release_tags_immutable` |

@@ -89,7 +89,7 @@ As in [00-architecture.md §4](00-architecture.md#4-architecture), plus:
 ## Implementation notes (as built)
 - Verified: wheel installs and runs on Python 3.12 (macOS) and on Python 3.10 and 3.13 (Linux containers). Windows is covered by the CI matrix, which has not run yet because the repository has no remote.
 - Container image: runs as uid 10001 and adds 42 MB to `python:3.12-slim`. AC6 originally said 'under 150 MB', which no image can meet because the base alone is about 150 MB uncompressed; the AC now measures what the tool adds (< 50 MB).
-- AC5: the coverage check fails for `Implemented` stories and lists the open ACs of `In progress` stories, so stories can be marked `In progress` as soon as work starts (INDEX.md rule).
+- AC5: the coverage check fails for `Implemented` stories and lists the open ACs of `In progress` stories, so stories can be marked `In progress` as soon as work starts (README.md rule).
 
 ### Tests by AC
 
