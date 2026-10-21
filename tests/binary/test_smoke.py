@@ -147,7 +147,7 @@ REQUIRED = {"LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md", "BINARY_NOTICES.md", 
 def test_binary_ac7_bundle_allowlist():
     from PyInstaller.archive.readers import CArchiveReader
 
-    names = list(CArchiveReader(BINARY).toc)
+    names = [n.replace("\\", "/") for n in CArchiveReader(BINARY).toc]  # Windows stores backslash paths
     assert REQUIRED.issubset(names), REQUIRED - set(names)
     help_pages = {f"capellactl/help/{p.name}" for p in (ROOT / "capellactl" / "help").glob("*.md")}
     assert help_pages <= set(names), help_pages - set(names)
