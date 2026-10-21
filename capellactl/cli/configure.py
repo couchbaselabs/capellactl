@@ -246,11 +246,12 @@ def configure_list(state: AppState) -> None:
 
 
 @configure.command("show")
+@click.option("--profile", "sub_profile", metavar="NAME", help="Profile to show (default: the active one).")
 @click.pass_context
-def configure_show(ctx: click.Context) -> None:
+def configure_show(ctx: click.Context, sub_profile: str | None) -> None:
     """Show the effective settings and where each one comes from."""
     state: AppState = ctx.ensure_object(AppState)
-    local = (ctx.parent.meta.get("local_profile") if ctx.parent else None)
+    local = sub_profile or (ctx.parent.meta.get("local_profile") if ctx.parent else None)
     if local:
         state.profile_flag = local
     s = state.settings()
@@ -262,11 +263,12 @@ def configure_show(ctx: click.Context) -> None:
 
 
 @configure.command("remove")
+@click.option("--profile", "sub_profile", metavar="NAME", help="Profile to remove (default: the active one).")
 @click.pass_context
-def configure_remove(ctx: click.Context) -> None:
+def configure_remove(ctx: click.Context, sub_profile: str | None) -> None:
     """Delete a profile and its keychain entry."""
     state: AppState = ctx.ensure_object(AppState)
-    local = ctx.parent.meta.get("local_profile") if ctx.parent else None
+    local = sub_profile or (ctx.parent.meta.get("local_profile") if ctx.parent else None)
     name = _profile_name(state, local)
     profiles = st.load_profiles(state.env)
     had_key = st.keychain_delete(name)

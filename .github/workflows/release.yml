@@ -93,7 +93,7 @@ jobs:
   binary:
     needs: check
     strategy:
-      fail-fast: true
+      fail-fast: false   # let every platform finish, so one failure doesn't hide the others; later jobs still need all of them
       matrix:
         include:
           - { name: macos-arm64, runs-on: macos-15 }
@@ -184,7 +184,7 @@ jobs:
   binary-linux:
     needs: check
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
           - { name: linux-x86_64, runs-on: ubuntu-24.04 }

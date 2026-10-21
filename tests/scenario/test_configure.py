@@ -88,11 +88,11 @@ def test_configure_ac4_no_keychain_never_writes_key(fake, run, tmp_path):
 def test_configure_ac6_remove_profile_and_key(fake, run, keychain):
     run("configure", "--profile", "dev", "--api-key-stdin", input=f"{KEY}\n", no_env=True)
     assert ("capellactl", "dev") in keychain.store
-    r = run("configure", "--profile", "dev", "remove", no_env=True)
+    r = run("configure", "remove", "--profile", "dev", no_env=True)  # the documented form
     assert r.exit_code == 0 and "profile 'dev' removed (keychain entry deleted)" in r.output
     assert ("capellactl", "dev") not in keychain.store
     assert "dev" not in (yaml.safe_load(profiles_path().read_text(encoding="utf-8"))["profiles"])
-    r = run("configure", "--profile", "dev", "remove", no_env=True)
+    r = run("configure", "--profile", "dev", "remove", no_env=True)  # --profile before the subcommand also works
     assert r.exit_code == 0 and "nothing to remove" in r.output
 
 
