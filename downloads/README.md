@@ -4,6 +4,8 @@
 
 One file per computer: no Python, pip or Docker needed (CAP-045).
 
+**Not released yet**: these files are attached to each [GitHub Release](https://github.com/couchbaselabs/capellactl/releases) from 1.0.0 on. Until then, install from source.
+
 | Your computer | File | Size | SHA-256 |
 |---|---|---|---|
 | macOS 12+, Apple silicon (M1–M4) | `capellactl-<version>-macos-arm64` | | |
@@ -11,8 +13,6 @@ One file per computer: no Python, pip or Docker needed (CAP-045).
 | Linux x86-64, glibc 2.28+ (RHEL/Rocky 8+, Ubuntu 20.04+, Debian 10+) | `capellactl-<version>-linux-x86_64` | | |
 | Linux ARM64, glibc 2.28+ (AWS Graviton, Ampere) | `capellactl-<version>-linux-arm64` | | |
 | Windows 10/11 and Server 2019+, 64-bit | `capellactl-<version>-windows-x86_64.exe` | | |
-
-Not released yet: from release 1.0.0 each file is attached to its [GitHub Release](https://github.com/couchbaselabs/capellactl/releases), and this table lists its size and SHA-256.
 
 Which one? On macOS, Apple menu → About This Mac: *Chip: Apple M…* is Apple silicon, *Processor: Intel* is Intel.
 On Linux, `uname -m`: `aarch64` is ARM64, `x86_64` is x86-64.

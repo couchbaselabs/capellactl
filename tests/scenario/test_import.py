@@ -230,14 +230,16 @@ def test_import_ac8_existing_file_and_stdout(fake, run, tmp_path, monkeypatch):
 @pytest.mark.story("CAP-036", "AC9")
 def test_import_ac9_turned_off_cluster(fake, run, tmp_path):
     _rich(fake, turned_off=True)
-    fake.fail_next("GET", "*/buckets", 422, times=1)
+    fake.fail_next("GET", "*/buckets", 500, times=6)  # what Capella answers while the cluster is off
     r = run("import")
     assert r.exit_code == 0, r.output
-    assert "warning: cluster nova-dev-01: buckets not imported (422)" in r.output
+    assert "warning: cluster nova-dev-01: buckets and database credentials not imported (turnedOff)" in r.output
+    assert "retrying" not in r.output  # not even asked
     text = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
-    assert "# not imported: buckets (Capella returned 422 while the cluster is turnedOff;" in text
+    assert "# not imported: buckets and database credentials (the cluster is turnedOff;" in text
     cl = yaml.safe_load(text)["projects"][0]["clusters"][0]
-    assert "hibernation" in cl and "buckets" not in cl
+    assert "hibernation" in cl and "allowedCidrs" in cl
+    assert "buckets" not in cl and "databaseCredentials" not in cl
 
 
 def test_import_empty_project_points_to_cluster_create(fake, run, tmp_path):

@@ -85,13 +85,15 @@ def wait_for_cluster(client, project_id, cluster_id, op: Literal["create","updat
 | `test_waiter_ac8_interrupt_message` | `tests/scenario/test_waiter_cli.py` | |
 
 ### AC9 — Heartbeat and total time
-**Given** a wait longer than 30 seconds, **then** a dot is printed every 30 seconds of waiting on the same line as the current state (`cluster nova-dev-01: deploying (0s) ..`), the next line starts on a new line, and polling follows the same backoff as AC2. **When** the operation finishes, **then** the total time is shown: `done cluster nova-dev-01 in 1m21s`, the summary table's DURATION uses the same `XmYs` format, and apply ends with `Apply complete in 1m21s.`; deletes end with `cluster nova-dev-01: deleted (4m12s)`.
+**Given** a wait longer than 30 seconds, **then** a dot is printed every 30 seconds of waiting on the same line as the current state (`cluster nova-dev-01: deploying (0s) ..`), the next line starts on a new line, and polling follows the same backoff as AC2. On a terminal a spinner (`| / - \`) turns where the next dot will go, so the wait visibly moves between dots; the dot replaces it, and it is erased when the line ends. There is no spinner with `--quiet`, when stderr is not a terminal, with `CI` set or `TERM=dumb`, so logs keep only the dots; a warning logged while waiting starts on its own line. **When** the operation finishes, **then** the total time is shown: `done cluster nova-dev-01 in 1m21s`, the summary table's DURATION uses the same `XmYs` format, and apply ends with `Apply complete in 1m21s.`; deletes end with `cluster nova-dev-01: deleted (4m12s)`.
 
 | Test | Location | Verifies |
 |---|---|---|
 | `test_waiter_ac9_tick_every_30s_same_polls` | `tests/unit/engine/test_waiter.py` | Ticks at 30, 60, …; poll gaps unchanged |
 | `test_waiter_ac9_dots_and_total_time` | `tests/scenario/test_waiter_cli.py` | Apply / cluster create |
 | `test_waiter_ac9_delete_dots_and_total_time` | same | `cluster delete` |
+| `test_spinner_turns_between_dots_and_leaves_only_the_dots` | `tests/unit/cli/test_console_spinner.py` | Spinner turns, dots replace it, nothing left over |
+| `test_no_spinner_in_ci_or_dumb_terminals`, `test_no_spinner_when_stderr_is_not_a_terminal` | same | Logs keep only the dots |
 
 ## Out of scope
 - Waiting on App Service states.

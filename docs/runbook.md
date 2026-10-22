@@ -20,7 +20,7 @@ Current status of every command: [API-COVERAGE.md](release-1.0.0/API-COVERAGE.md
 # Part 1 — Day-2 tasks
 
 The examples use project `nova-dev` and cluster `nova-dev-01` (3 nodes, bucket `orders`). Times are shortened; a
-real scale or power change takes several minutes, with a dot printed every 30 seconds while it runs.
+real scale or power change takes several minutes, with a spinner and a dot every 30 seconds while it runs.
 
 ## Scale out
 
@@ -438,7 +438,7 @@ capellactl cidr delete $CLUSTER 203.0.113.10/32
 ```bash
 capellactl bucket list $CLUSTER
 capellactl bucket get $CLUSTER $BUCKET
-capellactl bucket create $CLUSTER $BUCKET --memory 1024 --storage-backend magma --durability majority   # multi-node clusters
+capellactl bucket create $CLUSTER $BUCKET --memory 1024 --storage-backend magma --durability none       # durability none is the default
 capellactl bucket create $CLUSTER sessions --type ephemeral --memory 256 --eviction-policy nruEviction
 capellactl bucket update $CLUSTER $BUCKET --memory 2048
 capellactl bucket update $CLUSTER $BUCKET --replicas 2 --durability majority --ttl 0 --flush   # multi-node clusters; single-node: replicas 0

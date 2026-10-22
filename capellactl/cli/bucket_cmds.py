@@ -18,7 +18,13 @@ from capellactl.cli.console import note, out
 from capellactl.cli.env import pass_state
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.groups import SuggestingGroup
-from capellactl.cli.resource_cmds import _table, complete_cluster_names, file_projects, live_cluster
+from capellactl.cli.resource_cmds import (
+    _list_table,
+    _table,
+    complete_cluster_names,
+    file_projects,
+    live_cluster,
+)
 from capellactl.cli.state import AppState
 from capellactl.config.editor import put, to_commented
 from capellactl.output.render import dumps
@@ -94,7 +100,7 @@ def bucket_list(state: AppState, cluster: str, project: str | None) -> None:
                      str(b.get("durabilityLevel", "")), str(b.get("timeToLiveInSeconds", "")),
                      f"{int((b.get('stats') or {}).get('itemCount') or 0):,}",
                      "yes" if b.get("name") in declared else "-"))
-    out(_table(rows))
+    out(_list_table(rows))
 
 
 @bucket.command("get")
@@ -148,7 +154,7 @@ def _bucket_node(cl: CommentedMap, name: str) -> CommentedMap | None:
 
 
 @bucket.command("create", epilog="\b\nExamples:\n  capellactl bucket create nova-dev-01 orders --memory 1024 "
-                                  "--storage-backend magma --durability majority\n"
+                                  "--storage-backend magma --durability none\n"
                                   "  capellactl bucket create nova-dev-01 sessions --type ephemeral --memory 256 "
                                   "--eviction-policy nruEviction\n"
                                   "  capellactl bucket create nova-dev-01 orders --no-apply")

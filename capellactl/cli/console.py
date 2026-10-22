@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import os
 import sys
+import threading
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -16,9 +18,69 @@ from capellactl.output.redact import RedactingFilter, redact
 _line_open = False  # err_inline() left the stderr line unfinished (state line followed by progress dots)
 
 
+class _Spinner:
+    """Turns | / - \\ where the next progress dot will go, so a wait visibly moves between dots (terminals only)."""
+
+    FRAMES = "|/-\\"
+    INTERVAL = 0.15
+
+    def __init__(self) -> None:
+        self.lock = threading.Lock()
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._shown = False  # a frame is on screen, the cursor just after it
+
+    @staticmethod
+    def wanted() -> bool:
+        try:
+            tty = sys.stderr.isatty()
+        except (AttributeError, ValueError):
+            return False
+        return tty and os.environ.get("TERM") != "dumb" and not os.environ.get("CI")
+
+    def _write(self, text: str) -> None:
+        sys.stderr.write(text)
+        sys.stderr.flush()
+
+    def erase(self) -> None:
+        """Remove the frame (call with the lock held) so the next text takes its place."""
+        if self._shown:
+            self._write("\b \b")
+            self._shown = False
+
+    def _run(self) -> None:
+        i = 0
+        while not self._stop.wait(self.INTERVAL):
+            with self.lock:
+                if self._stop.is_set():
+                    return
+                self.erase()
+                self._write(self.FRAMES[i % len(self.FRAMES)])
+                self._shown = True
+            i += 1
+
+    def start(self) -> None:
+        if self._thread is None and self.wanted():
+            self._stop.clear()
+            self._thread = threading.Thread(target=self._run, name="capellactl-spinner", daemon=True)
+            self._thread.start()
+
+    def stop(self) -> None:
+        if self._thread is not None:
+            self._stop.set()
+            self._thread.join()
+            self._thread = None
+        with self.lock:
+            self.erase()
+
+
+_spinner = _Spinner()
+
+
 def _close_line() -> None:
     global _line_open
     if _line_open:
+        _spinner.stop()
         click.echo("", err=True)
         _line_open = False
 
@@ -77,8 +139,11 @@ def err_inline(msg: Any) -> None:
     global _line_open
     if _quiet:
         return
-    click.echo(redact(msg), err=True, nl=False)
+    with _spinner.lock:
+        _spinner.erase()
+        click.echo(redact(msg), err=True, nl=False)
     _line_open = True
+    _spinner.start()
 
 
 def wait_progress(label: str) -> tuple[Callable[[str, float], None], Callable[[], None]]:
@@ -171,6 +236,7 @@ class _ClickStderrHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
+            _close_line()  # a warning while waiting starts on its own line, not after the progress dots
             click.echo(redact(self.format(record)), err=True)
         except Exception:  # noqa: BLE001
             self.handleError(record)

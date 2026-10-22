@@ -160,7 +160,7 @@ def test_multi_ac8_project_list_in_file(fake, run):
     _two_projects(fake)
     fake.seed_project("sandbox")
     run("import", "--project", "nova-dev", "--project", "non-prod")
-    rows = {line.split()[1]: line.split()[-1] for line in run("project", "list").output.splitlines()[1:]}
+    rows = {line.split()[1]: line.split()[-2] for line in run("project", "list").output.splitlines()[1:]}
     assert rows == {"nova-dev": "yes", "non-prod": "yes", "sandbox": "-"}
 
 
@@ -178,9 +178,9 @@ def test_multi_ac7_cluster_list_every_project(fake, run):
     r = run("cluster", "list")
     assert r.exit_code == 0, r.output
     assert "pass --project" not in r.output
-    rows = [line.split()[:2] for line in r.output.splitlines()]
-    assert rows == [["PROJECT", "NAME"], ["non-prod", "np-01"], ["nova-dev", "nova-dev-01"]]  # sorted by project
+    rows = [line.split()[:3] for line in r.output.splitlines()]
+    assert rows == [["S.NO", "NAME", "PROJECT"], ["1", "np-01", "non-prod"], ["2", "nova-dev-01", "nova-dev"]]  # by project
     r = run("cluster", "list", "--project", "non-prod")
-    assert [line.split()[:2] for line in r.output.splitlines()[1:]] == [["non-prod", "np-01"]]
+    assert [line.split()[:3] for line in r.output.splitlines()[1:]] == [["1", "np-01", "non-prod"]]
     data = json.loads(run("-o", "json", "cluster", "list").output)
     assert [(c["projectName"], c["name"]) for c in data] == [("non-prod", "np-01"), ("nova-dev", "nova-dev-01")]

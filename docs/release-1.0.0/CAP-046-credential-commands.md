@@ -28,7 +28,7 @@ capellactl credential update CLUSTER NAME [access flags as for create] [--passwo
 ## Acceptance criteria & tests
 
 ### AC1 — List
-**Given** a cluster with a basic credential `orders_app` (declared in the file) and an advanced credential `dba`, **then** `credential list nova-dev-01` prints `NAME TYPE ACCESS IN FILE` rows with `orders_app basic read+write · orders yes` and `dba advanced userRoles -`. `-o json` prints the API objects. No password is shown.
+**Given** a cluster with a basic credential `orders_app` (declared in the file) and an advanced credential `dba`, **then** `credential list nova-dev-01` prints `S.NO NAME TYPE ACCESS IN FILE` rows with `1 orders_app basic read+write · orders yes` and `2 dba advanced userRoles -`. `-o json` prints the API objects. No password is shown.
 
 | Test | Location | Verifies |
 |---|---|---|

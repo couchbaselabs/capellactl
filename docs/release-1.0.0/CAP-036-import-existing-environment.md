@@ -122,7 +122,7 @@ clusters:
 | `test_import_ac8_existing_file_and_stdout` | `tests/scenario/test_import.py` | |
 
 ### AC9 — Turned-off clusters import fine
-**Given** a `turnedOff` cluster, **then** cluster settings and schedule are imported, and a note says child resources could not be read if the API rejects those calls while the cluster is off (they are listed as `# not imported: …` and import exits 0 with a warning).
+**Given** a `turnedOff` cluster, **then** cluster settings, schedule and allowed CIDRs are imported. Buckets and database credentials are not requested, because Capella rejects those calls while the cluster is off (500 for buckets, which would otherwise be retried six times, and 422 for credentials). They are marked `# not imported: buckets and database credentials (the cluster is turnedOff; …)` in the file, and import exits 0 with a warning. The same applies while the cluster is `turningOff` or `turningOn`. Other calls the API rejects are listed as `# not imported: …` in the same way.
 
 | Test | Location | Verifies |
 |---|---|---|

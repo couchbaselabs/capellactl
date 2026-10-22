@@ -20,7 +20,12 @@ from capellactl.cli.console import note, out
 from capellactl.cli.env import pass_state
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.groups import SuggestingGroup
-from capellactl.cli.resource_cmds import _table, complete_cluster_names, file_projects, live_cluster
+from capellactl.cli.resource_cmds import (
+    _list_table,
+    complete_cluster_names,
+    file_projects,
+    live_cluster,
+)
 from capellactl.cli.state import AppState
 from capellactl.config.editor import to_commented
 from capellactl.output.render import dumps
@@ -168,7 +173,7 @@ def scope_list(state: AppState, cluster: str, bucket: str, project: str | None) 
         name = str(s.get("name"))
         colls = [c for c in s.get("collections") or [] if not is_system_collection(name, c.get("name"))]
         rows.append((name, str(len(colls)), _in_file(name in declared, is_system_scope(name))))
-    out(_table(rows))
+    out(_list_table(rows))
 
 
 @scope.command("create", epilog="\b\nExamples:\n  capellactl scope create nova-dev-01 orders billing\n"
@@ -248,7 +253,7 @@ def collection_list(state: AppState, cluster: str, bucket: str, scope_name: str,
         name = str(c.get("name"))
         rows.append((name, str(c.get("maxTTL", "")),
                      _in_file(name in declared, is_system_collection(scope_name, name))))
-    out(_table(rows))
+    out(_list_table(rows))
 
 
 def _coll_args(f: Any) -> Any:

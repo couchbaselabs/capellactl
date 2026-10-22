@@ -104,7 +104,7 @@ def test_binary_ac4_readme_download_table(release, capsys):
         url = f"https://github.com/couchbaselabs/capellactl/releases/download/v1.0.0/{f['file']}"
         row = next(line for line in block.splitlines() if f["file"] in line)
         assert url in row and f["sha256"][:12] in row and dl.PLATFORMS[(f["os"], f["arch"])] in row
-    assert readme.index("## Download") < readme.index(dl.START) < readme.index("## Install")
+    assert readme.index("## Install") < readme.index(dl.START) < readme.index("## Quick start")
     page = (root / "downloads" / "README.md").read_text(encoding="utf-8")
     for words in ("chmod +x", "Get-FileHash", "uname -m", "About This Mac", "shasum -a 256 -c"):
         assert words in page, words
