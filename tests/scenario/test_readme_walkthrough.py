@@ -38,26 +38,26 @@ def test_readme_walkthrough_steps(fake, run, tmp_path, monkeypatch):
     fake.seed_bucket(cid, "orders", memoryAllocationInMb=1024)
     cfg = tmp_path / "capella.yaml"
 
-    monkeypatch.setattr(console, "is_interactive", lambda: True)                                      # step 3
+    monkeypatch.setattr(console, "is_interactive", lambda: True)                                      # step 1
     r = run("configure", input="api-key-token-1234567890\ny\n", no_env=True)
     assert r.exit_code == 0 and "Imported 1 project, 1 cluster, 1 bucket" in r.output and cfg.exists()
 
-    r = run("plan", "--detailed-exitcode", no_env=True)                                               # step 4
+    r = run("plan", "--detailed-exitcode", no_env=True)                                               # step 10
     assert r.exit_code == 0 and "= cluster nova-dev-01" in r.output
 
-    r = run("cluster", "create", "nova-dev-02", input="\n\n\n\n\n\ny\n", no_env=True)                    # step 5
+    r = run("cluster", "create", "nova-dev-02", input="\n\n\n\n\n\ny\n", no_env=True)                    # step 11
     assert r.exit_code == 0 and "cluster nova-dev-02: healthy" in r.output, r.output
     monkeypatch.setattr(console, "is_interactive", lambda: False)
     assert run("--auto-approve", "cluster", "create", "nova-qa-01", "--provider", "gcp", "--size", "medium",
                "--support-plan", "enterprise", no_env=True).exit_code == 0
 
-    for args in (("cluster", "scale", "nova-dev-01", "--nodes", "4"),                                  # step 6
+    for args in (("cluster", "scale", "nova-dev-01", "--nodes", "4"),                                  # step 12
                  ("cluster", "update", "nova-dev-01", "--support-plan", "enterprise"),
                  ("cluster", "update", "nova-dev-01", "--cpu", "8", "--ram", "32")):
         assert run("--auto-approve", *args, no_env=True).exit_code == 0, args
     assert "No changes" in run("--auto-approve", "apply", no_env=True).output
 
-    r = run("--auto-approve", "bucket", "create", "nova-dev-01", "events", "--memory", "1024",          # step 8
+    r = run("--auto-approve", "bucket", "create", "nova-dev-01", "events", "--memory", "1024",          # step 13
             "--storage-backend", "magma", "--durability", "majority", no_env=True)
     assert "+ bucket nova-dev-01/events  couchbase · magma · 1024 MB · 1 replica · durability majority" in r.output
     assert run("--auto-approve", "bucket", "update", "nova-dev-01", "events", "--memory", "2048",
@@ -77,7 +77,7 @@ def test_readme_walkthrough_steps(fake, run, tmp_path, monkeypatch):
     assert "No changes" in run("--auto-approve", "apply", no_env=True).output
 
     pw = {"ORDERS_APP_PW": "Orders-Passw0rd-2026!"}
-    r = run("--auto-approve", "credential", "create", "nova-dev-01", "orders_app", "--privileges",        # step 9
+    r = run("--auto-approve", "credential", "create", "nova-dev-01", "orders_app", "--privileges",        # step 14
             "read+write", "--bucket", "orders", "--password-env", "ORDERS_APP_PW", extra_env=pw, no_env=True)
     assert r.exit_code == 0 and "+ credential nova-dev-01/orders_app  read+write · orders" in r.output, r.output
     assert "${ORDERS_APP_PW}" in cfg.read_text(encoding="utf-8") and "Orders-Passw0rd" not in cfg.read_text(encoding="utf-8")
@@ -90,7 +90,7 @@ def test_readme_walkthrough_steps(fake, run, tmp_path, monkeypatch):
     assert r.exit_code == 0, r.output
     assert "No changes" in run("--auto-approve", "apply", no_env=True).output
 
-    assert run("--auto-approve", "cluster", "protect", "nova-dev-01", "--on", no_env=True).exit_code == 0  # step 10
+    assert run("--auto-approve", "cluster", "protect", "nova-dev-01", "--on", no_env=True).exit_code == 0  # step 15
     r = run("--auto-approve", "cidr", "create", "nova-dev-01", "203.0.113.10/32", "--comment", "Office VPN", no_env=True)
     assert r.exit_code == 0 and "203.0.113.10/32" in run("cidr", "list", "nova-dev-01", no_env=True).output
     assert run("--auto-approve", "cidr", "delete", "nova-dev-01", "203.0.113.10/32", no_env=True).exit_code == 0
@@ -100,7 +100,7 @@ def test_readme_walkthrough_steps(fake, run, tmp_path, monkeypatch):
     assert run("--auto-approve", "cluster", "protect", "nova-dev-01", "--off", no_env=True).exit_code == 0
     assert "No changes" in run("--auto-approve", "apply", no_env=True).output
 
-    fake.clusters[cid]["body"]["description"] = "changed in the Capella UI"                            # step 11
+    fake.clusters[cid]["body"]["description"] = "changed in the Capella UI"                            # step 17
     assert run("sync", "--dry-run", no_env=True).exit_code == 2
     r = run("sync", no_env=True)
     assert "+    description: changed in the Capella UI" in r.output
@@ -111,7 +111,7 @@ def test_readme_walkthrough_steps(fake, run, tmp_path, monkeypatch):
         assert r.exit_code == 0, (args, r.output)
         return str(r.output)
 
-    assert "is off (storage, data and configuration retained)" in ok("cluster", "power", "nova-dev-01", "--off")  # 12
+    assert "is off (storage, data and configuration retained)" in ok("cluster", "power", "nova-dev-01", "--off")  # 16
     assert "cluster nova-dev-01 is on" in ok("cluster", "power", "nova-dev-01", "--on")
     assert "+ schedule nova-dev-01  US/Pacific" in ok("cluster", "schedule", "set", "nova-dev-01", "--timezone",
                                                       "US/Pacific", "--weekdays", "08:00-18:00", "--weekend", "off")
@@ -121,7 +121,7 @@ def test_readme_walkthrough_steps(fake, run, tmp_path, monkeypatch):
     assert "scaled data,index,query: 4 → 5" in ok("cluster", "scale", "nova-dev-01", "--step", "+1", "--max", "6")
     assert "checks: memory ok" in ok("cluster", "scale", "nova-dev-01", "--step", "-1", "--min", "3")
 
-    r = run("drift", "--detailed-exitcode", no_env=True)                                               # step 13
+    r = run("drift", "--detailed-exitcode", no_env=True)                                               # steps 18, 23
     assert r.exit_code in (0, 2) and "Drift" in r.output or "No drift" in r.output, r.output
     ok("apply", "--prune")
     assert "No drift" in run("drift", no_env=True).output
@@ -129,7 +129,7 @@ def test_readme_walkthrough_steps(fake, run, tmp_path, monkeypatch):
     r = run("--auto-approve", "destroy", no_env=True)
     assert r.exit_code == 0 and "Destroy complete" in r.output, r.output
 
-    r = run("--auto-approve", "apply", no_env=True)                                                    # step 14
+    r = run("--auto-approve", "apply", no_env=True)                                                    # step 23
     assert r.exit_code == 0, r.output  # capella.yaml was kept: apply builds it again
     write = run("--auto-approve", "cluster", "scale", "nova-dev-01", "--nodes", "4", no_env=True)
     assert write.exit_code == 0, write.output

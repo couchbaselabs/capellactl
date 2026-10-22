@@ -34,8 +34,8 @@ def test_credential_cli_ac1_list(fake, run, write_config, cluster):
     r = run("credential", "list", "nova-dev-01")
     assert r.exit_code == 0, r.output
     lines = [" ".join(x.split()) for x in r.output.splitlines()]
-    assert "NAME TYPE ACCESS IN FILE" in lines
-    assert "orders_app basic read+write · orders yes" in lines and "dba advanced userRoles -" in lines
+    assert "S.NO NAME TYPE ACCESS IN FILE" in lines
+    assert "1 orders_app basic read+write · orders yes" in lines and "2 dba advanced userRoles -" in lines
     j = run("-o", "json", "credential", "list", "nova-dev-01")
     assert sorted(u["name"] for u in json.loads(j.output)) == ["dba", "orders_app"]
     assert_no_secret(r.output + j.output, "Old!Passw0rd-xyz")

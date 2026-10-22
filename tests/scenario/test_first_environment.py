@@ -41,28 +41,28 @@ def _end_state(fake, run, cfg):
 
 @pytest.mark.story("CAP-033", "AC5")
 def test_docs_ac5_first_environment_from_scratch(fake, run, tmp_path, monkeypatch):
-    """Guide steps 3 → 4 → 6 → 8 → 9: configure, create a project, deploy a cluster, add a bucket and a credential."""
+    """Guide steps 1 → 3 → 5 → 6 → 9: configure, create a project, deploy a cluster, add a bucket and a credential."""
     guide = _guide_commands()
     cfg = tmp_path / "capella.yaml"
     monkeypatch.setattr(console, "is_interactive", lambda: True)
 
-    assert "capellactl configure" in guide                                                             # step 3
+    assert "capellactl configure" in guide                                                             # step 1
     r = run("configure", input=f"{KEY}\ny\n", no_env=True)
     assert r.exit_code == 0, r.output
     assert "profile 'default' saved" in r.output
     assert "This organization has no projects yet. Next: capellactl project create NAME" in r.output
 
-    assert "capellactl project create" in guide                                                        # step 4
+    assert "capellactl project create" in guide                                                        # step 3
     r = run("project", "create", "nova-dev", "--description", "Nova development", input="y\n", no_env=True)
     assert r.exit_code == 0, r.output
     assert cfg.exists()
 
-    assert "capellactl cluster create" in guide                                                        # step 6
+    assert "capellactl cluster create" in guide                                                        # step 5
     r = run("cluster", "create", "nova-dev-01", input="\n\n\n\n\n\ny\n", no_env=True)  # Enter: every default
     assert r.exit_code == 0, r.output
     assert "cluster nova-dev-01: healthy" in r.output
 
-    assert "capellactl bucket create" in guide                                                         # step 8
+    assert "capellactl bucket create" in guide                                                         # step 6
     r = run("bucket", "create", "nova-dev-01", "orders", "--memory", "1024", input="y\n", no_env=True)
     assert r.exit_code == 0, r.output
 

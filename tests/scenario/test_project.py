@@ -81,8 +81,10 @@ def test_project_cli_ac6_list_table_and_json(fake, run, write_config):
         fake.seed_project(n, description=f"{n} desc")
     r = run("project", "list")
     assert r.exit_code == 0
-    assert r.output.splitlines()[0].split() == ["ID", "NAME", "DESCRIPTION", "CREATED", "IN", "FILE"]
+    assert r.output.splitlines()[0].split() == ["S.NO", "NAME", "DESCRIPTION", "CREATED", "IN", "FILE", "ID"]
     assert len(r.output.strip().splitlines()) == 4
+    rows = [ln.split() for ln in r.output.splitlines()[1:]]
+    assert [row[0] for row in rows] == ["1", "2", "3"] and all(row[-1] in fake.projects for row in rows)
     r = run("-o", "json", "project", "list")
     import json
     assert [p["name"] for p in json.loads(r.output)] == ["a", "b", "c"]

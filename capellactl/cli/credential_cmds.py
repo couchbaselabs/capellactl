@@ -20,7 +20,13 @@ from capellactl.cli.console import note, out
 from capellactl.cli.env import pass_state
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.groups import SuggestingGroup
-from capellactl.cli.resource_cmds import _table, complete_cluster_names, file_cluster, live_cluster
+from capellactl.cli.resource_cmds import (
+    _list_table,
+    _table,
+    complete_cluster_names,
+    file_cluster,
+    live_cluster,
+)
 from capellactl.cli.state import AppState
 from capellactl.config.editor import put, to_commented
 from capellactl.output.password_gen import FORBIDDEN
@@ -130,7 +136,7 @@ def credential_list(state: AppState, cluster: str, project: str | None) -> None:
     for u in items:
         access = "userRoles" if is_advanced(u) else access_summary(u.get("access"))
         rows.append((str(u.get("name")), _type(u), access, "yes" if u.get("name") in declared else "-"))
-    out(_table(rows))
+    out(_list_table(rows))
 
 
 @credential.command("get")

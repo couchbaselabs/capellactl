@@ -242,9 +242,9 @@ def test_bucket_list_and_get(fake, run, write_config):
     r = run("bucket", "list", "nova-dev-01")
     assert r.exit_code == 0, r.output
     lines = r.output.splitlines()
-    assert lines[0].split() == ["NAME", "TYPE", "STORAGE", "MEMORY", "MB", "REPLICAS", "DURABILITY", "TTL", "ITEMS",
+    assert lines[0].split() == ["S.NO", "NAME", "TYPE", "STORAGE", "MEMORY", "MB", "REPLICAS", "DURABILITY", "TTL", "ITEMS",
                                 "IN", "FILE"]
-    assert lines[1].split() == ["orders", "couchbase", "magma", "1024", "1", "majority", "0", "1,204", "yes"]
+    assert lines[1].split() == ["1", "orders", "couchbase", "magma", "1024", "1", "majority", "0", "1,204", "yes"]
     assert lines[2].split()[-1] == "-"
     r = run("bucket", "get", "nova-dev-01", "orders")
     assert r.exit_code == 0 and "storageBackend" in r.output and "items: 1,204" in r.output

@@ -20,7 +20,12 @@ from capellactl.cli.console import note, out
 from capellactl.cli.env import pass_state
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.groups import SuggestingGroup
-from capellactl.cli.resource_cmds import _table, complete_cluster_names, file_cluster, live_cluster
+from capellactl.cli.resource_cmds import (
+    _list_table,
+    complete_cluster_names,
+    file_cluster,
+    live_cluster,
+)
 from capellactl.cli.state import AppState
 from capellactl.config.crossref import normalize_cidr
 from capellactl.config.editor import put, to_commented
@@ -71,7 +76,7 @@ def cidr_list(state: AppState, cluster: str, project: str | None) -> None:
     for c in items:
         rows.append((canonical(str(c.get("cidr", ""))), str(c.get("comment") or ""), str(c.get("expiresAt") or "never"),
                      str(c.get("status") or ""), "yes" if canonical(str(c.get("cidr", ""))) in declared else "-"))
-    out(_table(rows))
+    out(_list_table(rows))
 
 
 @cidr.command("create", epilog="\b\nExamples:\n  capellactl cidr create nova-dev-01 203.0.113.10/32 --comment \"Office VPN\"\n"

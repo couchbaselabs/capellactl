@@ -1,21 +1,97 @@
 # capellactl
 
-`capellactl` is a command-line tool that sets up and manages a Couchbase Capella environment from one YAML file: projects, clusters, allowed IP ranges, buckets, scopes, collections and database credentials. It uses the [Capella Management API v4.0](https://docs.couchbase.com/cloud/management-api-reference/index.html).
+`capellactl` is a command-line tool for Couchbase Capella. It creates and manages projects, clusters, buckets, scopes,
+collections, database credentials and allowed IP ranges with short, readable commands, and keeps a record of your
+whole environment in one file, `capella.yaml`.
 
-## What it does
+## Why capellactl?
 
-capellactl keeps `capella.yaml`, a description of your environment, in step with Capella: commands change Capella and record the change in the file, and `plan`/`apply` make Capella match the file.
+Everything in Capella can be automated through the [Capella Management API v4.0](https://docs.couchbase.com/cloud/management-api-reference/index.html),
+and capellactl is built on it. But calling the API directly is slow work: you look up URL paths, copy organization,
+project and cluster IDs between calls, write JSON bodies, poll until a cluster is ready, and read through nested
+responses. Adding one bucket looks like this:
 
-- **Idempotent:** running `apply` again when nothing changed reports `No changes`; safe from CI or cron.
-- **Plan first:** `plan` shows every create, update and delete before anything happens.
-- **Safe:** nothing is deleted unless you ask; changes Capella cannot make in place (for example a cloud region) are refused, never done by delete and re-create.
-- **No hand-editing, no state file:** capellactl writes `capella.yaml` for you; Capella is the source of truth (`capellactl sync` brings in changes made in the Capella UI).
+```bash
+curl -X POST "https://cloudapi.cloud.couchbase.com/v4/organizations/$ORG_ID/projects/$PROJECT_ID/clusters/$CLUSTER_ID/buckets" \
+  -H "Authorization: Bearer $CAPELLA_API_KEY" -H "Content-Type: application/json" \
+  -d '{"name": "orders", "type": "couchbase", "storageBackend": "magma", "memoryAllocationInMb": 1024}'
+```
 
-## Download
+With capellactl you use names instead of IDs, and it asks before changing anything:
 
-One file for your computer, nothing else to install: no Python, pip or Docker. Each [GitHub Release](https://github.com/couchbaselabs/capellactl/releases) has an executable per platform:
+```bash
+capellactl bucket create dev-01 orders --memory 1024 --storage-backend magma
+```
+
+## What you get
+
+- **Commands that read like the task.** `cluster create`, `cluster scale`, `bucket create`, `credential create`,
+  `cidr create`: no URLs, IDs or JSON. Leave out an option and capellactl asks for it, with a sensible default.
+- **A look before every change.** Each command shows its plan (what will be created, changed or deleted) and asks
+  `[y/N]`. Deleting anything that holds data asks you to type its name.
+- **Waits for you.** Cluster deployments, scaling and power changes wait until the cluster is healthy, with progress
+  on screen, and print the connection string when it is ready.
+- **Your environment in one file.** Every command records its change in `capella.yaml`, which capellactl writes for
+  you. Keep it in Git to see who changed what; `capellactl apply` rebuilds the whole environment from it, and
+  `capellactl sync` brings in changes made in the Capella UI. There is no separate state file: Capella is the source
+  of truth.
+- **Safe by default.** Nothing is deleted unless you ask. Changes Capella cannot make in place, such as moving a
+  cluster to another region, are refused instead of done by delete and re-create. Scaling in is checked against
+  bucket memory and replicas first, and deletion protection blocks every way of deleting a cluster.
+- **Secure credentials.** The API key is stored in your OS keychain. Passwords are read from environment variables or
+  files, never written to `capella.yaml` or printed.
+- **Ready for scripts and CI/CD.** Running `apply` again when nothing changed reports `No changes`. Every question
+  has an option, `--auto-approve` replaces the prompts, `-o json` gives machine-readable output, and exit codes tell a
+  pipeline what happened (`capellactl help ci`).
+- **Saves money.** Turn clusters off and on, set an office-hours hibernation schedule, or scale one node at a time
+  within limits.
+
+capellactl 1.0 covers the operations listed in [API coverage](docs/release-1.0.0/API-COVERAGE.md). For anything
+else, use the Capella UI or the Management API directly.
+
+## Install
+
+capellactl has not had its first release yet, so install it from source. It takes a few minutes and needs
+[Git](https://git-scm.com/) and Python 3.10–3.13.
+
+**1. Check your Python version.** On many Macs, `python3` is older than 3.10:
+
+```bash
+python3 --version                  # 3.10, 3.11, 3.12 or 3.13 is fine
+python3.12 --version               # if python3 is older, try a specific version
+```
+
+If you have no suitable version, install one: `brew install python@3.12` on macOS, or from
+[python.org](https://www.python.org/downloads/). Ubuntu 22.04 and later already include a suitable `python3`.
+
+**2. Install capellactl.** Replace `python3.12` with the command that printed a suitable version:
+
+```bash
+git clone https://github.com/couchbaselabs/capellactl.git && cd capellactl
+python3.12 -m venv .venv
+.venv/bin/pip install -e .
+source .venv/bin/activate          # puts capellactl on your PATH; run again in each new terminal
+capellactl --version
+```
+```
+capellactl 1.0.0.devN+g… (Management API v4.0)
+Licensed under Apache-2.0 · Copyright 2026 Couchbase, Inc.
+```
+
+On Windows, activate with `.venv\Scripts\activate` instead. To update later, run `git pull` in the `capellactl`
+folder; the environment picks up the new code. Then continue with [Quick start](#quick-start), or the step-by-step
+[getting started guide](docs/getting-started.md).
+
+### After the first release (1.0.0)
+
+These are not available yet. From 1.0.0 on, each [GitHub Release](https://github.com/couchbaselabs/capellactl/releases)
+will offer two more ways to install:
+
+- **A standalone executable**, one file per platform, with nothing else to install (no Python, pip or Docker):
 
 <!-- downloads:start -->
+**Not released yet**: these files are attached to each [GitHub Release](https://github.com/couchbaselabs/capellactl/releases) from 1.0.0 on. Until then, install from source.
+
 | Your computer | File | Size | SHA-256 |
 |---|---|---|---|
 | macOS 12+, Apple silicon (M1–M4) | `capellactl-<version>-macos-arm64` | | |
@@ -24,29 +100,12 @@ One file for your computer, nothing else to install: no Python, pip or Docker. E
 | Linux ARM64, glibc 2.28+ (AWS Graviton, Ampere) | `capellactl-<version>-linux-arm64` | | |
 | Windows 10/11 and Server 2019+, 64-bit | `capellactl-<version>-windows-x86_64.exe` | | |
 
-Not released yet: from release 1.0.0 each file is attached to its [GitHub Release](https://github.com/couchbaselabs/capellactl/releases), and this table lists its size and SHA-256.
-
 How to pick, verify and run the right file: [downloads/README.md](downloads/README.md).
 <!-- downloads:end -->
 
-## Install
+- **A Python wheel**, installed with `pipx install ./capellactl-1.0.0-py3-none-any.whl`.
 
-
-Requires Python 3.10 or later. Each [GitHub Release](https://github.com/couchbaselabs/capellactl/releases) has the wheel, the source archive and `SHA256SUMS`:
-
-```bash
-sha256sum -c SHA256SUMS                          # macOS: shasum -a 256 -c SHA256SUMS
-pipx install ./capellactl-1.0.0-py3-none-any.whl  # or: pip install ./capellactl-1.0.0.tar.gz
-capellactl --version
-```
-
-From a clone of the repository:
-
-```bash
-python3.12 -m venv .venv && .venv/bin/pip install -e .
-source .venv/bin/activate && capellactl --version
-make dist                                        # builds dist/: source archive, wheel and SHA256SUMS
-```
+Building these files (`make dist`) and the development setup are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Quick start
 

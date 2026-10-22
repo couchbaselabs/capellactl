@@ -109,8 +109,10 @@ def table(manifest: dict[str, Any] | None) -> str:
     if manifest is None:
         rows = [f"| {who} | `capellactl-<version>-{o}-{a}{'.exe' if o == 'windows' else ''}` | | |"
                 for (o, a), who in PLATFORMS.items()]
-        note = ("Not released yet: from release 1.0.0 each file is attached to its "
-                f"[GitHub Release](https://github.com/{REPO}/releases), and this table lists its size and SHA-256.")
+        note = ("**Not released yet**: these files are attached to each "
+                f"[GitHub Release](https://github.com/{REPO}/releases) from 1.0.0 on. Until then, install from "
+                "source.")
+        return "\n".join([note, "", "| Your computer | File | Size | SHA-256 |", "|---|---|---|---|", *rows])
     else:
         v = manifest["version"]
         rows = [f"| {PLATFORMS.get((f['os'], f['arch']), f['os'] + ' ' + f['arch'])} | [{f['file']}]({_url(v, f['file'])}) "

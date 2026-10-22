@@ -83,7 +83,7 @@ def test_bucket_free_delete_and_list(fake, run, free):
     pid, cid = free
     fake.seed_bucket(cid, "orders", stats={"itemCount": 7, "memoryUsedInMib": 12})
     r = run("bucket", "list", "nova-dev")
-    assert r.exit_code == 0 and r.output.splitlines()[1].split()[0] == "orders"
+    assert r.exit_code == 0 and r.output.splitlines()[1].split()[:2] == ["1", "orders"]
     r = run("--auto-approve", "bucket", "delete", "nova-dev", "orders")
     assert r.exit_code == 0, r.output
     assert "orders · 7 items · 12 MB used" in r.output

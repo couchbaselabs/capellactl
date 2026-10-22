@@ -14,7 +14,7 @@ As a **customer engineer new to Capella**, I want clear examples and a short run
 
 | Document | Content |
 |---|---|
-| `docs/getting-started.md` | Bootstrap API key in the Capella UI and its roles; install; `configure`; then `init` (new environment) or `import` (existing one); `validate` → `plan` → `apply` |
+| `docs/getting-started.md` | For a first-time user, from simple to advanced, one command per step: API key and install; *Connect to Capella* (read-only: `configure`, list); *Create your first cluster (free tier)* (project, cluster, bucket, scope/collection, allowed IP, credential, then `plan`); *Manage a provisioned cluster* (change, protect, save money, sync, drift); *Clean up*; *Build a whole environment in one go* (`init` → `validate` → `plan` → `apply`, then `init --non-interactive`, clone, destroy) |
 | `docs/runbook.md` | Scale out / in / up; power off/on; set up, pause, resume a hibernation schedule; add a bucket, collection or app credential; rotate a password; add an office IP; recover from `deploymentFailed`; tear down |
 | `docs/reference.md` | Generated from `config/schema.json`: every field, API mapping, default, updatable vs immutable |
 | `docs/migrating-from-scale-script.md` | Nova script → `capellactl` mapping (CAP-018 AC7) |

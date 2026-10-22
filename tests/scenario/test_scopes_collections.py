@@ -216,9 +216,9 @@ def test_scope_cli_ac1_create_records_and_applies(fake, run, write_config, tmp_p
     assert r.exit_code == 0 and "scope nova-dev-01/orders/billing already exists in Capella" in r.output
     assert fake.writes() == []
     lines = run("scope", "list", "nova-dev-01", "orders").output.splitlines()
-    assert lines[0].split() == ["NAME", "COLLECTIONS", "IN", "FILE"]
-    assert ["billing", "0", "yes"] in [ln.split() for ln in lines]
-    assert ["_system", "0", "system"] in [ln.split() for ln in lines]
+    assert lines[0].split() == ["S.NO", "NAME", "COLLECTIONS", "IN", "FILE"]
+    assert ["billing", "0", "yes"] in [ln.split()[1:] for ln in lines]
+    assert ["_system", "0", "system"] in [ln.split()[1:] for ln in lines]
 
 
 @pytest.mark.story("CAP-025", "AC1")
@@ -254,7 +254,7 @@ def test_collection_cli_ac1_create_adds_scope(fake, run, write_config, tmp_path)
                                        ("POST", "/scopes/inventory/collections", {"name": "items", "maxTTL": 3600})]
     r = run("--auto-approve", "collection", "create", "nova-dev-01", "orders", "inventory", "items")
     assert r.exit_code == 4 and "collection update nova-dev-01 orders inventory items" in r.output
-    lines = [ln.split() for ln in run("collection", "list", "nova-dev-01", "orders", "inventory").output.splitlines()]
+    lines = [ln.split()[1:] for ln in run("collection", "list", "nova-dev-01", "orders", "inventory").output.splitlines()]
     assert ["items", "3600", "yes"] in lines
 
 

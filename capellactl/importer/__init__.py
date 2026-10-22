@@ -34,6 +34,7 @@ NO_PROJECTS_TEMPLATE = """\
 DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 DISK_KEYS = ("type", "storage", "iops", "autoExpansion")
 SYSTEM_SCOPES = {"_system"}
+POWERED_OFF = {"turnedOff", "turningOff", "turningOn"}  # no bucket or credential reads in these states
 
 
 @dataclass
@@ -290,6 +291,13 @@ def build_document(
             if active:
                 cl["allowedCidrs"] = active
                 counts["allowed CIDR"] += len(active)
+
+        if state in POWERED_OFF:  # Capella answers 500 (retried) for buckets and 422 for credentials: don't ask
+            cl[ids.next("comment")] = (f"not imported: buckets and database credentials (the cluster is {state};\n"
+                                       "run capellactl import again when it is on)")
+            res.warnings.append(f"cluster {body['name']}: buckets and database credentials not imported ({state})")
+            exported_clusters.append(cl)
+            continue
 
         if free:
             buckets = guarded("buckets", lambda *a: ep.list_free_buckets(*a)[0], client, pid, cid)

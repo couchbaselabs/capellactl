@@ -72,7 +72,7 @@ CLI: `capellactl project list`, `project get NAME`, `project update NAME --descr
 | `test_project_ac5_pinned_id_missing_never_creates` | same | Zero POSTs |
 
 ### AC6 — List and get
-**Given** three projects, **then** `project list` prints a table with `ID, NAME, DESCRIPTION, CREATED` and `-o json` prints the API objects; `project get nova-dev` prints one.
+**Given** three projects, **then** `project list` prints a table with `S.NO, NAME, DESCRIPTION, CREATED, IN FILE, ID` (rows numbered 1, 2, 3 …; the ID last, as in every list) and `-o json` prints the API objects; `project get nova-dev` prints one.
 
 | Test | Location | Verifies |
 |---|---|---|

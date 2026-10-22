@@ -27,6 +27,11 @@ def _table(rows: Sequence[tuple[str, ...]]) -> str:
     return "\n".join("  ".join(str(c).ljust(widths[i]) for i, c in enumerate(r)).rstrip() for r in rows)
 
 
+def _list_table(rows: Sequence[tuple[str, ...]]) -> str:
+    """A list command's table: rows numbered 1, 2, 3 … in an S.NO column."""
+    return _table([("S.NO", *rows[0])] + [(str(n), *r) for n, r in enumerate(rows[1:], 1)])
+
+
 def complete_cluster_names(ctx: click.Context, param: click.Parameter, incomplete: str) -> list[CompletionItem]:
     """Cluster names from the config file in the current directory; no API call (CAP-034 AC6)."""
     import yaml
@@ -166,11 +171,10 @@ def project_list(state: AppState) -> None:
     declared = file_projects(state)
     names = {p.get("name") for p in declared}
     ids = {p.get("id") for p in declared if p.get("id")}
-    rows = [("ID", "NAME", "DESCRIPTION", "CREATED", "IN FILE")]
-    rows += [(str(p.get("id")), str(p.get("name")), str(p.get("description") or ""),
-              str((p.get("audit") or {}).get("createdAt", "")),
-              "yes" if (p.get("id") in ids or p.get("name") in names) else "-") for p in items]
-    out(_table(rows))
+    rows = [("NAME", "DESCRIPTION", "CREATED", "IN FILE", "ID")]
+    rows += [(str(p.get("name")), str(p.get("description") or ""), str((p.get("audit") or {}).get("createdAt", "")),
+              "yes" if (p.get("id") in ids or p.get("name") in names) else "-", str(p.get("id"))) for p in items]
+    out(_list_table(rows))
 
 
 @project.command("get")
@@ -410,15 +414,15 @@ def cluster() -> None:
 
 
 def _cluster_rows(items: list[dict[str, Any]], project: bool = False) -> list[tuple[str, ...]]:
-    """Table rows; `project=True` adds a PROJECT column (items then carry projectName)."""
-    head = ("NAME", "ID", "STATE", "PROVIDER", "REGION", "NODES", "PLAN")
-    rows: list[tuple[str, ...]] = [(("PROJECT",) if project else ()) + head]
+    """Table rows, the cluster's name first; `project=True` adds a PROJECT column after it (items carry projectName)."""
+    rows: list[tuple[str, ...]] = [("NAME", *(("PROJECT",) if project else ()), "STATE", "PROVIDER", "REGION", "NODES",
+                                    "PLAN", "ID")]
     for c in items:
         cp = c.get("cloudProvider") or {}
         nodes = sum(int(g.get("numOfNodes") or 0) for g in c.get("serviceGroups") or [])
-        row = (str(c.get("name")), str(c.get("id")), str(c.get("currentState")), str(cp.get("type")),
-               str(cp.get("region")), str(nodes), str((c.get("support") or {}).get("plan", "")))
-        rows.append(((str(c.get("projectName")),) if project else ()) + row)
+        rows.append((str(c.get("name")), *((str(c.get("projectName")),) if project else ()), str(c.get("currentState")),
+                     str(cp.get("type")), str(cp.get("region")), str(nodes),
+                     str((c.get("support") or {}).get("plan", "")), str(c.get("id"))))
     return rows
 
 
@@ -435,7 +439,7 @@ def cluster_list(state: AppState, project: str | None) -> None:
         projects = sorted(ep.list_projects(client), key=lambda p: str(p.get("name")))
     items = [{**c, "projectId": str(p["id"]), "projectName": str(p.get("name"))}
              for p in projects for c in sorted(ep.list_clusters(client, str(p["id"])), key=lambda c: str(c.get("name")))]
-    out(dumps(items) if state.json else _table(_cluster_rows(items, project=True)))
+    out(dumps(items) if state.json else _list_table(_cluster_rows(items, project=True)))
 
 
 @cluster.command("get")
