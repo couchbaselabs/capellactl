@@ -160,6 +160,17 @@ Parent → child: when a parent is deleted in Capella, its children are deleted 
 | `test_sync_ac13_keeps_project_never_deployed` | same | |
 | `test_sync_ac13_removes_cluster_deleted_in_capella` | same | With and without `--cluster` |
 
+### AC14 — Sync never drops what Capella cannot return right now
+Capella does not answer bucket and credential reads while a cluster is `turnedOff`, `turningOff` or `turningOn`, and any read can fail. Sync must not mistake "not readable now" for "deleted": the file would lose buckets and credentials that still exist, a `password: ${VAR}` reference would be lost for good, and `apply --prune` after the cluster is back on would delete those buckets and credentials in Capella.
+
+**Given** a cluster recorded with buckets and credentials (one with `password: ${APP_PASSWORD}`), **when** it is turned off and `capellactl sync` runs, **then** its buckets, scopes, collections and credentials are kept exactly as they were, the file notes `kept from the previous capella.yaml … (not readable now: turnedOff; the next sync refreshes them)`, the output says `kept from capella.yaml (turnedOff)` instead of `not imported`, and `sync --dry-run` exits 0. **When** it is on again, `apply --prune` deletes nothing and the next sync refreshes it with the password reference kept. **Given** a read of allowed CIDRs, buckets, a bucket's scopes, credentials or the schedule that fails with an API error, **then** the same applies to that part only. **Given** a cluster that was never recorded with that part (first sync while it is off), **then** the `not imported` note and warning stay.
+
+| Test | Location | Verifies |
+|---|---|---|
+| `test_sync_ac14_turned_off_cluster_keeps_buckets_and_credentials` | `tests/scenario/test_sync.py` | Kept, dry run 0, prune deletes nothing, password kept |
+| `test_sync_ac14_read_error_keeps_previous_values` | same | `GET …/users` 500 |
+| `test_sync_ac14_first_sync_of_turned_off_cluster_still_notes_it` | same | |
+
 ## Out of scope
 - Commands for buckets, scopes, collections, credentials, IP allowlist and schedules (they arrive with CAP-022 to CAP-028, following the same pattern).
 - Deleting clusters (CAP-014).
@@ -182,6 +193,7 @@ Parent → child: when a parent is deleted in Capella, its children are deleted 
 - Azure premium disks (P6 … P60) have a size and IOPS set by their type. Capella returns `storage`/`iops` for them on `GET` but refuses them in a request (`422 Cannot specify disk size or IOPS for disk type P6`), so every `cluster update` of an Azure cluster failed (found 2026-10-07). Create and update bodies now drop them for every Azure type except Ultra (`resources/cluster.py::fixed_size_disk`), `cluster update --disk-size/--disk-iops` is refused for those disks, and the fake Capella behaves the same way.
 - A key a command adds (for example `description` from `cluster update`, `deletionProtection` from `cluster protect`) used to be appended after the cluster's buckets and credentials, where users did not find it (2026-10-07). `config/editor.py::put` now inserts new keys in import's order (`CLUSTER_KEY_ORDER`), and sync keeps a carried-over `password:` right after the credential's name.
 - On an invalid interactive answer, the question round repeats with the previous good answers as defaults, but not the answer that caused the error.
+- Found 2026-10-23: sync rebuilt a turned-off cluster without its buckets and credentials, so they disappeared from capella.yaml (and `apply --prune` would then have deleted them once the cluster was on). Added AC14: the importer now records which parts of each cluster it could not read (`ImportResult.unread`), and `cli/sync.py::_keep_unread` keeps those parts from the previous file.
 - The empty-project template that told users to uncomment YAML was replaced by a pointer to `capellactl cluster create`; help topics and the README no longer ask anyone to edit the file.
 
 ### Tests by AC
@@ -201,3 +213,4 @@ Parent → child: when a parent is deleted in Capella, its children are deleted 
 | AC11 | `test_cluster_cli_ac11_create_then_in_sync` (tests/scenario/test_cluster_cli.py)<br>`test_sync_ac11_only_gets` (tests/scenario/test_sync.py) |
 | AC12 | `test_readme_ac12_no_manual_edit_steps` (tests/scenario/test_readme_walkthrough.py)<br>`test_readme_walkthrough_steps` (tests/scenario/test_readme_walkthrough.py) |
 | AC13 | `test_sync_ac13_removes_project_deleted_in_capella` (tests/scenario/test_sync.py)<br>`test_sync_ac13_last_project_deleted_leaves_valid_file` (tests/scenario/test_sync.py)<br>`test_sync_ac13_keeps_project_never_deployed` (tests/scenario/test_sync.py)<br>`test_sync_ac13_removes_cluster_deleted_in_capella` (tests/scenario/test_sync.py) |
+| AC14 | `test_sync_ac14_turned_off_cluster_keeps_buckets_and_credentials` (tests/scenario/test_sync.py)<br>`test_sync_ac14_read_error_keeps_previous_values` (tests/scenario/test_sync.py)<br>`test_sync_ac14_first_sync_of_turned_off_cluster_still_notes_it` (tests/scenario/test_sync.py) |

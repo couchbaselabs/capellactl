@@ -48,7 +48,7 @@ def test_project_create_ac3_existing_name(fake, run, tmp_path):
     fake.seed_project("nova-qa")
     r = run("--auto-approve", "project", "create", "nova-qa")
     assert r.exit_code == 4
-    assert "project nova-qa already exists; to add it to capella.yaml run 'capellactl import --project nova-qa'" in r.output
+    assert "project nova-qa already exists; to add it to capella.yaml run 'capellactl sync --project nova-qa'" in r.output
     assert fake.writes() == [] and not (tmp_path / "capella.yaml").exists()
 
 

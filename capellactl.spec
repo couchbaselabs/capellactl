@@ -8,9 +8,10 @@ from PyInstaller.utils.hooks import collect_data_files, copy_metadata
 
 ROOT = Path(SPECPATH)  # noqa: F821 - defined by PyInstaller
 
-# Read at run time from inside the package: the config schema, the init presets and the help pages.
+# Read at run time from inside the package: the config schema, the init presets, the known node sizes and the help pages.
 datas = [(str(ROOT / "capellactl" / "config" / "schema.json"), "capellactl/config"),
-         (str(ROOT / "capellactl" / "config" / "presets.yaml"), "capellactl/config")]
+         (str(ROOT / "capellactl" / "config" / "presets.yaml"), "capellactl/config"),
+         (str(ROOT / "capellactl" / "config" / "compute.yaml"), "capellactl/config")]
 datas += [(str(p), "capellactl/help") for p in sorted((ROOT / "capellactl" / "help").glob("*.md"))]
 # Licence and notices, inside the executable as well as next to it in the release (CAP-044, AC7).
 datas += [(str(ROOT / name), ".") for name in ("LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md", "BINARY_NOTICES.md")]

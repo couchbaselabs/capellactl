@@ -20,6 +20,7 @@ FREE_TIER_REGIONS = {
     "gcp": ["us-central1", "europe-west1", "asia-east1"],
     "azure": ["eastus", "swedencentral", "koreacentral"],
 }
+SINGLE_NODE_SERVICES = {"data", "index", "query", "search"}  # spec: configurationType singleNode
 FREE_TIER_FORBIDDEN = ("configurationType", "couchbaseServer", "serviceGroups", "availability", "support", "zones",
                        "cmekId", "enablePrivateDNSResolution", "hibernation")
 PROVISIONED_REQUIRED = ("availability", "support", "serviceGroups")
@@ -306,6 +307,13 @@ def _check_project(cfg: Config, entry: Any, add: Any, dupes: Any) -> None:
         # Service groups
         if groups and not any("data" in (g.get("services") or []) for g in groups):
             add(cp + ("serviceGroups",), "at least one service group must run the data service", "scaling")
+        seen_keys: set[str] = set()
+        for g in groups:
+            key = ",".join(sorted(g.get("services") or []))
+            if key in seen_keys:
+                add(cp + ("serviceGroups",), f"two groups run {key}; each group needs a different set of services",
+                    "scaling")
+            seen_keys.add(key)
         total = 0
         for gi, g in enumerate(groups):
             gp = cp + ("serviceGroups", gi)
@@ -327,6 +335,10 @@ def _check_project(cfg: Config, entry: Any, add: Any, dupes: Any) -> None:
                 add(gp + ("node", "disk", "storage"), f"storage is required for {provider} disks")
             if provider == "aws" and disk_type and ((g.get("node") or {}).get("disk") or {}).get("iops") is None:
                 add(gp + ("node", "disk", "iops"), "iops is required for aws disks")
+            if provider in ("aws", "gcp") and ((g.get("node") or {}).get("disk") or {}).get("autoExpansion") is not None:
+                add(gp + ("node", "disk", "autoExpansion"), "autoExpansion is for azure disks only")
+            if single and set(g.get("services") or []) - SINGLE_NODE_SERVICES:
+                add(gp + ("services",), "singleNode clusters run only data, index, query and search")
         if not single and total > 27:
             add(cp + ("serviceGroups",), f"a cluster can have at most 27 nodes (declared {total})", "scaling")
         if single:

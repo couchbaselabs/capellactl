@@ -392,7 +392,7 @@ def load_config(path: str | Path, env: dict[str, str] | None = None) -> Config:
     try:
         text = p.read_text(encoding="utf-8")
     except FileNotFoundError:
-        raise ConfigError([ConfigIssue(str(p), "file not found; run 'capellactl import' to write it from your Capella project")]) from None
+        raise ConfigError([ConfigIssue(str(p), "file not found; run 'capellactl sync' to write it from your Capella project")]) from None
     try:
         data, lines = _load_yaml(text)
     except yaml.YAMLError as exc:

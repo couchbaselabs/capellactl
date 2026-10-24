@@ -58,7 +58,7 @@ def test_sync_ac9_second_run_in_sync(fake, run, imported):
     fake.clusters[next(iter(fake.clusters))]["body"]["description"] = "changed"
     run("sync")
     r = run("sync")
-    assert r.exit_code == 0 and "capella.yaml is already in sync with Capella." in r.output
+    assert r.exit_code == 0 and "capella.yaml is already in sync with Capella: 1 project, 1 cluster." in r.output
 
 
 @pytest.mark.story("CAP-038", "AC10")
@@ -178,3 +178,64 @@ def test_sync_ac9_file_with_wildcard_still_loads(fake, run, imported):
         {"privileges": ["data_reader"], "resources": {"buckets": [{"name": "demo", "scopes": [{"name": "*"}]}]}}]}]
     imported.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
     assert run("validate").exit_code == 0
+
+
+def _seed_bucket_and_credential(fake):
+    cid = next(iter(fake.clusters))
+    fake.seed_bucket(cid, "orders", memoryAllocationInMb=1024)
+    fake.users["u-1"] = {"id": "u-1", "_cluster": cid, "name": "app", "access": [
+        {"privileges": ["data_reader"], "resources": {"buckets": [{"name": "orders"}]}}]}
+    return cid
+
+
+@pytest.mark.story("CAP-038", "AC14")
+def test_sync_ac14_turned_off_cluster_keeps_buckets_and_credentials(fake, run, imported):
+    cid = _seed_bucket_and_credential(fake)
+    assert run("sync").exit_code == 0
+    data = yaml.safe_load(imported.read_text(encoding="utf-8"))
+    data["projects"][0]["clusters"][0]["databaseCredentials"][0]["password"] = "${APP_PASSWORD}"
+    imported.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+    before = file_clusters(imported)[0]
+
+    fake.set_transition(cid, ["turnedOff"])
+    r = run("sync")
+    assert r.exit_code == 0, r.output
+    assert "already in sync" in r.output
+    assert "buckets, scopes and collections, database credentials kept from capella.yaml (turnedOff)" in r.output
+    assert "not imported" not in r.output
+    after = file_clusters(imported)[0]
+    assert after["buckets"] == before["buckets"] and after["databaseCredentials"] == before["databaseCredentials"]
+
+    r = run("sync", "--dry-run")
+    assert r.exit_code == 0, r.output  # nothing to write while it is off, so CI does not flag it
+
+    fake.set_transition(cid, ["healthy"])
+    pw = {"APP_PASSWORD": "Demo-App-2026!"}
+    r = run("--auto-approve", "apply", "--prune", extra_env=pw)
+    assert r.exit_code == 0, r.output
+    assert not fake.calls("DELETE", "*/buckets/*") and not fake.calls("DELETE", "*/users/*")
+    assert run("sync", extra_env=pw).exit_code == 0
+    cl = file_clusters(imported)[0]
+    assert cl["databaseCredentials"][0]["password"] == "${APP_PASSWORD}"
+    assert "kept from the previous" not in imported.read_text(encoding="utf-8")
+
+
+@pytest.mark.story("CAP-038", "AC14")
+def test_sync_ac14_read_error_keeps_previous_values(fake, run, imported):
+    _seed_bucket_and_credential(fake)
+    assert run("sync").exit_code == 0
+    before = file_clusters(imported)[0]
+    fake.fail_next("GET", "*/users", 500, times=6)
+    r = run("sync")
+    assert r.exit_code == 0, r.output
+    assert "database credentials kept from capella.yaml (Capella returned 500)" in r.output
+    assert file_clusters(imported)[0]["databaseCredentials"] == before["databaseCredentials"]
+
+
+@pytest.mark.story("CAP-038", "AC14")
+def test_sync_ac14_first_sync_of_turned_off_cluster_still_notes_it(fake, run, imported):
+    cid = next(iter(fake.clusters))
+    fake.set_transition(cid, ["turnedOff"])
+    r = run("sync")
+    assert "buckets and database credentials not imported (turnedOff)" in r.output
+    assert "kept from" not in r.output

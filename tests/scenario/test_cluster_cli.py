@@ -186,7 +186,7 @@ def test_cluster_cli_ac11_create_then_in_sync(fake, run, imported):
 
 def test_cluster_create_needs_capella_yaml(fake, run):
     r = run("--auto-approve", "cluster", "create", "x")
-    assert r.exit_code == 3 and "run 'capellactl import'" in r.output
+    assert r.exit_code == 3 and "run 'capellactl sync'" in r.output
 
 
 @pytest.mark.story("CAP-038", "AC8")

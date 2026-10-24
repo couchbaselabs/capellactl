@@ -114,6 +114,7 @@ class FakeCapella:
         self.api_keys: set[str] | None = None  # None: accept any bearer token
         self._calls: list[Call] = []
         self._faults: list[_Fault] = []
+        self.fail_deploy_next = False  # the next cluster create ends in deploymentFailed (accepted, then fails)
         # Called as hook(method, path) before each request is served; may raise to simulate failures.
         self.hooks: list[Callable[[str, str], None]] = []
         self._ids = itertools.count(1)
@@ -424,7 +425,8 @@ class FakeCapella:
             fields = {k2: v for k2, v in body.items() if k2 != "name"}
             fields.setdefault("couchbaseServer", {"version": "8.0.1"})
             cid = self.seed_cluster(p, body["name"], **fields)
-            self.set_transition(cid, ["deploying", "healthy"])
+            self.set_transition(cid, ["deploying", "deploymentFailed" if self.fail_deploy_next else "healthy"])
+            self.fail_deploy_next = False
             return _ok(202, {"id": cid})
 
         def get_cluster(o: str, p: str, c: str, **k: Any) -> Resp:

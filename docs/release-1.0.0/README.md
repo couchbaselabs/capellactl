@@ -8,19 +8,19 @@ Architecture, domain model, conventions, NFRs and the global Definition of Done:
 
 | Metric | Stories | Story points |
 |---|---|---|
-| **Total** | **50** | **195** |
-| ✅ Implemented | 49 | 190 |
+| **Total** | **54** | **223** |
+| ✅ Implemented | 53 | 218 |
 | 🚧 In progress | 1 | 5 |
 | ⬜ Not started | 0 | 0 |
 | Not yet implemented (in progress + not started) | 1 | 5 |
-| **Completion** | 98% | 97% |
+| **Completion** | 98% | 98% |
 
 ### By priority
 
 | Priority | Meaning | Stories | Points | Implemented (stories / points) |
 |---|---|---|---|---|
-| P0 | Must have — release blocker | 43 | 171 | 42 / 166 |
-| P1 | Should have — ships in 1.0 unless explicitly descoped | 7 | 24 | 7 / 24 |
+| P0 | Must have — release blocker | 44 | 184 | 43 / 179 |
+| P1 | Should have — ships in 1.0 unless explicitly descoped | 10 | 39 | 10 / 39 |
 
 ### By epic
 
@@ -28,17 +28,17 @@ Architecture, domain model, conventions, NFRs and the global Definition of Done:
 |---|---|---|---|
 | E1 Foundation | 11 | 46 | 11 / 46 |
 | E2 Projects | 5 | 20 | 5 / 20 |
-| E3 Clusters | 7 | 30 | 7 / 30 |
-| E4 Scaling | 4 | 16 | 4 / 16 |
+| E3 Clusters | 9 | 48 | 9 / 48 |
+| E4 Scaling | 5 | 21 | 5 / 21 |
 | E5 Hibernation | 3 | 10 | 3 / 10 |
 | E6 Network access | 1 | 3 | 1 / 3 |
 | E7 Data model | 4 | 14 | 4 / 14 |
 | E8 Database credentials | 4 | 12 | 4 / 12 |
-| E9 Lifecycle & release | 11 | 44 | 10 / 39 |
+| E9 Lifecycle & release | 12 | 49 | 11 / 44 |
 
 ## Stories by priority
 
-### P0 — Must have — release blocker (43 stories, 171 points)
+### P0 — Must have — release blocker (44 stories, 184 points)
 
 | # | ID | Story | Epic | Points | Status |
 |---|---|---|---|---|---|
@@ -85,8 +85,9 @@ Architecture, domain model, conventions, NFRs and the global Definition of Done:
 | 41 | ~~[CAP-046](CAP-046-credential-commands.md)~~ | ~~Database credential commands: list, get, create, update~~ | ~~E8 Database credentials~~ | ~~3~~ | ✅ Implemented |
 | 42 | ~~[CAP-048](CAP-048-track-resources-by-id.md)~~ | ~~Track projects and clusters by id so renames in the Capella UI are not mistaken for new resources~~ | ~~E9 Lifecycle & release~~ | ~~5~~ | ✅ Implemented |
 | 43 | ~~[CAP-050](CAP-050-protect-main-branch.md)~~ | ~~Protect `main`: changes only through a reviewed pull request~~ | ~~E9 Lifecycle & release~~ | ~~3~~ | ✅ Implemented |
+| 44 | ~~[CAP-051](CAP-051-multi-dimensional-cluster-create.md)~~ | ~~Create multi-dimensional (MDS) clusters from the CLI~~ | ~~E3 Clusters~~ | ~~13~~ | ✅ Implemented |
 
-### P1 — Should have — ships in 1.0 unless explicitly descoped (7 stories, 24 points)
+### P1 — Should have — ships in 1.0 unless explicitly descoped (10 stories, 39 points)
 
 | # | ID | Story | Epic | Points | Status |
 |---|---|---|---|---|---|
@@ -97,6 +98,9 @@ Architecture, domain model, conventions, NFRs and the global Definition of Done:
 | 5 | ~~[CAP-045](CAP-045-standalone-executables.md)~~ | ~~Standalone executables for macOS, Linux and Windows~~ | ~~E9 Lifecycle & release~~ | ~~5~~ | ✅ Implemented |
 | 6 | ~~[CAP-047](CAP-047-configure-checks-existing-config.md)~~ | ~~configure and import check an existing capella.yaml against the key's organization~~ | ~~E9 Lifecycle & release~~ | ~~3~~ | ✅ Implemented |
 | 7 | ~~[CAP-049](CAP-049-clone-cluster-to-another-region.md)~~ | ~~Clone a cluster into another region~~ | ~~E3 Clusters~~ | ~~5~~ | ✅ Implemented |
+| 8 | ~~[CAP-052](CAP-052-service-group-commands.md)~~ | ~~Service group commands: list, add and remove groups on an existing cluster~~ | ~~E4 Scaling~~ | ~~5~~ | ✅ Implemented |
+| 9 | ~~[CAP-053](CAP-053-advanced-cluster-create-options.md)~~ | ~~Advanced cluster create options: server version, single node, zone, CMEK, private DNS, disk auto-expansion~~ | ~~E3 Clusters~~ | ~~5~~ | ✅ Implemented |
+| 10 | ~~[CAP-054](CAP-054-one-sync-command.md)~~ | ~~One command to bring capella.yaml in line with Capella: `sync` covers the whole organization~~ | ~~E9 Lifecycle & release~~ | ~~5~~ | ✅ Implemented |
 
 ## Delivery phases
 
@@ -108,7 +112,8 @@ Stories are delivered in phases; each phase ends with something an operator can 
 | Phase 1 — Project & cluster | ~~CAP-009~~, ~~CAP-039~~, ~~CAP-040~~, ~~CAP-010~~, ~~CAP-011~~, ~~CAP-035~~, ~~CAP-012~~, ~~CAP-038~~, ~~CAP-041~~, ~~CAP-049~~, ~~CAP-013~~, ~~CAP-014~~, ~~CAP-022~~ | 53 | 13/13 (53 pts) | ✅ Done | Answer the init wizard, then create, edit, protect and delete a project and cluster with its IP allowlist, idempotently |
 | Phase 2 — Scale & hibernate | ~~CAP-015~~, ~~CAP-016~~, ~~CAP-017~~, ~~CAP-018~~, ~~CAP-019~~, ~~CAP-020~~, ~~CAP-021~~ | 26 | 7/7 (26 pts) | ✅ Done | Scale clusters out, in and up safely; power them off and on; run a weekly hibernation schedule |
 | Phase 3 — Data model & access | ~~CAP-023~~, ~~CAP-024~~, ~~CAP-025~~, ~~CAP-026~~, ~~CAP-027~~, ~~CAP-046~~, ~~CAP-028~~, ~~CAP-029~~ | 26 | 8/8 (26 pts) | ✅ Done | Buckets, scopes, collections and least-privilege database credentials, ready for applications |
-| Phase 4 — Adopt, harden & ship | ~~CAP-030~~, ~~CAP-036~~, ~~CAP-047~~, ~~CAP-048~~, ~~CAP-031~~, ~~CAP-042~~, CAP-032, ~~CAP-044~~, ~~CAP-043~~, ~~CAP-045~~, ~~CAP-033~~, ~~CAP-050~~ | 47 | 11/12 (42 pts) | 🚧 Current | Import existing clusters with a no-change round trip, one-command build and teardown, drift reporting, nightly integration gate and customer docs |
+| Phase 4 — Adopt, harden & ship | ~~CAP-030~~, ~~CAP-036~~, ~~CAP-047~~, ~~CAP-048~~, ~~CAP-031~~, ~~CAP-042~~, CAP-032, ~~CAP-044~~, ~~CAP-043~~, ~~CAP-045~~, ~~CAP-033~~, ~~CAP-050~~, ~~CAP-054~~ | 52 | 12/13 (47 pts) | 🚧 Current | Import existing clusters with a no-change round trip, one-command build and teardown, drift reporting, nightly integration gate and customer docs |
+| Phase 5 — Custom cluster layouts | ~~CAP-051~~, ~~CAP-052~~, ~~CAP-053~~ | 23 | 3/3 (23 pts) | ✅ Done | Create a cluster with any size, multi-dimensional service layout and create option, and add or remove service groups later, from commands alone |
 
 ## Stories by phase
 
@@ -180,7 +185,7 @@ _Buckets, scopes, collections and least-privilege database credentials, ready fo
 | 7 | [CAP-028](CAP-028-password-rotation.md) | Password rotation | P0 | E8 Database credentials | 3 | CAP-027, CAP-008 | ✅ Implemented |
 | 8 | [CAP-029](CAP-029-delete-database-credential.md) | Delete database credential | P0 | E8 Database credentials | 1 | CAP-027 | ✅ Implemented |
 
-### Phase 4 — Adopt, harden & ship — 🚧 Current (11/12 stories, 42/47 points)
+### Phase 4 — Adopt, harden & ship — 🚧 Current (12/13 stories, 47/52 points)
 
 _Import existing clusters with a no-change round trip, one-command build and teardown, drift reporting, nightly integration gate and customer docs._
 
@@ -198,6 +203,17 @@ _Import existing clusters with a no-change round trip, one-command build and tea
 | 10 | [CAP-045](CAP-045-standalone-executables.md) | Standalone executables for macOS, Linux and Windows | P1 | E9 Lifecycle & release | 5 | CAP-043, CAP-044 | ✅ Implemented |
 | 11 | [CAP-033](CAP-033-docs-examples-runbook.md) | Examples, runbook & customer documentation | P0 | E9 Lifecycle & release | 3 | CAP-030 | ✅ Implemented |
 | 12 | [CAP-050](CAP-050-protect-main-branch.md) | Protect `main`: changes only through a reviewed pull request | P0 | E9 Lifecycle & release | 3 | CAP-001, CAP-043 | ✅ Implemented |
+| 13 | [CAP-054](CAP-054-one-sync-command.md) | One command to bring capella.yaml in line with Capella: `sync` covers the whole organization | P1 | E9 Lifecycle & release | 5 | CAP-036, CAP-038, CAP-040 | ✅ Implemented |
+
+### Phase 5 — Custom cluster layouts — ✅ Done (3/3 stories, 23/23 points)
+
+_Create a cluster with any size, multi-dimensional service layout and create option, and add or remove service groups later, from commands alone._
+
+| # | ID | Story | Priority | Epic | Points | Depends on | Status |
+|---|---|---|---|---|---|---|---|
+| 1 | [CAP-051](CAP-051-multi-dimensional-cluster-create.md) | Create multi-dimensional (MDS) clusters from the CLI | P0 | E3 Clusters | 13 | CAP-011, CAP-015, CAP-038, CAP-049 | ✅ Implemented |
+| 2 | [CAP-052](CAP-052-service-group-commands.md) | Service group commands: list, add and remove groups on an existing cluster | P1 | E4 Scaling | 5 | CAP-015, CAP-016, CAP-038, CAP-051 | ✅ Implemented |
+| 3 | [CAP-053](CAP-053-advanced-cluster-create-options.md) | Advanced cluster create options: server version, single node, zone, CMEK, private DNS, disk auto-expansion | P1 | E3 Clusters | 5 | CAP-011, CAP-038, CAP-051 | ✅ Implemented |
 
 ## Release checklist
 

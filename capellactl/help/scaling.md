@@ -3,6 +3,11 @@
 Scaling changes `serviceGroups` and is sent as one cluster update; capellactl waits until the
 cluster is healthy again.
 
+- **Create with several service groups** (multi-dimensional scaling): one `--group SERVICES:NODESxCPU/RAM[:DISK]`
+  per group, e.g. `capellactl cluster create NAME --group data:3x8/32 --group index,query:2x8/32 --group search:2x4/16`.
+  Sizes Capella offers: `capellactl cluster options`. Copy an existing layout: `cluster clone … --no-data-model`.
+- **Add or remove a service group**: `capellactl cluster group add NAME --services search --nodes 2`,
+  `capellactl cluster group remove NAME search`; see them with `capellactl cluster group list NAME`.
 - **Scale out**: `capellactl cluster scale NAME --nodes N [--group SERVICES]`.
 - **Scale up**: `capellactl cluster update NAME --cpu 8 --ram 32` or `--disk-size 100 [--disk-iops …]`.
 - **Scale in / down**: fewer nodes, less RAM or a removed group. Capacity checks run first and the plan

@@ -7,8 +7,10 @@ ask once → write capella.yaml (keeping a .bak) → apply. A blocked or invalid
 from __future__ import annotations
 
 import contextlib
+import difflib
 import ipaddress
 import os
+import re
 from typing import Any
 
 import click
@@ -21,7 +23,7 @@ from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.state import AppState
 from capellactl.config.editor import ConfigEditor, put
 from capellactl.config.loader import Config, ConfigError, load_config
-from capellactl.config.presets import is_single_node, load_presets
+from capellactl.config.presets import is_single_node, load_compute_sizes, load_presets
 from capellactl.engine.planner import build_plan
 from capellactl.output.render import render_plan_text
 from capellactl.resources.base import Plan, PlanError
@@ -105,7 +107,7 @@ def choose_project(ed: ConfigEditor, project: str | None, interactive: bool) -> 
                               f"cluster in project {owner[0].get('name')}, not a project. Did you mean: "
                               f"--project {owner[0].get('name')}")
             raise CliExit(ExitCode.CONFIG_INVALID, f"project {project} is not in capella.yaml; create it with "
-                          f"'capellactl project create {project}' or add it with 'capellactl import --project {project}'")
+                          f"'capellactl project create {project}' or add it with 'capellactl sync --project {project}'")
         return project
     if len(names) == 1:
         return names[0]
@@ -133,15 +135,28 @@ def locate(ed: ConfigEditor, name: str, project: str | None) -> tuple[Any, Any]:
     return found
 
 
+class PrefixChoice(click.Choice):  # type: ignore[type-arg]
+    """A choice that also takes an unambiguous start of an answer: `multiple` or `m` for `multiple groups`,
+    `developer` for `developer pro` (case-insensitive). The full answer is returned."""
+
+    def convert(self, value: Any, param: click.Parameter | None, ctx: click.Context | None) -> Any:
+        text = str(value).strip().lower()
+        exact = [c for c in self.choices if str(c).lower() == text]
+        starts = [c for c in self.choices if text and str(c).lower().startswith(text)]
+        if exact or len(starts) == 1:
+            return (exact or starts)[0]
+        return super().convert(value, param, ctx)
+
+
 def _ask(text: str, default: Any, choices: list[str] | None = None, kind: Any = str) -> Any:
-    t = click.Choice(choices) if choices else kind
+    t = PrefixChoice(choices) if choices else kind
     return console.ask(text, default, type=t, show_choices=bool(choices))
 
 
 def open_editor(state: AppState) -> ConfigEditor:
     path = state.config_path()
     if not path.exists():
-        raise CliExit(ExitCode.CONFIG_INVALID, f"{path} not found; run 'capellactl import' (or 'capellactl configure') "
+        raise CliExit(ExitCode.CONFIG_INVALID, f"{path} not found; run 'capellactl sync' (or 'capellactl configure') "
                                                "to create it from your Capella project", topic="getting-started")
     return ConfigEditor(path)
 
@@ -233,9 +248,197 @@ def _capella_clusters(state: AppState, ed: ConfigEditor, project: str) -> list[d
 
 
 # ------------------------------------------------------------------ create
-@click.command("create", epilog="\b\nExamples:\n  capellactl cluster create nova-dev-02\n"
+SERVICES = ["data", "index", "query", "search", "analytics", "eventing"]
+DISK_OPTIONS = ("type", "size", "iops", "auto-expansion")
+GROUP_SPEC = "SERVICES:NODESxCPU/RAM[:DISK]"
+GROUP_LIMITS = "first group 3–27 nodes, other groups 2–24, at most 27 per cluster, one group runs data"
+VERSION_SHAPE = re.compile(r"\d+\.\d+(\.\d+)?")
+
+
+def parse_services(text: str, where: str) -> list[str]:
+    """Sorted services of a group; an unknown name exits 3 with the closest match (CAP-051 AC2)."""
+    names = [s.strip() for s in text.split(",") if s.strip()]
+    if not names:
+        raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: no services (for example data,index,query)", topic="scaling")
+    for n in names:
+        if n not in SERVICES:
+            close = difflib.get_close_matches(n, SERVICES, n=1)
+            hint = f"; did you mean {close[0]}?" if close else f"; use {', '.join(SERVICES)}"
+            raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: unknown service '{n}'{hint}", topic="scaling")
+    return sorted(set(names))
+
+
+def make_disk(provider: str, disk_type: str | None = None, size: int | None = None, iops: int | None = None,
+              auto_expansion: bool | None = None) -> dict[str, Any]:
+    """A group's disk: the provider default, with the given values on top."""
+    disk = dict(DISK_DEFAULT[provider])
+    if disk_type:
+        disk = {"type": disk_type}
+        if not fixed_size_disk(provider, disk_type):
+            disk["storage"] = 50
+            if provider == "aws":
+                disk["iops"] = 3000  # the lowest IOPS Capella allows for gp3 and io2
+    if size is not None:
+        disk["storage"] = size
+    if iops is not None:
+        disk["iops"] = iops
+    if auto_expansion is not None:
+        disk["autoExpansion"] = auto_expansion
+    return disk
+
+
+def parse_group_spec(text: str, provider: str, disk_defaults: dict[str, Any]) -> dict[str, Any]:
+    """`--group SERVICES:NODESxCPU/RAM[:DISK]` → one service group (CAP-051). Errors name the part that is wrong."""
+    where = f"--group {text}"
+    parts = text.split(":")
+    if len(parts) not in (2, 3):
+        raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: expected {GROUP_SPEC}, e.g. data:3x8/32", topic="scaling")
+    services = parse_services(parts[0], where)
+    m = re.fullmatch(r"\s*(\d+)\s*x\s*(\d+)\s*/\s*(\d+)\s*", parts[1])
+    if not m:
+        raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: expected NODESxCPU/RAM, e.g. 3x8/32 (got '{parts[1]}')",
+                      topic="scaling")
+    disk = dict(disk_defaults)
+    for item in (parts[2].split(",") if len(parts) == 3 else []):
+        key, sep, value = (x.strip() for x in item.partition("="))
+        if not sep or key not in DISK_OPTIONS:
+            raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: unknown disk option '{key}'; use type, size, iops, "
+                                                   "auto-expansion", topic="scaling")
+        if key in ("size", "iops"):
+            if not value.isdigit():
+                raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: {key} must be a whole number (got '{value}')",
+                              topic="scaling")
+            disk[key] = int(value)
+        elif key == "auto-expansion":
+            if value.lower() not in ("true", "false"):
+                raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: auto-expansion is true or false (got '{value}')",
+                              topic="scaling")
+            disk[key] = value.lower() == "true"
+        elif not value:
+            raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: type needs a value, e.g. type=io2", topic="scaling")
+        else:
+            disk[key] = value
+    return {"node": {"compute": {"cpu": int(m.group(2)), "ram": int(m.group(3))},
+                     "disk": make_disk(provider, disk.get("type"), disk.get("size"), disk.get("iops"),
+                                       disk.get("auto-expansion"))},
+            "numOfNodes": int(m.group(1)), "services": services}
+
+
+def data_first(groups: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The first group that runs data goes first, so the 3–27 node rule of the first group applies to it."""
+    first = next((g for g in groups if "data" in g["services"]), None)
+    return groups if first is None or first is groups[0] else [first, *[g for g in groups if g is not first]]
+
+
+def size_warnings(provider: str, groups: list[dict[str, Any]], single: bool) -> list[str]:
+    """Plan notes for sizes Capella's documentation does not list (CAP-051 AC9); Capella still has the last word."""
+    from capellactl.config.presets import known_size
+    from capellactl.engine.normalize import group_key
+
+    lines = []
+    for g in groups:
+        comp = g["node"]["compute"]
+        if not known_size(provider, int(comp["cpu"]), int(comp["ram"]), single):
+            lines.append(f"! serviceGroups[{group_key(g)}]: {comp['cpu']} vCPU/{comp['ram']} GB is not a known "
+                         f"{provider} size; Capella may reject it (see 'capellactl cluster options')")
+    return lines
+
+
+def _ask_node_size(provider: str, default: tuple[int, int]) -> tuple[int, int]:
+    """Choose a node size from the known sizes (CAP-051 AC9); 'other' types vCPUs and RAM."""
+    from capellactl.config.presets import load_compute_sizes
+
+    sizes: list[tuple[int, int]] = load_compute_sizes().get(provider, {}).get("sizes", [])
+    out("  Node size (vCPU / RAM GB):")
+    for row in range(0, len(sizes), 6):
+        out("    " + "  ".join(f"{i + 1:>2}) {c}/{r}" for i, (c, r) in enumerate(sizes[row:row + 6], row)))
+    out(f"    {len(sizes) + 1:>2}) other")
+    pick = int(_ask("  Choose", sizes.index(default) + 1 if default in sizes else 1, kind=click.IntRange(1, len(sizes) + 1)))
+    if pick <= len(sizes):
+        return sizes[pick - 1]
+    return int(_ask("  vCPUs per node", default[0], kind=int)), int(_ask("  RAM GB per node", default[1], kind=int))
+
+
+def _ask_groups(provider: str, disk_defaults: dict[str, Any]) -> list[dict[str, Any]]:
+    """Interactive multi-group create (CAP-051 AC6): each answer is checked as it is given."""
+    groups: list[dict[str, Any]] = []
+    while True:
+        total = sum(g["numOfNodes"] for g in groups)
+        out(f"Service group {len(groups) + 1}" + (f"  (nodes so far: {total} of 27)" if groups else ""))
+        used = {",".join(g["services"]) for g in groups}
+        # The default is the services no group runs yet (every service for the first group).
+        unused = [s for s in SERVICES if not any(s in g["services"] for g in groups)]
+        default = ",".join(unused) or None
+        while True:
+            try:
+                services = parse_services(_ask("  Services", default), "services")
+            except CliExit as exc:
+                err(exc.message)
+                continue
+            if ",".join(services) in used:
+                err(f"a group already runs {','.join(services)}; each group needs a different set of services")
+                continue
+            break
+        is_first_data = "data" in services and not any("data" in g["services"] for g in groups)
+        low, high = (3, 27) if is_first_data else (2, 24)
+        while True:
+            nodes = _ask(f"  Nodes ({low}–{high})", low, kind=int)
+            if not low <= nodes <= high:
+                err(f"this group needs {low}–{high} nodes")
+            elif total + nodes > 27:
+                err(f"a cluster can have at most 27 nodes; {27 - total} left")
+            else:
+                break
+        cpu, ram = _ask_node_size(provider, (4, 16))
+        disk = dict(disk_defaults)
+        if "storage" in make_disk(provider, disk.get("type")) and disk.get("size") is None:
+            disk["size"] = _ask("  Disk GB per node", make_disk(provider, disk.get("type")).get("storage", 50), kind=int)
+        groups.append({"node": {"compute": {"cpu": cpu, "ram": ram},
+                                "disk": make_disk(provider, disk.get("type"), disk.get("size"), disk.get("iops"),
+                                                  disk.get("auto-expansion"))},
+                       "numOfNodes": nodes, "services": services})
+        if sum(g["numOfNodes"] for g in groups) > 25 or not console.ask_yes_no("Add another service group?", False):
+            return groups
+
+
+class _CreateCommand(click.Command):
+    """`cluster create --help` lists the advanced options (CAP-053) under their own heading."""
+
+    ADVANCED = {"single_node", "server_version", "zone", "cmek_id", "private_dns", "disk_auto_expansion"}
+
+    def format_options(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+        rows: list[tuple[str, str]] = []
+        advanced: list[tuple[str, str]] = []
+        for param in self.get_params(ctx):
+            record = param.get_help_record(ctx)
+            if record:
+                (advanced if param.name in self.ADVANCED else rows).append(record)
+        with formatter.section("Options"):
+            formatter.write_dl(rows)
+        with formatter.section("Advanced options (not asked; set only on the command line)"):
+            formatter.write_dl(advanced)
+
+
+def _groups_line(groups: list[dict[str, Any]]) -> str:
+    return " · ".join(f"{','.join(g['services'])} {g['numOfNodes']} × {g['node']['compute']['cpu']}/"
+                      f"{g['node']['compute']['ram']}" for g in groups)
+
+
+@click.command("create", cls=_CreateCommand, epilog="\b\nExamples:\n  capellactl cluster create nova-dev-02\n"
                                 "  capellactl cluster create nova-qa-01 --provider gcp --size medium\n"
-                                "  capellactl --auto-approve cluster create nova-ci-01 --size dev")
+                                "  capellactl --auto-approve cluster create nova-ci-01 --size dev\n"
+                                "  capellactl cluster create nova-prod-01 --group data:3x8/32 --group index,query:2x8/32 "
+                                "--group search:2x4/16\n"
+                                "  capellactl cluster create nova-prod-02 --group data:3x8/32:size=100 "
+                                "--group analytics:2x16/64:size=200,iops=5000\n"
+                                "  capellactl cluster create nova-dev-03 --single-node --cpu 8 --ram 32\n"
+                                "\b\n"
+                                f"--group {GROUP_SPEC} (repeatable; one per service group):\n"
+                                "  SERVICES  data, index, query, search, analytics, eventing (comma-separated)\n"
+                                "  NODESxCPU/RAM  nodes, vCPUs and GB of RAM per node, e.g. 3x8/32\n"
+                                "  DISK      type=, size= (GB), iops=, auto-expansion= (azure)\n"
+                                "Sizes Capella offers: capellactl cluster options. To copy the layout of an existing "
+                                "cluster: capellactl cluster clone SOURCE NEW_NAME --region REGION --no-data-model")
 @click.argument("name")
 @click.option("--provider", type=click.Choice(PROVIDERS), help="Cloud provider (asked; default aws).")
 @click.option("--region", help="Region (asked; default per provider).")
@@ -244,6 +447,9 @@ def _capella_clusters(state: AppState, ed: ConfigEditor, project: str) -> list[d
 @click.option("--nodes", type=int, help="Nodes (overrides the preset).")
 @click.option("--cpu", type=int, help="vCPUs per node (overrides the preset).")
 @click.option("--ram", type=int, help="RAM GB per node (overrides the preset).")
+@click.option("--group", "groups", multiple=True, metavar="SPEC",
+              help=f"A service group as {GROUP_SPEC}, e.g. data:3x8/32 (repeatable; replaces --nodes, --cpu, --ram, "
+                   "--services and --size).")
 @click.option("--disk-type", help="Disk type (default per provider).")
 @click.option("--disk-size", type=int, help="Disk GB per node.")
 @click.option("--disk-iops", type=int, help="Disk IOPS (AWS).")
@@ -256,14 +462,23 @@ def _capella_clusters(state: AppState, ed: ConfigEditor, project: str) -> list[d
 @click.option("--free-tier", is_flag=True, help="Deploy the organization's free single-node cluster "
               "(see 'capellactl cluster options').")
 @click.option("--no-apply", is_flag=True, help="Only add the cluster to capella.yaml; deploy later with apply.")
+@click.option("--single-node", is_flag=True, help="One node (development); takes --cpu/--ram (default 4/16).")
+@click.option("--server-version", metavar="VERSION", help="Couchbase Server version, e.g. 8.0 (default: Capella's).")
+@click.option("--zone", metavar="ZONE", help="Availability zone (single-AZ clusters only).")
+@click.option("--cmek-id", metavar="ID", help="ID of an existing customer-managed encryption key.")
+@click.option("--private-dns", is_flag=True, help="Enable private DNS resolution.")
+@click.option("--disk-auto-expansion/--no-disk-auto-expansion", default=None,
+              help="Azure: let disk storage expand automatically.")
 @click.pass_obj
 def cluster_create(state: AppState, name: str, project: str | None, free_tier: bool, provider: str | None,
                    region: str | None, cidr: str | None,
-                   size: str | None, nodes: int | None, cpu: int | None, ram: int | None, disk_type: str | None,
-                   disk_size: int | None, disk_iops: int | None, services: str | None, availability: str | None,
-                   support_plan: str | None, support_timezone: str | None, description: str | None,
-                   no_apply: bool) -> None:
+                   size: str | None, nodes: int | None, cpu: int | None, ram: int | None, groups: tuple[str, ...],
+                   disk_type: str | None, disk_size: int | None, disk_iops: int | None, services: str | None,
+                   availability: str | None, support_plan: str | None, support_timezone: str | None,
+                   description: str | None, no_apply: bool, single_node: bool, server_version: str | None,
+                   zone: str | None, cmek_id: str | None, private_dns: bool, disk_auto_expansion: bool | None) -> None:
     """Deploy a new cluster: asks for what it needs, records it in capella.yaml, deploys and waits."""
+    _check_create_options(groups, single_node, size, nodes, cpu, ram, services, availability, server_version, cmek_id)
     ed = open_editor(state)
     interactive = console.is_interactive()
     project = choose_project(ed, project, interactive)
@@ -277,11 +492,13 @@ def cluster_create(state: AppState, name: str, project: str | None, free_tier: b
     used += [str((c.get("cloudProvider") or {}).get("cidr", "")) for c in proj_node.get("clusters") or []
              if isinstance(c, dict)]
 
-    sized = any(v is not None for v in (size, nodes, cpu, ram, disk_type, disk_size, disk_iops, services,
-                                        availability, support_plan, support_timezone))
+    advanced = single_node or private_dns or any(v is not None for v in (server_version, zone, cmek_id,
+                                                                         disk_auto_expansion))
+    sized = bool(groups) or advanced or any(v is not None for v in (
+        size, nodes, cpu, ram, disk_type, disk_size, disk_iops, services, availability, support_plan, support_timezone))
     if free_tier and sized:
         raise CliExit(ExitCode.CONFIG_INVALID, "free-tier clusters have a fixed size and plan; remove the size, "
-                                               "disk, services, availability and support options")
+                                               "disk, services, availability, support and advanced options")
     if free_tier or (interactive and not sized):
         in_use = free_tier_in_use(_org_client(state, ed), ed)
         if free_tier and in_use:
@@ -294,16 +511,32 @@ def cluster_create(state: AppState, name: str, project: str | None, free_tier: b
         _create_free(state, ed, proj_node, project, name, provider, region, cidr, description, used, no_apply,
                      interactive, keep)
         return
+    disk_defaults = {"type": disk_type, "size": disk_size, "iops": disk_iops, "auto-expansion": disk_auto_expansion}
     answers: dict[str, Any] = {}
     while True:
         provider_ = provider or (_ask("Cloud provider", answers.get("provider", "aws"), PROVIDERS)
                                  if interactive else "aws")
-        size_ = size or (_ask("Size", answers.get("size", "small"), [*PRESETS, "custom"]) if interactive else "small")
+        layout: list[dict[str, Any]] | None = None
+        if groups:
+            layout = data_first([parse_group_spec(g, provider_, disk_defaults) for g in groups])
+            size_ = "custom"
+        elif single_node:
+            size_ = "custom"
+        else:
+            size_ = size or (_ask("Size", answers.get("size", "small"), [*PRESETS, "custom"])
+                             if interactive else "small")
         preset = dict(PRESETS.get(size_, PRESETS["small"]))
-        if size_ == "custom" and interactive:
-            preset["nodes"] = nodes or _ask("Nodes", answers.get("nodes", 3), kind=int)
-            preset["cpu"] = cpu or _ask("vCPUs per node", answers.get("cpu", 4), kind=int)
-            preset["ram"] = ram or _ask("RAM GB per node", answers.get("ram", 16), kind=int)
+        if single_node:
+            preset = {"nodes": 1, "cpu": 4, "ram": 16, "single": True}
+        elif size_ == "custom" and interactive and layout is None:
+            if "groups" in answers:
+                layout = answers["groups"]
+            elif _ask("Service layout", "one group", ["one group", "multiple groups"]) == "multiple groups":
+                layout = data_first(_ask_groups(provider_, disk_defaults))
+            else:
+                preset["nodes"] = nodes or _ask("Nodes", answers.get("nodes", 3), kind=int)
+                preset["cpu"] = cpu or _ask("vCPUs per node", answers.get("cpu", 4), kind=int)
+                preset["ram"] = ram or _ask("RAM GB per node", answers.get("ram", 16), kind=int)
         region_ = region or (_ask("Region", answers.get("region", REGION_DEFAULT[provider_]))
                              if interactive else REGION_DEFAULT[provider_])
         cidr_ = cidr or (_ask("Network CIDR (must not overlap other clusters)", answers.get("cidr", suggest_cidr(used)))
@@ -312,27 +545,33 @@ def cluster_create(state: AppState, name: str, project: str | None, free_tier: b
                                  if interactive else "developer pro")
         answers = {"provider": provider_, "size": size_, "region": region_, "cidr": cidr_, "support_plan": plan_,
                    **{k: preset[k] for k in ("nodes", "cpu", "ram")}}
-        disk = dict(DISK_DEFAULT[provider_])
-        if disk_type:
-            disk = {"type": disk_type, **({} if fixed_size_disk(provider_, disk_type) else {"storage": disk_size or 50})}
-        if disk_size is not None:
-            disk["storage"] = disk_size
-        if disk_iops is not None:
-            disk["iops"] = disk_iops
+        if layout is not None and not groups:
+            answers["groups"] = layout
         single = bool(preset.get("single"))
+        if layout is None:
+            layout = [{
+                "node": {"compute": {"cpu": cpu or preset["cpu"], "ram": ram or preset["ram"]},
+                         "disk": make_disk(provider_, disk_type, disk_size, disk_iops, disk_auto_expansion)},
+                "numOfNodes": nodes or preset["nodes"],
+                "services": sorted(s.strip() for s in (services or "data,index,query").split(",") if s.strip()),
+            }]
         cluster: dict[str, Any] = {"name": name}
         if description:
             cluster["description"] = description
         if single:
             cluster["configurationType"] = "singleNode"
         cluster["cloudProvider"] = {"type": provider_, "region": region_, "cidr": cidr_}
+        if server_version:
+            cluster["couchbaseServer"] = {"version": server_version}
         cluster["availability"] = {"type": availability or ("single" if single else "multi")}
         cluster["support"] = {"plan": plan_, "timezone": support_timezone or "PT"}
-        cluster["serviceGroups"] = [{
-            "node": {"compute": {"cpu": cpu or preset["cpu"], "ram": ram or preset["ram"]}, "disk": disk},
-            "numOfNodes": nodes or preset["nodes"],
-            "services": sorted(s.strip() for s in (services or "data,index,query").split(",") if s.strip()),
-        }]
+        cluster["serviceGroups"] = layout
+        if zone:
+            cluster["zones"] = [zone]
+        if cmek_id:
+            cluster["cmekId"] = cmek_id
+        if private_dns:
+            cluster["enablePrivateDNSResolution"] = True
         ed.add_cluster(proj_node, {**cluster, **keep})
         try:
             text = ed.text()
@@ -351,7 +590,10 @@ def cluster_create(state: AppState, name: str, project: str | None, free_tier: b
                 bad |= {"region"}
             if any(s in exc.message for s in ("cloudProvider.type", "singleNode", "availability")):
                 bad |= {"provider", "size"}
-            flags = {"provider": provider, "size": size, "region": region, "cidr": cidr, "support_plan": support_plan}
+            if "serviceGroups" in exc.message and not groups:
+                bad |= {"groups"}
+            flags = {"provider": provider, "size": size, "region": region, "cidr": cidr, "support_plan": support_plan,
+                     "groups": groups or None}
             if all(flags[k] is not None for k in (bad or flags)):
                 raise
             err(exc.message)
@@ -359,13 +601,46 @@ def cluster_create(state: AppState, name: str, project: str | None, free_tier: b
             for k in bad:
                 answers.pop(k, None)
 
-    out(f"New cluster {name} in project {project}: {provider_} {region_}, {cluster['serviceGroups'][0]['numOfNodes']} × "
-        f"{cluster['serviceGroups'][0]['node']['compute']['cpu']} vCPU/"
-        f"{cluster['serviceGroups'][0]['node']['compute']['ram']} GB, network {cidr_}, support {plan_}")
+    sg = cluster["serviceGroups"]
+    if len(sg) > 1:
+        sizing = f"{len(sg)} groups · {sum(g['numOfNodes'] for g in sg)} nodes ({_groups_line(sg)})"
+    else:
+        sizing = f"{sg[0]['numOfNodes']} × {sg[0]['node']['compute']['cpu']} vCPU/{sg[0]['node']['compute']['ram']} GB"
+    out(f"New cluster {name} in project {project}: {provider_} {region_}, {sizing}, network {cidr_}, support {plan_}")
     plan, ctx = change_and_apply(state, ed, f"cluster/{project}/{name}",
-                                 f"Add {name} to capella.yaml and deploy it now?", no_apply, text)
+                                 f"Add {name} to capella.yaml and deploy it now?", no_apply, text,
+                                 after_plan=size_warnings(provider_, sg, single))
     if plan is not None and ctx is not None:
         _record_server_version(ed, name, project, plan, ctx)
+
+
+def _check_create_options(groups: tuple[str, ...], single_node: bool, size: str | None, nodes: int | None,
+                          cpu: int | None, ram: int | None, services: str | None, availability: str | None,
+                          server_version: str | None, cmek_id: str | None) -> None:
+    """Combinations refused before anything is read or written (CAP-051 AC3, CAP-053 AC2–AC3)."""
+    if groups:
+        given = [f for f, v in (("--nodes", nodes), ("--cpu", cpu), ("--ram", ram), ("--services", services),
+                                ("--size", size)) if v is not None]
+        if given:
+            raise CliExit(ExitCode.CONFIG_INVALID, f"--group sets nodes, size and services per group; remove "
+                                                   f"{', '.join(given)}", topic="scaling")
+    if single_node:
+        if size is not None:
+            raise CliExit(ExitCode.CONFIG_INVALID, "--single-node sets the size; remove --size", topic="scaling")
+        if nodes not in (None, 1):
+            raise CliExit(ExitCode.CONFIG_INVALID, "singleNode clusters have exactly 1 node; remove --nodes",
+                          topic="scaling")
+        if availability == "multi":
+            raise CliExit(ExitCode.CONFIG_INVALID, "singleNode clusters must use availability: single",
+                          topic="scaling")
+        if len(groups) > 1:
+            raise CliExit(ExitCode.CONFIG_INVALID, "singleNode clusters have exactly one service group",
+                          topic="scaling")
+    if server_version is not None and not VERSION_SHAPE.fullmatch(server_version):
+        raise CliExit(ExitCode.CONFIG_INVALID, f"--server-version takes a version like 8.0 or 7.6.4 (got "
+                                               f"'{server_version}')")
+    if cmek_id is not None and not cmek_id.strip():
+        raise CliExit(ExitCode.CONFIG_INVALID, "--cmek-id needs the ID of an existing encryption key")
 
 
 def _create_free(state: AppState, ed: ConfigEditor, proj_node: Any, project: str, name: str,
@@ -455,7 +730,8 @@ def _record_server_version(ed: ConfigEditor, name: str, project_name: str, plan:
 # ------------------------------------------------------------------ update
 @click.command("update", epilog="\b\nExamples:\n  capellactl cluster update nova-dev-01 --support-plan enterprise\n"
                                 "  capellactl cluster update nova-dev-01 --cpu 8 --ram 32\n"
-                                "  capellactl cluster update nova-dev-01            (asks what to change)")
+                                "  capellactl cluster update nova-dev-01            (asks what to change)\n"
+                                "  capellactl cluster update nova-az-01 --disk-auto-expansion  (azure)")
 @click.argument("name")
 @click.option("--description", help="New description.")
 @click.option("--support-plan", type=click.Choice(SUPPORT_PLANS))
@@ -464,18 +740,21 @@ def _record_server_version(ed: ConfigEditor, name: str, project_name: str, plan:
 @click.option("--ram", type=int, help="RAM GB per node for the group.")
 @click.option("--disk-size", type=int, help="Disk GB per node for the group (cannot shrink).")
 @click.option("--disk-iops", type=int, help="Disk IOPS for the group (AWS).")
+@click.option("--disk-auto-expansion/--no-disk-auto-expansion", default=None,
+              help="Azure: let the group's disk storage expand automatically.")
 @click.option("--group", metavar="SERVICES", help="Service group to change (default: the group running data).")
 @click.option("--project", metavar="NAME", help="Project of the cluster (only needed when the name repeats).")
 @click.option("--no-apply", is_flag=True, help="Only update capella.yaml; apply later.")
 @click.pass_obj
 def cluster_update(state: AppState, name: str, project: str | None, description: str | None, support_plan: str | None,
                    support_timezone: str | None, cpu: int | None, ram: int | None, disk_size: int | None,
-                   disk_iops: int | None, group: str | None, no_apply: bool) -> None:
+                   disk_iops: int | None, disk_auto_expansion: bool | None, group: str | None, no_apply: bool) -> None:
     """Change a cluster's description, support plan, CPU/RAM or disk; records it in capella.yaml and applies."""
     ed = open_editor(state)
     proj_node, cl = locate(ed, name, project)
     if cl.get("tier") == "free":
-        if any(v is not None for v in (support_plan, support_timezone, cpu, ram, disk_size, disk_iops)):
+        if any(v is not None for v in (support_plan, support_timezone, cpu, ram, disk_size, disk_iops,
+                                       disk_auto_expansion)):
             raise CliExit(ExitCode.BLOCKED, FREE_FIXED)
         if description is None:
             if not console.is_interactive():
@@ -497,7 +776,10 @@ def cluster_update(state: AppState, name: str, project: str | None, description:
         raise CliExit(ExitCode.CONFIG_INVALID, f"{name} uses Azure disk type {disk.get('type')}, whose size and IOPS "
                                                "are set by the type; --disk-size and --disk-iops apply to Ultra disks "
                                                "only", topic="scaling")
-    if not any(v is not None for v in (description, support_plan, support_timezone, cpu, ram, disk_size, disk_iops)):
+    if disk_auto_expansion is not None and (cl.get("cloudProvider") or {}).get("type") != "azure":
+        raise CliExit(ExitCode.CONFIG_INVALID, "auto-expansion is for azure disks only", topic="scaling")
+    if not any(v is not None for v in (description, support_plan, support_timezone, cpu, ram, disk_size, disk_iops,
+                                       disk_auto_expansion)):
         if not console.is_interactive():
             raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change; pass for example --support-plan, --cpu, "
                                                    "--ram or --disk-size")
@@ -523,6 +805,8 @@ def cluster_update(state: AppState, name: str, project: str | None, description:
         disk["storage"] = disk_size
     if disk_iops is not None:
         disk["iops"] = disk_iops
+    if disk_auto_expansion is not None:
+        disk["autoExpansion"] = disk_auto_expansion
     change_and_apply(state, ed, f"cluster/{proj_node.get('name')}/{name}",
                      f"Record these changes in capella.yaml and apply them to {name}?", no_apply)
 
@@ -562,13 +846,17 @@ def cluster_options(state: AppState) -> None:
     in_use = free_tier_in_use(client, ed)
     regions_in_use = sorted({f"{(c.get('cloudProvider') or {}).get('type')} {(c.get('cloudProvider') or {}).get('region')}"
                              for _, c in clusters if c.get("cloudProvider")})
+    versions_in_use = sorted({str((c.get("couchbaseServer") or {}).get("version")) for _, c in clusters
+                              if (c.get("couchbaseServer") or {}).get("version")})
+    known = {prov: [f"{cpu}/{ram}" for cpu, ram in kinds.get("sizes", [])] for prov, kinds in load_compute_sizes().items()}
     if state.json:
         out(dumps({
             "freeTier": {"available": in_use is None, "usedBy": in_use, "regions": FREE_TIER_REGIONS,
                          "includes": FREE_TIER_NOTE, "notIncluded": FREE_TIER_MISSING},
             "provisioned": {"providers": PROVIDERS, "sizes": PRESETS, "supportPlans": SUPPORT_PLANS,
                             "supportTimezones": TIMEZONES, "regionsInUse": regions_in_use,
-                            "regionDefaults": REGION_DEFAULT},
+                            "regionDefaults": REGION_DEFAULT, "services": SERVICES, "groupLimits": GROUP_LIMITS,
+                            "nodeSizes": known, "serverVersionsInUse": versions_in_use},
         }))
         return
     out(f"Cluster options for organization {client.org_id}")
@@ -587,11 +875,19 @@ def cluster_options(state: AppState) -> None:
                       for k, v in PRESETS.items())
     out(f"  sizes            {sizes}, custom")
     out(f"  support plans    {', '.join(SUPPORT_PLANS)} (timezones {', '.join(TIMEZONES)})")
+    out(f"  services         {', '.join(SERVICES)}")
+    out(f"  service groups   {GROUP_LIMITS}")
+    out("  node sizes       vCPU/RAM GB (from Capella's documentation; config/compute.yaml)")
+    for prov, sizes_ in known.items():
+        out(f"    {prov:<6} {', '.join(sizes_)}")
+    if versions_in_use:
+        out(f"  server versions  in use by your clusters: {', '.join(versions_in_use)}")
     out("  regions          any region of the provider" + (f"; in use by your clusters: {', '.join(regions_in_use)}"
                                                            if regions_in_use else ""))
     out("                   (Capella's API does not list regions or sizes per organization; one it does not offer")
     out("                    is rejected with Capella's message)")
     out("  deploy: capellactl cluster create NAME [--provider … --size …]")
+    out("          capellactl cluster create NAME --group data:3x8/32 --group index,query:2x8/32 …  (several groups)")
 
 
 # -------------------------------------------------------------- step scale

@@ -135,3 +135,14 @@ def test_readme_walkthrough_steps(fake, run, tmp_path, monkeypatch):
     assert write.exit_code == 0, write.output
     r = run("--auto-approve", "cluster", "scale", "nova-dev-01", "--nodes", "3", no_env=True)
     assert r.exit_code == 0 and "checks: memory ok" in r.output, r.output  # scale-in with capacity checks
+
+
+@pytest.mark.story("CAP-054", "AC7")
+def test_sync_all_ac7_docs_use_sync():
+    """Customer documents use `sync` for both first-time setup and refresh; `import` is only an alias now."""
+    root = GUIDE.parents[1]
+    docs = [*sorted((root / "docs").glob("*.md")), root / "README.md", *sorted((root / "capellactl" / "help").glob("*.md"))]
+    for doc in docs:
+        text = doc.read_text(encoding="utf-8")
+        assert not re.search(r"capellactl import\b", text), f"{doc.name} still tells users to run 'capellactl import'"
+    assert "capellactl sync" in (root / "docs" / "getting-started.md").read_text(encoding="utf-8")

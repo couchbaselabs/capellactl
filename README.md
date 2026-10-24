@@ -147,6 +147,7 @@ Passwords are never written to `capella.yaml` or printed: give them as `--passwo
 | Document | For |
 |---|---|
 | [Getting started](docs/getting-started.md) | Step-by-step walkthrough with example output, from install to deleting a cluster, and troubleshooting |
+| [Custom clusters and service groups](docs/custom-clusters.md) | Any size and service layout: several service groups (MDS) with `--group`, adding and removing groups, single-node and advanced options |
 | [Runbook](docs/runbook.md) | Day-2 tasks with the exact command and expected output, a copy-paste reference of every command, and a 20-minute demo script |
 | [capella.yaml reference](docs/reference.md) | Every field: type, default, whether it can change, API mapping (generated from the schema) |
 | [Examples](docs/release-1.0.0/examples/) | [Annotated reference](docs/release-1.0.0/examples/capella.yaml), [single-node dev](docs/release-1.0.0/examples/single-node-dev.yaml), [GCP production](docs/release-1.0.0/examples/gcp-prod.yaml), [Azure production](docs/release-1.0.0/examples/azure-prod.yaml), [minimal](docs/release-1.0.0/examples/minimal-cluster.yaml) |

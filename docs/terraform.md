@@ -20,7 +20,7 @@ project: if both manage the same project, each sees the other's changes as drift
 - **You want one small command with no state file.** capellactl compares `capella.yaml` with Capella on every
   run, so there is no state to store, lock or repair, and nothing goes wrong when someone changes a setting in the
   Capella UI: `capellactl drift` reports it and `capellactl sync` brings it into the file.
-- **You start from an existing environment.** `capellactl import` writes `capella.yaml` from what already runs in
+- **You start from an existing environment.** `capellactl sync` writes `capella.yaml` from what already runs in
   Capella, and `plan` then reports no changes.
 - **Day-2 operations are the main job**: scaling with capacity checks before scale-in, step scaling from alerts
   (`cluster scale --step +1 --max 6`), powering clusters off and on, pausing a hibernation schedule, rotating
@@ -30,9 +30,9 @@ project: if both manage the same project, each sees the other's changes as drift
 
 ## Moving between them
 
-- From capellactl to Terraform: `capellactl import --full` writes every setting of each cluster, which is a useful
+- From capellactl to Terraform: `capellactl sync --full` writes every setting of each cluster, which is a useful
   checklist when writing the Terraform configuration. Import the existing resources into Terraform state with
   `terraform import`, then stop running `capellactl apply` for that project.
-- From Terraform to capellactl: run `capellactl import --project NAME`, check that `capellactl plan` reports no
+- From Terraform to capellactl: run `capellactl sync --project NAME`, check that `capellactl plan` reports no
   changes, then remove the resources from Terraform state (`terraform state rm`) so that `terraform destroy` can
   never delete them.

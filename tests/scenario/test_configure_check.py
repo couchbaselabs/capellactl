@@ -32,7 +32,7 @@ def test_configure_check_ac1_org_mismatch_reported(fake, run, write_config):
     assert r.exit_code == 0, r.output
     assert "profile 'default' saved" in r.output
     assert "capella.yaml is for organization org-other, but this key is for Nova Corp (org-1)" in r.output
-    assert "capellactl import --force" in r.output and "capellactl configure --profile NAME" in r.output
+    assert "capellactl sync --force" in r.output and "capellactl configure --profile NAME" in r.output
     assert "Back up" not in r.output
     assert p.read_text(encoding="utf-8") == OTHER
     assert fake.writes() == []
@@ -82,7 +82,7 @@ def test_configure_check_ac4_matching_file_quiet(fake, run, write_config):
         write_config(text)
         r = run("configure", "--api-key-stdin", input=f"{KEY}\n", no_env=True, extra_env={"CAPELLA_ORG_ID": "org-1"})
         assert r.exit_code == 0, r.output
-        assert "capella.yaml already exists; to refresh it from Capella: capellactl import --force" in r.output
+        assert "capella.yaml already exists; to refresh it from Capella: capellactl sync" in r.output
         assert "warning" not in r.output
     assert fake.writes() == []
 

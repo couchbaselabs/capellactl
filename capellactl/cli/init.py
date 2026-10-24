@@ -419,7 +419,7 @@ def init(state: AppState, file: str | None, non_interactive: bool, dry_run: bool
     taken = {str(c.get("name")) for c in existing}
 
     def free_name(v: str) -> list[str]:
-        return [f"cluster {v} already exists in project {a.project}; use 'capellactl import' to describe it, or "
+        return [f"cluster {v} already exists in project {a.project}; use 'capellactl sync' to describe it, or "
                 "choose another name"] if v in taken else []
 
     a.provider = provider or "aws"
