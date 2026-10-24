@@ -49,6 +49,32 @@ Apply complete in 6m12s.
 For one step within limits, for example from an alert: `capellactl -y cluster scale nova-dev-01 --step +1 --max 6`
 (exit 0 and `at_limit` when already at 6).
 
+## Add or remove a service group
+
+Give a service its own nodes (multi-dimensional scaling), for example dedicated search nodes. The new group's size
+defaults to the data group's; `--cpu`, `--ram` and `--disk-size` choose another. Layouts, sizes and creating a cluster
+with several groups: [Custom clusters and service groups](custom-clusters.md).
+
+```bash
+capellactl cluster group add nova-dev-01 --services search --nodes 2
+capellactl cluster group remove nova-dev-01 search --allow-service-removal
+```
+
+```text
+  ~ cluster nova-dev-01   scale out
+    + serviceGroups[search]  2 × 4 vCPU/16 GB gp3 50 GB
+
+Plan: 0 to add, 1 to change, 0 to delete, 0 blocked.
+Add service group search to nova-dev-01 and record it in capella.yaml? [y/N]: y
+capella.yaml updated (previous version kept as capella.yaml.bak)
+→ updating cluster nova-dev-01 …
+  cluster nova-dev-01: scaling (0s) ..
+  cluster nova-dev-01: healthy (1m21s)
+Apply complete in 1m21s.
+```
+
+Removing a group runs the scale-in checks; removing the last nodes of a service needs `--allow-service-removal`.
+
 ## Scale in
 
 Removing nodes first checks that the buckets still fit in memory and that there are enough data nodes for their
@@ -338,8 +364,8 @@ pbpaste | capellactl configure --api-key-stdin            # macOS: no hidden-pro
 ```bash
 capellactl init                                           # wizard: writes a new capella.yaml
 capellactl init --dry-run                                 # print the YAML only
-capellactl import                                         # write existing projects/clusters to capella.yaml (read-only)
-capellactl import --project $PROJECT --cluster $CLUSTER
+capellactl sync                                           # write or refresh capella.yaml from every project (read-only)
+capellactl sync --project $PROJECT --cluster $CLUSTER
 capellactl sync                                           # refresh capella.yaml after changes made in the Capella UI
 capellactl sync --dry-run                                 # show differences; exit 2 when out of date (CI)
 capellactl validate
@@ -380,6 +406,8 @@ capellactl cluster create $CLUSTER --project $PROJECT --provider azure   # asks 
 capellactl cluster create $CLUSTER --project $PROJECT --free-tier --provider azure --region eastus   # free tier on Azure: eastus, swedencentral, koreacentral
 capellactl cluster create $CLUSTER --project $PROJECT --provider azure --region $REGION --size medium --support-plan enterprise
 capellactl cluster create $CLUSTER --project $PROJECT --provider azure --region westeurope --size small --disk-type P10
+capellactl cluster create $CLUSTER --project $PROJECT --provider azure --group data:3x8/32 --group index,query:2x8/32   # one --group per service group (MDS)
+capellactl cluster create $CLUSTER --project $PROJECT --single-node --cpu 8 --ram 32 --server-version 8.0   # advanced options: cluster create --help
 capellactl cluster clone $CLUSTER $CLUSTER-weu --region westeurope        # same size, buckets, scopes, collections; new network
 capellactl cluster clone $CLUSTER $CLUSTER-dr --region westus2 --with-cidrs --with-credentials --support-plan "developer pro"
 capellactl cluster clone                                  # asks: source project, cluster, region, name, project, network
@@ -389,6 +417,9 @@ capellactl cluster update $CLUSTER --cpu 8 --ram 32       # bigger nodes; less R
 capellactl cluster scale $SCALE_CLUSTER --nodes 4         # scale out; multi-node clusters (a --size dev cluster stays 1 node)
 capellactl cluster scale $SCALE_CLUSTER --nodes 3         # scale in: memory and replica checks first
 capellactl cluster scale $SCALE_CLUSTER --nodes 2 --group search
+capellactl cluster group list $SCALE_CLUSTER
+capellactl cluster group add $SCALE_CLUSTER --services search --nodes 2              # new group; size defaults to the data group's
+capellactl cluster group remove $SCALE_CLUSTER search                                # scale-in checks; last data group never removed
 capellactl cluster scale $SCALE_CLUSTER --step +1 --max 6                 # one node more; exit 0 at the limit
 capellactl cluster scale $SCALE_CLUSTER --step -1 --min 3                 # one node less, capacity-checked
 capellactl cluster scale $SCALE_CLUSTER --step +1 --all-groups            # each group +1 on its own

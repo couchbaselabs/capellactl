@@ -32,9 +32,9 @@ The spec has **285 operations**. Release 1.0.0 is about the operational database
 
 | | Commands | ✅ Done | 🟡 Partial | ⬜ Not built (stub) | ⏭️ Not in 1.0 (proposed) | Coverage (done / total) |
 |---|---|---|---|---|---|---|
-| **Resource commands planned for 1.0.0** | **42** | 42 | 0 | 0 | — | **100%** |
+| **Resource commands planned for 1.0.0** | **45** | 45 | 0 | 0 | — | **100%** |
 | Workflow commands (`plan`, `apply`, …) | 11 | 11 | 0 | 0 | — | 100% |
-| All resource commands, including proposed ones | 157 | 42 | 0 | 0 | 115 | 27% |
+| All resource commands, including proposed ones | 160 | 45 | 0 | 0 | 115 | 28% |
 
 *Each verb counts as one command (for example `cluster schedule pause`). Each command maps to one or more API operations. For example, `bucket create` calls both the provisioned and the free-tier create.*
 
@@ -100,9 +100,12 @@ Every resource command: built, stubbed, or proposed, with the API operations it 
 | `capellactl cluster options` | ✅ Done | CAP-041 |  |  |
 | `capellactl cluster list` | ✅ Done | CAP-038 | `GET {org}/projects/{p}/clusters` |  |
 | `capellactl cluster get` | ✅ Done | CAP-038, CAP-041 | `GET {org}/projects/{p}/clusters/freeTier/{c}`<br>`GET {org}/projects/{p}/clusters/{c}` |  |
-| `capellactl cluster create` | ✅ Done | CAP-011, CAP-038, CAP-041 | `POST {org}/projects/{p}/clusters/freeTier`<br>`POST {org}/projects/{p}/clusters` |  |
-| `capellactl cluster update` | ✅ Done | CAP-012, CAP-017 | `PUT {org}/projects/{p}/clusters/freeTier/{c}`<br>`PUT {org}/projects/{p}/clusters/{c}` |  |
+| `capellactl cluster create` | ✅ Done | CAP-011, CAP-038, CAP-041, CAP-051, CAP-053 | `POST {org}/projects/{p}/clusters/freeTier`<br>`POST {org}/projects/{p}/clusters` |  |
+| `capellactl cluster update` | ✅ Done | CAP-012, CAP-017, CAP-053 | `PUT {org}/projects/{p}/clusters/freeTier/{c}`<br>`PUT {org}/projects/{p}/clusters/{c}` |  |
 | `capellactl cluster scale` | ✅ Done | CAP-015, CAP-016, CAP-018 | `PUT {org}/projects/{p}/clusters/{c}` |  |
+| `capellactl cluster group list` | ✅ Done | CAP-052 | `GET {org}/projects/{p}/clusters/{c}` |  |
+| `capellactl cluster group add` | ✅ Done | CAP-052 | `PUT {org}/projects/{p}/clusters/{c}` |  |
+| `capellactl cluster group remove` | ✅ Done | CAP-052 | `PUT {org}/projects/{p}/clusters/{c}` |  |
 | `capellactl cluster clone` | ✅ Done | CAP-049 | `POST {org}/projects/{p}/clusters` |  |
 | `capellactl cluster delete` | ✅ Done | CAP-014, CAP-041 | `DELETE {org}/projects/{p}/clusters/freeTier/{c}`<br>`DELETE {org}/projects/{p}/clusters/{c}` |  |
 | `capellactl cluster protect` | ✅ Done | CAP-013 | `PUT {org}/projects/{p}/clusters/{c}/deletionProtection` |  |
@@ -142,11 +145,11 @@ Every resource command: built, stubbed, or proposed, with the API operations it 
 | `capellactl configure` | ✅ Done | CAP-037, CAP-047 | Saves a profile and stores the API key in the OS keychain. Calls `GET /v4/organizations`; with an existing capella.yaml, also `GET …/projects` to check it (CAP-047). |
 | `capellactl configure list / show / remove` | ✅ Done | CAP-037 | No API calls. |
 | `capellactl init` | ✅ Done | CAP-035 | Wizard that writes capella.yaml. |
-| `capellactl import` | ✅ Done | CAP-036, CAP-047, CAP-048 | Reads projects, clusters, CIDRs, buckets, scopes, schedules and credentials into capella.yaml. |
+| `capellactl import` | ✅ Done | CAP-036, CAP-047, CAP-048, CAP-054 | Hidden alias of `sync` since CAP-054. Reads projects, clusters, CIDRs, buckets, scopes, schedules and credentials into capella.yaml. |
 | `capellactl validate` | ✅ Done | CAP-002 | Offline check of schema, references and password rules. |
 | `capellactl plan` | ✅ Done | CAP-005, CAP-048 | Diffs projects, clusters, deletion protection, schedules, CIDRs, buckets, scopes, collections and credentials. |
 | `capellactl apply` | ✅ Done | CAP-006, CAP-016, CAP-019, CAP-031 | Same coverage as `plan`; `--prune`, `--rotate-passwords`, `--power-on` and the scale-in flags. |
-| `capellactl sync` | ✅ Done | CAP-038, CAP-048 | Refreshes capella.yaml from Capella. |
+| `capellactl sync` | ✅ Done | CAP-038, CAP-048, CAP-054 | Refreshes capella.yaml from Capella; with CAP-054 it covers every project in the organization and `import` becomes its alias. |
 | `capellactl destroy` | ✅ Done | CAP-030 | Deletes every declared resource in reverse order; capella.yaml is kept. |
 | `capellactl drift` | ✅ Done | CAP-031 | Read-only: changed, missing and unmanaged resources; `--detailed-exitcode`. |
 | `capellactl help / completion` | ✅ Done | CAP-034 | No API calls. |
@@ -309,8 +312,8 @@ Paths are abbreviated: `{org}` = `/v4/organizations/{organizationId}`, `{p}` = p
 |---|---|---|---|---|---|
 | Create Cluster | `POST` | `{org}/projects/{p}/clusters` | `cluster create` / `cluster clone` | ✅ Done |  |
 | List Clusters | `GET` | `{org}/projects/{p}/clusters` | `cluster list` | ✅ Done |  |
-| Get Cluster | `GET` | `{org}/projects/{p}/clusters/{c}` | `cluster get` | ✅ Done |  |
-| Update Cluster | `PUT` | `{org}/projects/{p}/clusters/{c}` | `cluster update` / `cluster scale` | ✅ Done | Description, support, scale out/in/up/down (capacity-checked), step scaling. |
+| Get Cluster | `GET` | `{org}/projects/{p}/clusters/{c}` | `cluster get` / `cluster group list` | ✅ Done |  |
+| Update Cluster | `PUT` | `{org}/projects/{p}/clusters/{c}` | `cluster update` / `cluster scale` / `cluster group add` / `cluster group remove` | ✅ Done | Description, support, scale out/in/up/down (capacity-checked), step scaling, adding and removing service groups. |
 | Delete Cluster | `DELETE` | `{org}/projects/{p}/clusters/{c}` | `cluster delete` | ✅ Done | `--discard-snapshots` maps to `retainsnapshotbackups=false`. |
 | Get Cluster Capacity Statistics | `GET` | `{org}/projects/{p}/clusters/{c}/stats` | internal: bucket memory and scale-in checks | ✅ Done | No `cluster stats` command. |
 | Turn On Cluster | `POST` | `{org}/projects/{p}/clusters/{c}/activationState` | `cluster power on` | ✅ Done |  |

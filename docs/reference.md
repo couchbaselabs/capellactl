@@ -22,6 +22,7 @@ The single-project form (`project:` and `clusters:` at the top level) uses the s
 | `apiVersion` | string |  | capellactl only |  | File format version. Must be capellactl/v1. |
 | `organizationId` | string |  | key |  | Capella organization ID. Usually ${CAPELLA_ORG_ID}; may come from a profile instead. |
 | `credentialsOutput` | string | `./.capellactl/credentials` | capellactl only |  | Directory where Capella-generated passwords are saved (mode 0600). |
+| `skipProjects` | list of string |  | capellactl only | none (capellactl only) | Projects that 'capellactl sync' leaves out (set with 'capellactl sync --skip-project NAME'; 'capellactl sync --project NAME' brings one back). |
 | `projects` | list of objects |  |  |  | Projects in the organization, each with its clusters. |
 
 ## projects
@@ -45,22 +46,22 @@ Clusters in this project.
 | `name` | string |  | key | name (Create/Update Cluster) | Cluster name (up to 256 characters). Identifies the cluster in the project. |
 | `tier` | string: `provisioned`, `free` | `provisioned` | **immutable** | POST …/clusters or POST …/clusters/freeTier | provisioned (default; sized by serviceGroups) or free (1 node: data, index, query, search; one per organization; fixed regions). |
 | `description` | string |  | updatable | description (Create/Update Cluster) | Cluster description (up to 1024 characters). |
-| `configurationType` | string: `multiNode`, `singleNode` | `multiNode` | **immutable** | configurationType (Create Cluster) | multiNode (high availability) or singleNode (1 node, development). |
+| `configurationType` | string: `multiNode`, `singleNode` | `multiNode` | **immutable** | configurationType (Create Cluster) | multiNode (high availability) or singleNode (1 node, development). Set with: capellactl cluster create NAME --single-node (or --size dev). |
 | `cloudProvider` | object |  |  |  | Where the cluster runs. |
 | `cloudProvider.type` | string: `aws`, `gcp`, `azure` |  | **immutable** | cloudProvider.type (Create Cluster) | Cloud provider. |
 | `cloudProvider.region` | string |  | **immutable** | cloudProvider.region (Create Cluster) | Provider region, for example us-east-1. |
 | `cloudProvider.cidr` | string |  | **immutable** | cloudProvider.cidr (Create Cluster) | CIDR block for the cluster network; must not overlap other clusters in the project. |
 | `couchbaseServer` | object |  |  |  | Couchbase Server version. |
-| `couchbaseServer.version` | string |  | **immutable** | couchbaseServer.version (Create Cluster) | Couchbase Server version; omit for the Capella default. |
+| `couchbaseServer.version` | string |  | **immutable** | couchbaseServer.version (Create Cluster) | Couchbase Server version; omit for the Capella default. Set with: capellactl cluster create NAME --server-version VERSION. |
 | `availability` | object |  |  |  | Availability zones. |
 | `availability.type` | string: `single`, `multi` |  | **immutable** | availability.type (Create Cluster) | single or multi availability zone. |
 | `support` | object |  |  |  | Support plan. |
 | `support.plan` | string: `basic`, `developer pro`, `enterprise`, `Basic`, `Developer Pro`, `Enterprise` |  | updatable | support.plan (Create/Update Cluster) | Support plan. |
 | `support.timezone` | string: `ET`, `GMT`, `IST`, `PT` |  | updatable | support.timezone (Create/Update Cluster) | Support timezone (ignored for basic). |
 | `serviceGroups` | list of objects |  |  |  | Node groups. Scaling = changing these. |
-| `zones` | list of string |  | **immutable** | zones (Create Cluster) | Single-AZ only: one availability zone. |
-| `cmekId` | string |  | **immutable** | cmekId (Create Cluster) | ID of an existing customer-managed encryption key. |
-| `enablePrivateDNSResolution` | boolean |  | **immutable** | enablePrivateDNSResolution (Create Cluster) | Public DNS names that resolve to private addresses. |
+| `zones` | list of string |  | **immutable** | zones (Create Cluster) | Single-AZ only: one availability zone. Set with: capellactl cluster create NAME --zone ZONE. |
+| `cmekId` | string |  | **immutable** | cmekId (Create Cluster) | ID of an existing customer-managed encryption key. Set with: capellactl cluster create NAME --cmek-id ID. |
+| `enablePrivateDNSResolution` | boolean |  | **immutable** | enablePrivateDNSResolution (Create Cluster) | Public DNS names that resolve to private addresses. Set with: capellactl cluster create NAME --private-dns. |
 | `deletionProtection` | boolean |  | updatable | deletionProtection (Update Deletion Protection) | Block deletion of the cluster and its buckets; omit to leave unchanged. |
 | `allowAnyIp` | boolean | `false` | capellactl only |  | Required to allow 0.0.0.0/0 in allowedCidrs. |
 | `allowedCidrs` | list of objects |  |  |  | IP ranges allowed to connect. |
@@ -94,7 +95,7 @@ Node groups. Scaling = changing these.
 | `node.disk.type` | string: `gp3`, `io2`, `P6`, `P10`, `P15`, `P20`, `P30`, `P40`, `P50`, `P60`, `Ultra`, `pd-ssd` |  | updatable | serviceGroups[].node.disk.type (Create/Update Cluster) | Disk type. AWS: gp3, io2. Azure: P6, P10, P15, P20, P30, P40, P50, P60, Ultra. GCP: pd-ssd. |
 | `node.disk.storage` | integer (50–…) |  | updatable | serviceGroups[].node.disk.storage (Create/Update Cluster) | Disk size in GB. AWS and GCP: at least 50. Azure: only for Ultra disks. Cannot be reduced. |
 | `node.disk.iops` | integer |  | updatable | serviceGroups[].node.disk.iops (Create/Update Cluster) | Provisioned IOPS. Required for AWS; only for Azure Ultra disks. |
-| `node.disk.autoExpansion` | boolean | `false` | updatable | serviceGroups[].node.disk.autoExpansion (Create/Update Cluster) | Azure only: let disk storage expand automatically. |
+| `node.disk.autoExpansion` | boolean | `false` | updatable | serviceGroups[].node.disk.autoExpansion (Create/Update Cluster) | Azure only: let disk storage expand automatically. Set with: capellactl cluster create NAME --disk-auto-expansion (or --group …:auto-expansion=true), change with capellactl cluster update NAME --disk-auto-expansion. |
 | `numOfNodes` | integer (1–27) |  | updatable | serviceGroups[].numOfNodes (Create/Update Cluster) | Nodes in this group. First group of a multiNode cluster: 3–27; additional groups: 2–24; singleNode: 1. |
 | `services` | list of string: `data`, `index`, `query`, `search`, `analytics`, `eventing` |  | updatable | serviceGroups[].services (Create/Update Cluster) | Couchbase services on these nodes. At least one group must run data. The sorted set identifies the group. |
 

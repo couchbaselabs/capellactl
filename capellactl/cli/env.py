@@ -629,9 +629,7 @@ def run_import(state: AppState, client: Any = None, projects: tuple[str, ...] = 
         out("Next: capellactl cluster create NAME    (deploys the first cluster of a project)")
 
 
-@click.command("import", epilog="\b\nExamples:\n  capellactl import\n  capellactl import --project nova-dev\n"
-                                "  capellactl import --project nova-dev --cluster nova-dev-01\n"
-                                "  capellactl import --project nova-dev --stdout > prod.yaml")
+@click.command("import", hidden=True, epilog="\b\n'import' is now 'sync': capellactl sync --help")
 @click.option("--project", "projects", multiple=True, metavar="NAME",
               help="Only these projects (repeatable; default: every project).")
 @click.option("--project-id", metavar="ID", help="Project ID, when several projects share a name.")
@@ -640,9 +638,16 @@ def run_import(state: AppState, client: Any = None, projects: tuple[str, ...] = 
 @click.option("--file", "file", metavar="PATH", help="Output file (default: capella.yaml, or --config).")
 @click.option("--full", is_flag=True, help="Write every field, including values equal to the defaults.")
 @click.option("--stdout", "to_stdout", is_flag=True, help="Print the YAML instead of writing a file.")
-@click.option("--force", is_flag=True, help="Rewrite the whole file instead of adding missing projects (.bak kept).")
+@click.option("--force", is_flag=True, help="Rewrite the whole file (.bak kept).")
 @pass_state
 def import_cmd(state: AppState, projects: tuple[str, ...], project_id: str | None, clusters: tuple[str, ...],
                cluster_ids: tuple[str, ...], file: str | None, full: bool, to_stdout: bool, force: bool) -> None:
-    """Write your Capella projects and clusters to capella.yaml (read-only; adds missing projects)."""
-    run_import(state, None, projects, project_id, clusters, cluster_ids, file, full, to_stdout, force)
+    """Alias of 'capellactl sync' (CAP-054), kept for one release."""
+    from pathlib import Path
+
+    from capellactl.cli.sync import sync_or_create
+
+    if not to_stdout:
+        err("note: 'import' is now 'sync' (capellactl sync --help)")
+    sync_or_create(state, Path(file) if file else state.config_path(), projects, (project_id,) if project_id else (),
+                   clusters, cluster_ids, to_stdout=to_stdout, full=full, force=force)

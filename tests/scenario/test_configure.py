@@ -146,6 +146,6 @@ def test_configure_offers_import_and_writes_capella_yaml(fake, run, tmp_path, mo
 def test_configure_non_interactive_prints_next_step(fake, run, tmp_path):
     seed_healthy(fake)
     r = run("configure", "--api-key-stdin", input=f"{KEY}\n", no_env=True)
-    assert "Next: capellactl import" in r.output and not (tmp_path / "capella.yaml").exists()
+    assert "Next: capellactl sync" in r.output and not (tmp_path / "capella.yaml").exists()
     r = run("configure", "--import", "--api-key-stdin", input=f"{KEY}\n", no_env=True)
     assert "Imported 1 project, 1 cluster" in r.output and (tmp_path / "capella.yaml").exists()

@@ -111,7 +111,7 @@ Next: capellactl cluster create NAME --project sandbox    (deploys the first clu
 ```
 
 `capellactl project list` now shows it. A name that already exists in Capella is refused; add an existing project to
-the file with `capellactl import --project NAME`.
+the file with `capellactl sync --project NAME`.
 
 **4. See what you can deploy**
 
@@ -380,6 +380,9 @@ capellactl cluster create dev-01 --project sandbox --provider azure --region eas
 
 On AWS use `--provider aws --region us-east-1`, on Google Cloud `--provider gcp --region us-east1`; capellactl picks
 each provider's disk type for you (Azure: Premium SSD, such as P6).
+
+For a production layout with separate groups of nodes per service (multi-dimensional scaling), for example data on
+3 × 8 vCPU/32 GB and index and query on 2 × 8/32, see [Custom clusters and service groups](custom-clusters.md).
 
 **12. Change a cluster**
 
@@ -747,12 +750,12 @@ Disks never shrink, and failed or degraded clusters are not changed. A turned-of
   (`curl -s https://checkip.amazonaws.com`). Also check that you copied the **API Key Token**, not the API Key ID. The
   message shows Capella's own hint and a `curl` command to test the key. To avoid pasting into the hidden prompt:
   `pbpaste | capellactl configure --api-key-stdin`.
-- `import` or `configure` says `buckets and database credentials not imported (turnedOff)`: Capella does not return
-  them while a cluster is off. Turn it on (`capellactl cluster power NAME --on`) and run `capellactl import` again.
+- `sync` or `configure` says `buckets and database credentials not imported (turnedOff)`: Capella does not return
+  them while a cluster is off. Turn it on (`capellactl cluster power NAME --on`) and run `capellactl sync` again.
 - `plan` blocks a project with `probably renamed in Capella`: the project was renamed in the UI and the file has no
   `id:` for it. Run `capellactl sync` to adopt the new name (it also records the ids).
 - `project NAME not found`: the `capella.yaml` in this folder is probably for another organization or project. Run
-  `capellactl configure show` to see which file and organization are used; `capellactl import --force` rewrites the
+  `capellactl configure show` to see which file and organization are used; `capellactl sync --force` rewrites the
   file for your organization (the old one is kept as `.bak`).
 - Exit codes: `capellactl help exit-codes` (3 = config problem, 4 = blocked, 5 = timed out waiting).
 - Details of every API call (secrets masked): `capellactl --log-level debug plan`.
@@ -767,10 +770,10 @@ creates it and keeps it up to date; you do not need to edit it.
 
 | How it changes | Command |
 |---|---|
-| Created from your Capella projects | `capellactl configure` (offers it) or `capellactl import [--project NAME] [--cluster NAME]` |
+| Created from your Capella projects | `capellactl configure` (offers it) or `capellactl sync [--project NAME] [--cluster NAME]` |
 | Created for a new environment | `capellactl init` |
 | New project added | `capellactl project create NAME` |
-| More existing projects added | `capellactl import` (adds the ones that are missing, leaves the others alone) |
+| More existing projects added | `capellactl sync` (adds the ones that are missing; `--skip-project NAME` leaves one out) |
 | Cluster, bucket, scope, collection, IP range or app login added, changed or deleted | the matching `capellactl` command |
 | Refreshed after changes made in the Capella UI | `capellactl sync` |
 

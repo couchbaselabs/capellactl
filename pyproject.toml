@@ -64,6 +64,7 @@ packages = ["capellactl"]
 [tool.hatch.build.targets.wheel.force-include]
 "capellactl/config/schema.json" = "capellactl/config/schema.json"
 "capellactl/config/presets.yaml" = "capellactl/config/presets.yaml"
+"capellactl/config/compute.yaml" = "capellactl/config/compute.yaml"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

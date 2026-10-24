@@ -56,7 +56,9 @@ RELEASES = {
             ("Phase 3 — Data model & access", "Buckets, scopes, collections and least-privilege database credentials, ready for applications",
              ["CAP-023", "CAP-024", "CAP-025", "CAP-026", "CAP-027", "CAP-046", "CAP-028", "CAP-029"]),
             ("Phase 4 — Adopt, harden & ship", "Import existing clusters with a no-change round trip, one-command build and teardown, drift reporting, nightly integration gate and customer docs",
-             ["CAP-030", "CAP-036", "CAP-047", "CAP-048", "CAP-031", "CAP-042", "CAP-032", "CAP-044", "CAP-043", "CAP-045", "CAP-033", "CAP-050"]),
+             ["CAP-030", "CAP-036", "CAP-047", "CAP-048", "CAP-031", "CAP-042", "CAP-032", "CAP-044", "CAP-043", "CAP-045", "CAP-033", "CAP-050", "CAP-054"]),
+            ("Phase 5 — Custom cluster layouts", "Create a cluster with any size, multi-dimensional service layout and create option, and add or remove service groups later, from commands alone",
+             ["CAP-051", "CAP-052", "CAP-053"]),
         ],
         "checklist": [
             "All P0 stories are Implemented (and P1 stories are Implemented or explicitly descoped with sign-off)",

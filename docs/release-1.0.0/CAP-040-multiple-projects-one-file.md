@@ -109,6 +109,7 @@ The single-project form (`project:` + top-level `clusters:`) is still accepted. 
 - None.
 
 ## Implementation notes (as built)
+- Revised by CAP-054 (2026-10-23): `import` is now an alias of `sync`, so with an existing file it refreshes the projects already there as well as adding the missing ones, and rewrites the file (hand-written comments are not kept; the file is tool-owned).
 - Every reader of the file goes through `project_entries()` (`capellactl/config/loader.py`), which returns each project with the YAML paths of the project and of its clusters, so error messages and line numbers point at the real place in either form.
 - The JSON schema moved the cluster definition to `$defs.cluster`, shared by `projects[].clusters` and the single-project `clusters`; `oneOf` rejects a file with both forms. `help config` shows the `projects.…` paths and still accepts `clusters.…` and `project.…`.
 - Cluster names and networks only need to be unique within a project (Capella's own rule); project names must be unique in the file.

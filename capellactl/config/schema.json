@@ -28,6 +28,16 @@
       "x-mutability": "tool",
       "default": "./.capellactl/credentials"
     },
+    "skipProjects": {
+      "type": "array",
+      "description": "Projects that 'capellactl sync' leaves out (set with 'capellactl sync --skip-project NAME'; 'capellactl sync --project NAME' brings one back).",
+      "x-mutability": "tool",
+      "x-api": "none (capellactl only)",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
     "projects": {
       "type": "array",
       "description": "Projects in the organization, each with its clusters.",
@@ -147,7 +157,7 @@
         },
         "configurationType": {
           "type": "string",
-          "description": "multiNode (high availability) or singleNode (1 node, development).",
+          "description": "multiNode (high availability) or singleNode (1 node, development). Set with: capellactl cluster create NAME --single-node (or --size dev).",
           "x-mutability": "immutable",
           "x-api": "configurationType (Create Cluster)",
           "enum": [
@@ -203,7 +213,7 @@
           "properties": {
             "version": {
               "type": "string",
-              "description": "Couchbase Server version; omit for the Capella default.",
+              "description": "Couchbase Server version; omit for the Capella default. Set with: capellactl cluster create NAME --server-version VERSION.",
               "x-mutability": "immutable",
               "x-api": "couchbaseServer.version (Create Cluster)",
               "examples": [
@@ -358,7 +368,7 @@
                       },
                       "autoExpansion": {
                         "type": "boolean",
-                        "description": "Azure only: let disk storage expand automatically.",
+                        "description": "Azure only: let disk storage expand automatically. Set with: capellactl cluster create NAME --disk-auto-expansion (or --group \u2026:auto-expansion=true), change with capellactl cluster update NAME --disk-auto-expansion.",
                         "x-mutability": "updatable",
                         "x-api": "serviceGroups[].node.disk.autoExpansion (Create/Update Cluster)",
                         "default": false
@@ -422,7 +432,7 @@
         },
         "zones": {
           "type": "array",
-          "description": "Single-AZ only: one availability zone.",
+          "description": "Single-AZ only: one availability zone. Set with: capellactl cluster create NAME --zone ZONE.",
           "x-mutability": "immutable",
           "x-api": "zones (Create Cluster)",
           "items": {
@@ -432,13 +442,13 @@
         },
         "cmekId": {
           "type": "string",
-          "description": "ID of an existing customer-managed encryption key.",
+          "description": "ID of an existing customer-managed encryption key. Set with: capellactl cluster create NAME --cmek-id ID.",
           "x-mutability": "immutable",
           "x-api": "cmekId (Create Cluster)"
         },
         "enablePrivateDNSResolution": {
           "type": "boolean",
-          "description": "Public DNS names that resolve to private addresses.",
+          "description": "Public DNS names that resolve to private addresses. Set with: capellactl cluster create NAME --private-dns.",
           "x-mutability": "immutable",
           "x-api": "enablePrivateDNSResolution (Create Cluster)"
         },

@@ -9,7 +9,7 @@ from tests.conftest import MINIMAL, seed_healthy
 @pytest.mark.parametrize(("group", "verbs"), [
     ("project", {"list", "get", "create", "update", "delete"}),
     ("cluster", {"list", "get", "create", "clone", "update", "delete", "options", "scale", "protect", "power",
-                 "schedule"}),
+                 "schedule", "group"}),
     ("cidr", {"list", "create", "delete"}),
     ("bucket", {"list", "get", "create", "update", "delete"}),
     ("scope", {"list", "create", "delete"}),
@@ -55,7 +55,7 @@ def test_project_update_cluster_name_given_points_to_project(fake, run, write_co
     r = run("project", "get", "nova-dev-01")
     assert r.exit_code == 1 and "is a cluster in project nova-dev, not a project. Did you mean: project nova-dev" in r.output
     r = run("project", "update", "nope", "--description", "x")
-    assert "add it with 'capellactl import --project nope'" in r.output
+    assert "add it with 'capellactl sync --project nope'" in r.output
 
 
 @pytest.mark.story("CAP-009", "AC2")

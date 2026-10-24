@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import difflib
+from pathlib import Path
 from typing import Any
 
 import click
@@ -65,20 +66,146 @@ def _carry_over_project(prev: dict[str, Any] | None, res: Any) -> list[str]:
     return kept
 
 
-@click.command("sync", epilog="\b\nExamples:\n  capellactl sync\n  capellactl sync --dry-run      "
-                              "(CI: exit 2 when capella.yaml is out of date)\n  capellactl sync --project non-prod\n"
-                              "  capellactl sync --cluster nova-dev-01")
-@click.option("--project", "projects", multiple=True, metavar="NAME", help="Only these projects (repeatable).")
+UNREAD_LABELS = {"allowedCidrs": "allowed CIDRs", "buckets": "buckets, scopes and collections",
+                 "databaseCredentials": "database credentials", "hibernation": "hibernation schedule"}
+
+
+def _keep_unread(prev: dict[str, Any] | None, res: Any, file_name: str) -> None:
+    """Keep what Capella could not return now (a powered-off cluster, or a read error) from the previous file.
+
+    Dropping it would remove buckets and credentials that still exist from the file, and `apply --prune` would then
+    delete them in Capella. The next sync that can read them refreshes them."""
+    if not prev or not res.unread:
+        return
+    old_clusters = [c for c in prev.get("clusters") or [] if isinstance(c, dict)]
+    for cl in res.data.get("clusters") or []:
+        info = res.unread.get(str(cl.get("id")))
+        if not info:
+            continue
+        old = (next((c for c in old_clusters if c.get("id") and c.get("id") == cl.get("id")), None)
+               or next((c for c in old_clusters if not c.get("id") and c.get("name") == cl.get("name")), None))
+        if old is None:
+            continue
+        kept: list[str] = []
+        moved: dict[str, Any] = {}
+        unkept = False
+        for f in info["fields"]:
+            if f.startswith("scopes:"):
+                bucket = f.split(":", 1)[1]
+                ob = next((b for b in old.get("buckets") or [] if isinstance(b, dict) and b.get("name") == bucket), None)
+                nb = next((b for b in cl.get("buckets") or [] if b.get("name") == bucket), None)
+                if ob and ob.get("scopes") and nb is not None:
+                    nb["scopes"] = ob["scopes"]
+                    kept.append(f"scopes of bucket {bucket}")
+            elif old.get(f):
+                moved[f] = old[f]
+                kept.append(UNREAD_LABELS[f])
+            else:
+                unkept = True
+        if not kept:
+            continue
+        info["kept"] = True
+        if not unkept:  # everything that was not read is kept: replace the "not imported" notes and warnings
+            for k in [k for k in cl if str(k).startswith("__comment_") and str(cl[k]).startswith("not imported:")]:
+                del cl[k]
+            res.warnings[:] = [w for w in res.warnings
+                               if not (w.startswith(f"cluster {info['name']}: ") and " not imported (" in w)]
+        cl[f"__comment_kept_{cl.get('id')}__"] = (f"kept from the previous {file_name}: {', '.join(kept)}\n"
+                                                  f"(not readable now: {info['reason']}; the next sync refreshes them)")
+        for f, v in moved.items():
+            cl.pop(f, None)
+            cl[f] = v
+        res.warnings.append(f"cluster {info['name']}: {', '.join(kept)} kept from {file_name} "
+                            f"({info['reason']}); the next sync refreshes them")
+
+
+def _is_capellactl_file(path: Path) -> bool:
+    try:
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError:
+        return False
+    return isinstance(raw, dict) and ("projects" in raw or "project" in raw)
+
+
+def sync_or_create(state: AppState, path: Path, projects: tuple[str, ...] = (), project_ids: tuple[str, ...] = (),
+                   clusters: tuple[str, ...] = (), cluster_ids: tuple[str, ...] = (), skip: tuple[str, ...] = (),
+                   dry_run: bool = False, to_stdout: bool = False, full: bool = False, force: bool = False) -> None:
+    """One command for capella.yaml (CAP-054): create it when there is none, otherwise bring it in line with Capella."""
+    if path.exists() and not force and _is_capellactl_file(path):
+        from capellactl.config.loader import declared_org_id
+
+        file_org, key_org = declared_org_id(path, state.env), state.client().org_id
+        if file_org and key_org and file_org != key_org:  # never mix two organizations (CAP-047)
+            if not to_stdout:
+                raise CliExit(ExitCode.CONFIG_INVALID,
+                              f"{path} is for organization {file_org}, not {key_org}; nothing was written. "
+                              f"Pass --force to rewrite it for {key_org} (the current file is kept as "
+                              f"{path.name}.bak), or --file PATH to write a separate file.")
+            from capellactl.cli.env import run_import
+
+            run_import(state, None, projects, None, clusters, cluster_ids, str(path), full, True, False)
+            return
+        run_sync(state, path, projects, project_ids, clusters, cluster_ids, skip, dry_run, to_stdout, full)
+        return
+    if dry_run:
+        raise CliExit(ExitCode.CHANGES, f"{path.name} does not exist yet; 'capellactl sync' writes it from Capella")
+    from capellactl.cli.env import run_import
+
+    client = state.client()
+    names = list(projects)
+    if skip or len(project_ids) > 1:
+        listed = ep.list_projects(client)
+        names += [str(p.get("name")) for p in listed if p.get("id") in project_ids]
+        if skip and not names:
+            names = [str(p.get("name")) for p in listed if p.get("name") not in skip]
+    single_id = project_ids[0] if len(project_ids) == 1 and not projects else None
+    run_import(state, client, tuple(n for n in names if n not in skip), single_id, clusters, cluster_ids, str(path),
+               full, to_stdout, force)
+    if skip and not to_stdout and path.exists():
+        from capellactl.config.editor import ConfigEditor
+
+        ed = ConfigEditor(path)
+        ed.doc.insert(list(ed.doc.keys()).index("projects") if "projects" in ed.doc else len(ed.doc),
+                      "skipProjects", sorted(set(skip)))
+        path.write_text(ed.text(), encoding="utf-8")
+
+
+@click.command("sync", epilog="\b\nExamples:\n  capellactl sync                       (every project of the organization)\n"
+                              "  capellactl sync --dry-run             (CI: exit 2 when capella.yaml is out of date)\n"
+                              "  capellactl sync --project non-prod    (only this project; added when it is new)\n"
+                              "  capellactl sync --skip-project sandbox  (leave it out from now on)\n"
+                              "  capellactl sync --cluster nova-dev-01\n"
+                              "  capellactl sync --project nova-dev --stdout > nova-dev.yaml")
+@click.option("--project", "projects", multiple=True, metavar="NAME",
+              help="Only these projects (repeatable; added when not in capella.yaml).")
+@click.option("--project-id", "project_ids", multiple=True, metavar="ID",
+              help="Only these project IDs (repeatable), when several projects share a name.")
 @click.option("--cluster", "clusters", multiple=True, metavar="NAME", help="Only these clusters (repeatable).")
+@click.option("--cluster-id", "cluster_ids", multiple=True, metavar="ID", help="Only these cluster IDs (repeatable).")
+@click.option("--skip-project", "skip", multiple=True, metavar="NAME",
+              help="Leave this project out now and on later syncs (recorded in capella.yaml; repeatable).")
 @click.option("--dry-run", is_flag=True, help="Show the difference without writing; exit 2 when out of sync.")
+@click.option("--stdout", "to_stdout", is_flag=True, help="Print the YAML instead of writing the file.")
 @click.option("--full", is_flag=True, help="Write every field, including values equal to the defaults.")
+@click.option("--force", is_flag=True, help="Replace a file that is not a capellactl file (a .bak is kept).")
 @click.pass_obj
-def sync(state: AppState, projects: tuple[str, ...], clusters: tuple[str, ...], dry_run: bool, full: bool) -> None:
-    """Refresh capella.yaml from Capella for every project it describes (shows what changed)."""
+def sync(state: AppState, projects: tuple[str, ...], project_ids: tuple[str, ...], clusters: tuple[str, ...],
+         cluster_ids: tuple[str, ...], skip: tuple[str, ...], dry_run: bool, to_stdout: bool, full: bool,
+         force: bool) -> None:
+    """Bring capella.yaml in line with Capella: writes it when there is none, refreshes every project and adds the
+    organization's projects that are missing (read-only towards Capella)."""
+    sync_or_create(state, state.config_path(), projects, project_ids, clusters, cluster_ids, skip, dry_run, to_stdout,
+                   full, force)
+
+
+def run_sync(state: AppState, path: Path, projects: tuple[str, ...], project_ids: tuple[str, ...],
+             clusters: tuple[str, ...], cluster_ids: tuple[str, ...], skip: tuple[str, ...], dry_run: bool,
+             to_stdout: bool, full: bool) -> None:
     from capellactl.config.loader import project_entries
     from capellactl.importer import (
         NEW_CLUSTER_TEMPLATE,
         NO_PROJECTS_TEMPLATE,
+        POWERED_OFF,
         ImportResult,
         build_document,
         combine,
@@ -86,32 +213,38 @@ def sync(state: AppState, projects: tuple[str, ...], clusters: tuple[str, ...], 
         to_projects_form,
     )
 
-    path = state.config_path()
-    if not path.exists():
-        raise CliExit(ExitCode.CONFIG_INVALID, f"{path} not found; run 'capellactl import' first",
-                      topic="getting-started")
     old_text = path.read_text(encoding="utf-8")
-    try:
-        old = yaml.safe_load(old_text) or {}
-    except yaml.YAMLError as exc:
-        raise CliExit(ExitCode.CONFIG_INVALID, f"{path} is not valid YAML ({exc}); re-create it with "
-                                               "'capellactl import --force'") from None
+    old = yaml.safe_load(old_text) or {}
     entries = project_entries(old)
-    unknown = [n for n in projects if n not in {e.name for e in entries}]
-    if unknown:
-        raise CliExit(ExitCode.CONFIG_INVALID, f"not in {path.name}: {', '.join(unknown)} "
-                                               "(add them with 'capellactl import --project NAME')")
     org = old.get("organizationId")
     client = state.client(org if isinstance(org, str) and not org.startswith("${") else None)
     capella_projects = ep.list_projects(client)
+    in_file = {e.name for e in entries}
+    in_capella = {str(p.get("name")) for p in capella_projects}
+    unknown = [n for n in projects if n not in in_file and n not in in_capella]
+    unknown += [i for i in project_ids if not any(p.get("id") == i for p in capella_projects)]
+    if unknown:
+        raise CliExit(ExitCode.CONFIG_INVALID, f"not in {path.name} or in Capella: {', '.join(unknown)} "
+                                               "(see 'capellactl project list')")
+    # --project NAME brings a skipped project back; --skip-project NAME leaves it out from now on (CAP-054 AC3)
+    skipped = [n for n in old.get("skipProjects") or [] if n not in projects] + \
+              [n for n in skip if n not in (old.get("skipProjects") or [])]
+    named = set(projects) | {str(p.get("name")) for p in capella_projects if p.get("id") in project_ids}
+    cluster_filter = bool(clusters or cluster_ids)
 
     results: list[Any] = []
     kept: list[str] = []
     seen_clusters: set[str] = set()
+    covered: set[str] = set()
     warnings: list[str] = []
+    refreshed: list[tuple[str, int]] = []
     for e in entries:
+        if e.name in skipped:
+            warnings.append(f"project {e.name} removed from {path.name} and skipped from now on "
+                            f"('capellactl sync --project {e.name}' adds it back)")
+            continue
         prev = {**e.data, "clusters": e.clusters}
-        refresh = not projects or e.name in projects
+        refresh = not named or e.name in named
         pinned = e.data.get("id")
         match = [p for p in capella_projects if (p.get("id") == pinned if pinned else p.get("name") == e.name)]
         if refresh and not match and not pinned:
@@ -119,9 +252,10 @@ def sync(state: AppState, projects: tuple[str, ...], clusters: tuple[str, ...], 
             if match:
                 warnings.append(f"project {e.name} was renamed in Capella to {match[0].get('name')}; "
                                 f"{path.name} now uses the new name and its id")
+        covered.update(str(p.get("id")) for p in match)
         if refresh and len(match) > 1:
             raise CliExit(ExitCode.BLOCKED, f"{len(match)} projects are named {e.name}; add id: to it with "
-                                            "'capellactl import --force'", topic="idempotency")
+                                            "'capellactl sync --force'", topic="idempotency")
         if refresh and not match and _was_deployed(e):
             warnings.append(f"project {e.name} no longer exists in Capella; removed from {path.name} with its "
                             f"clusters and everything in them")
@@ -135,8 +269,9 @@ def sync(state: AppState, projects: tuple[str, ...], clusters: tuple[str, ...], 
             continue
         proj = match[0]
         found = ep.list_clusters(client, str(proj["id"]))
-        chosen = [c for c in found if not clusters or c.get("name") in clusters]
+        chosen = [c for c in found if not cluster_filter or c.get("name") in clusters or c.get("id") in cluster_ids]
         seen_clusters.update(str(c.get("name")) for c in chosen)
+        seen_clusters.update(str(c.get("id")) for c in chosen)
         recorded = {(str(c.get("name")), str(u.get("name"))): (u.get("access"), u.get("password"))
                     for c in e.clusters if isinstance(c, dict)
                     for u in c.get("databaseCredentials") or [] if isinstance(u, dict) and u.get("access")}
@@ -148,29 +283,51 @@ def sync(state: AppState, projects: tuple[str, ...], clusters: tuple[str, ...], 
         if pinned:
             res.data["project"] = {"id": pinned, **res.data["project"]}
         kept += _carry_over_project(prev, res)
-        if clusters:  # refresh only the named clusters; keep the others as they are
-            refreshed = {c.get("name") for c in res.data["clusters"]}
-            gone = {str(c.get("name")) for c in e.clusters if c.get("id") and c.get("name") in clusters
-                    and c.get("name") not in refreshed}
+        _keep_unread(prev, res, path.name)
+        if cluster_filter:  # refresh only the named clusters; keep the others as they are
+            done = {c.get("name") for c in res.data["clusters"]}
+            gone = {str(c.get("name")) for c in e.clusters if c.get("id") and (c.get("name") in clusters
+                                                                              or c.get("id") in cluster_ids)
+                    and c.get("name") not in done}
             seen_clusters.update(gone)
             warnings += [f"cluster {n} no longer exists in Capella; removed from {path.name} with its buckets, "
                          "credentials and other settings" for n in sorted(gone)]
-            res.data["clusters"] = [c for c in e.clusters if c.get("name") not in refreshed | gone] + res.data["clusters"]
+            res.data["clusters"] = [c for c in e.clusters if c.get("name") not in done | gone] + res.data["clusters"]
         else:
             live = {c.get("name") for c in res.data["clusters"]}
             warnings += [f"cluster {c.get('name')} no longer exists in Capella; removed from {path.name} with its "
                          "buckets, credentials and other settings"
                          for c in e.clusters if isinstance(c, dict) and c.get("id") and c.get("name") not in live]
+            refreshed.append((str(proj.get("name")), len(found)))
         results.append(res)
-    missing = [n for n in clusters if n not in seen_clusters]
+
+    # Projects of the organization that capella.yaml does not describe yet (CAP-054 AC1)
+    added: list[tuple[str, int]] = []
+    for proj in capella_projects:
+        name = str(proj.get("name"))
+        if str(proj.get("id")) in covered or name in in_file or name in skipped:
+            continue
+        if (named and name not in named) or (cluster_filter and not named):
+            continue
+        found = ep.list_clusters(client, str(proj["id"]))
+        chosen = [c for c in found if not cluster_filter or c.get("name") in clusters or c.get("id") in cluster_ids]
+        seen_clusters.update(str(c.get("name")) for c in chosen)
+        seen_clusters.update(str(c.get("id")) for c in chosen)
+        results.append(build_document(client, proj, chosen, full=full, all_clusters=found))
+        added.append((name, len(chosen)))
+    missing = [n for n in (*clusters, *cluster_ids) if n not in seen_clusters]
     if missing:
         raise CliExit(ExitCode.ERROR, f"cluster(s) not found in Capella: {', '.join(missing)}")
 
     combined = combine(results, client.org_id)
     if isinstance(org, str) and org.startswith("${"):
         combined.data["organizationId"] = org
+    top: dict[str, Any] = {k: combined.data[k] for k in ("apiVersion", "organizationId") if k in combined.data}
     if old.get("credentialsOutput"):
-        combined.data["credentialsOutput"] = old["credentialsOutput"]
+        top["credentialsOutput"] = old["credentialsOutput"]
+    if skipped:
+        top["skipProjects"] = skipped
+    combined.data = {**top, **{k: v for k, v in combined.data.items() if k not in top}}
     try:
         org_name = ep.get_organization(client)[0].get("name")
     except Exception:  # noqa: BLE001 - only used in a comment
@@ -180,13 +337,34 @@ def sync(state: AppState, projects: tuple[str, ...], clusters: tuple[str, ...], 
         new_text = new_text.replace("projects: []\n", "projects: []\n" + NO_PROJECTS_TEMPLATE, 1)
     if "clusters: []" in new_text:
         new_text = new_text.replace("clusters: []\n", "clusters: []\n" + NEW_CLUSTER_TEMPLATE, 1)
+    if to_stdout:
+        out(new_text.rstrip("\n"))
+        return
+
+    for w in warnings + [w for w in combined.warnings if w not in warnings]:
+        err(f"warning: {w}")
+    for name, n in added:
+        out(f"added project {name} ({n} cluster{'s' if n != 1 else ''})")
+    off = [(info["name"], bool(info.get("kept"))) for r in results for info in getattr(r, "unread", {}).values()
+           if info["reason"] in POWERED_OFF]
+    if off:
+        out(f"{len(off)} cluster{'s are' if len(off) != 1 else ' is'} turned off: {', '.join(n for n, _ in off)}")
+        if any(k for _, k in off):
+            out(f"  kept from {path.name}: buckets and credentials of "
+                f"{', '.join(n for n, k in off if k)} (refreshed when they are on)")
+        if any(not k for _, k in off):
+            out(f"  not read yet: buckets and credentials of {', '.join(n for n, k in off if not k)} "
+                "— run 'capellactl sync' again when they are on")
 
     before = _comparable(to_projects_form(old))
     after = _comparable(yaml.safe_load(new_text))
-    for w in warnings + [w for w in combined.warnings if w not in warnings]:
-        err(f"warning: {w}")
     if before == after:
-        out(f"{path.name} is already in sync with Capella.")
+        n_projects = len(combined.data.get("projects") or [])
+        n_clusters = sum(len(p.get("clusters") or []) for p in combined.data.get("projects") or [])
+        scope = f" for {', '.join(sorted(named))} (other projects not checked)" if named else ""
+        out(f"{path.name} is already in sync with Capella{scope}: {n_projects} project{'s' if n_projects != 1 else ''}, "
+            f"{n_clusters} cluster{'s' if n_clusters != 1 else ''}"
+            + (f"; skipped: {', '.join(skipped)}" if skipped else "") + ".")
         return
     a = yaml.safe_dump(before, sort_keys=False, width=120).splitlines()
     b = yaml.safe_dump(after, sort_keys=False, width=120).splitlines()

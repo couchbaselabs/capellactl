@@ -64,10 +64,16 @@ cmd("project delete", "CAP-010")
 cmd("cluster options", "CAP-041")
 cmd("cluster list", "CAP-038")
 cmd("cluster get", "CAP-038, CAP-041")
-cmd("cluster create", "CAP-011, CAP-038, CAP-041")
-cmd("cluster update", "CAP-012, CAP-017", "Lowering RAM runs the CAP-016 memory guard (CAP-017 AC6).")
+cmd("cluster create", "CAP-011, CAP-038, CAP-041, CAP-051, CAP-053",
+    "Multi-dimensional service groups (`--group SPEC`, CAP-051); `--server-version`, `--single-node`, `--zone`, "
+    "`--cmek-id`, `--private-dns`, `--disk-auto-expansion` (CAP-053).")
+cmd("cluster update", "CAP-012, CAP-017, CAP-053", "Lowering RAM runs the CAP-016 memory guard (CAP-017 AC6); "
+    "`--disk-auto-expansion` on Azure (CAP-053).")
 cmd("cluster scale", "CAP-015, CAP-016, CAP-018",
     "Scale out and in (capacity checks); `--step ±1` within `--min/--max`, `--all-groups`.")
+cmd("cluster group list", "CAP-052", "Service groups with nodes, compute and disk.")
+cmd("cluster group add", "CAP-052", "Adds a service group; size defaults to the data group.")
+cmd("cluster group remove", "CAP-052", "Removes a service group with the CAP-016 scale-in guards.")
 cmd("cluster clone", "CAP-049", "Copies size, services, buckets, scopes and collections to another region; "
     "`--with-cidrs`, `--with-credentials` (new passwords).")
 cmd("cluster delete", "CAP-014, CAP-041")
@@ -131,13 +137,15 @@ WORKFLOW = [
                                       "with an existing capella.yaml, also `GET …/projects` to check it (CAP-047)."),
     ("configure list / show / remove", "CAP-037", "No API calls."),
     ("init", "CAP-035", "Wizard that writes capella.yaml."),
-    ("import", "CAP-036, CAP-047, CAP-048", "Reads projects, clusters, CIDRs, buckets, scopes, schedules and credentials into capella.yaml."),
+    ("import", "CAP-036, CAP-047, CAP-048, CAP-054", "Hidden alias of `sync` since CAP-054. Reads projects, clusters, CIDRs, "
+                                                "buckets, scopes, schedules and credentials into capella.yaml."),
     ("validate", "CAP-002", "Offline check of schema, references and password rules."),
     ("plan", "CAP-005, CAP-048", "Diffs projects, clusters, deletion protection, schedules, CIDRs, buckets, scopes, "
                                  "collections and credentials."),
     ("apply", "CAP-006, CAP-016, CAP-019, CAP-031", "Same coverage as `plan`; `--prune`, `--rotate-passwords`, "
                                                     "`--power-on` and the scale-in flags."),
-    ("sync", "CAP-038, CAP-048", "Refreshes capella.yaml from Capella."),
+    ("sync", "CAP-038, CAP-048, CAP-054", "Refreshes capella.yaml from Capella; with CAP-054 it covers every "
+                                    "project in the organization and `import` becomes its alias."),
     ("destroy", "CAP-030", "Deletes every declared resource in reverse order; capella.yaml is kept."),
     ("drift", "CAP-031", "Read-only: changed, missing and unmanaged resources; `--detailed-exitcode`."),
     ("help / completion", "CAP-034", "No API calls."),
@@ -180,9 +188,9 @@ op("DELETE", PRJ, "project delete", "`--cascade` deletes the project's clusters 
 # Clusters
 op("GET", PRJ + "/clusters", "cluster list")
 op("POST", PRJ + "/clusters", "cluster create / cluster clone")
-op("GET", CLU, "cluster get")
-op("PUT", CLU, "cluster update / cluster scale", "Description, support, scale out/in/up/down (capacity-checked), "
-   "step scaling.")
+op("GET", CLU, "cluster get / cluster group list")
+op("PUT", CLU, "cluster update / cluster scale / cluster group add / cluster group remove", "Description, support, "
+   "scale out/in/up/down (capacity-checked), step scaling, adding and removing service groups.")
 op("DELETE", CLU, "cluster delete", "`--discard-snapshots` maps to `retainsnapshotbackups=false`.")
 op("GET", CLU + "/stats", "internal: bucket memory and scale-in checks", "No `cluster stats` command.", status=DONE)
 op("POST", CLU + "/activationState", "cluster power on")
