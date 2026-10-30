@@ -407,7 +407,7 @@ class ClusterReconciler(Reconciler):
                      if action.data.get("settings_only") and state in TRANSITIONAL else state)
             line = f"  cluster {action.key}: {shown} ({format_duration(elapsed)})"
             if inline and state in TRANSITIONAL:
-                inline(line + " ")  # dots follow on the same line
+                inline(line + " ", start=True)  # dots follow on the same line
             else:
                 ctx.progress(line)
 

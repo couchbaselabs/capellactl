@@ -48,9 +48,10 @@ def _get(client: Any, pid: str, cid: str, name: str) -> dict[str, Any]:
     try:
         return ep.get_schedule(client, pid, cid)[0]
     except NotFound:
-        raise CliExit(ExitCode.BLOCKED, f"cluster {name} has no on/off schedule; create one with 'capellactl "
-                                        f"cluster schedule set {name} --timezone TZ --weekdays HH:MM-HH:MM'",
-                      topic="hibernation") from None
+        raise CliExit(ExitCode.BLOCKED, f"cluster {name} has no on/off schedule",
+                      topic="hibernation",
+                                        action=f"Create one with 'capellactl cluster schedule set {name} --timezone "
+                                               f"TZ --weekdays HH:MM-HH:MM'.") from None
 
 
 # --------------------------------------------------------------------- show
@@ -60,7 +61,7 @@ def _get(client: Any, pid: str, cid: str, name: str) -> dict[str, Any]:
 @PROJECT_OPT
 @pass_state
 def schedule_show(state: AppState, name: str, project: str | None) -> None:
-    """Show the weekly on/off grid and the next transition (CAP-020 AC7)."""
+    """Show the weekly on/off grid and the next transition."""
     client, pid, cl = live_cluster(state, name, project)
     body = _get(client, pid, str(cl["id"]), name)
     found = next_transition(body, get_clock().now()) if body.get("activationStatus") != "paused" else None
@@ -110,7 +111,7 @@ def schedule_set(state: AppState, name: str, timezone: str | None, weekdays: str
                  monday: str | None, tuesday: str | None, wednesday: str | None, thursday: str | None,
                  friday: str | None, saturday: str | None, sunday: str | None, project: str | None,
                  no_apply: bool) -> None:
-    """Create or change the schedule: records it in capella.yaml and applies it (CAP-020)."""
+    """Create or change the schedule: records it in capella.yaml and applies it."""
     days = dict(zip(DAYS, (monday, tuesday, wednesday, thursday, friday, saturday, sunday), strict=True))
     ed = open_editor(state)
     _, cl = locate(ed, name, project_of_cluster(state, name, project))
@@ -118,12 +119,14 @@ def schedule_set(state: AppState, name: str, timezone: str | None, weekdays: str
     new = not isinstance(hib, CommentedMap) or hib.get("ensure") == "absent"
     values = {"timezone": timezone, "weekdays": weekdays, "weekend": weekend, **days}
     if not any(v is not None for v in values.values()):
-        raise CliExit(ExitCode.CONFIG_INVALID, "pass at least one of --timezone, --weekdays, --weekend or a day "
-                                               "option (for example --friday 08:00-14:30)", topic="hibernation")
+        raise CliExit(ExitCode.CONFIG_INVALID, "nothing to set: no schedule option was given", topic="hibernation",
+                                               action="Add at least one of --timezone, --weekdays, --weekend or a "
+                                                      "day option (for example --friday 08:00-14:30).")
     if new:
         if not timezone:
-            raise CliExit(ExitCode.CONFIG_INVALID, "a new schedule needs --timezone (for example US/Pacific)",
-                          topic="hibernation")
+            raise CliExit(ExitCode.CONFIG_INVALID, "a new schedule needs a timezone",
+                          topic="hibernation",
+                                                   action="Add --timezone, for example --timezone US/Pacific.")
         hib = to_commented({}, "hibernation")
         put(cl, "hibernation", hib)
     assert isinstance(hib, CommentedMap)
@@ -188,7 +191,7 @@ def _record_paused(state: AppState, name: str, project: str | None, paused: bool
 @PROJECT_OPT
 @pass_state
 def schedule_pause(state: AppState, name: str, power_on: bool, project: str | None) -> None:
-    """Pause the schedule: the cluster stays as it is until resumed (CAP-021)."""
+    """Pause the schedule: the cluster stays as it is until resumed."""
     from capellactl.cli.power_cmds import power
 
     client, pid, cl = live_cluster(state, name, project)
@@ -210,7 +213,7 @@ def schedule_pause(state: AppState, name: str, power_on: bool, project: str | No
 @PROJECT_OPT
 @pass_state
 def schedule_resume(state: AppState, name: str, project: str | None) -> None:
-    """Resume a paused schedule and show its next transition (CAP-021)."""
+    """Resume a paused schedule and show its next transition."""
     client, pid, cl = live_cluster(state, name, project)
     body = _get(client, pid, str(cl["id"]), name)
     owner = project_of_cluster(state, name, project)

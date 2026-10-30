@@ -179,14 +179,14 @@ class BucketReconciler(Reconciler):
             # The API's minimum is 1 replica, so a cluster with one data node (maxReplicas 0) still accepts 1.
             allowed = max(max_replicas, 1)
             if replicas > allowed:
-                return (f"replicas: {replicas} but the cluster supports at most {allowed}; scale out (CAP-015) "
-                        "or reduce replicas"), []
+                return (f"replicas: {replicas} but the cluster supports at most {allowed}; scale out with "
+                        "'capellactl cluster scale' or reduce replicas"), []
             notes.append(ONE_NODE_NOTE)
         if need_mb > 0 and cluster.id in self._free:
             free = self._free[cluster.id]
             if need_mb > free:
-                return (f"needs {need_mb} MB but the cluster has {free} MB free; scale out (CAP-015) or reduce "
-                        "memoryAllocationInMb"), []
+                return (f"needs {need_mb} MB but the cluster has {free} MB free; scale out with 'capellactl cluster "
+                        "scale' or reduce memoryAllocationInMb"), []
             self._free[cluster.id] = free - need_mb
         return None, notes
 

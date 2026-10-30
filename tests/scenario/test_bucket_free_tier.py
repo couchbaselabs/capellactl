@@ -44,14 +44,14 @@ def test_bucket_free_ac5_other_settings_refused(fake, run, free):
             "--durability", "majority")
     assert r.exit_code == 3
     assert ("nova-dev (project demo) is a free-tier cluster: Capella chooses its bucket settings, so "
-            "--storage-backend, --durability cannot be set. Only --memory can be set.") in r.output
-    assert "Try: capellactl bucket create nova-dev orders --memory 100" in r.output
+            "--storage-backend, --durability cannot be set. Only --memory can be set\n[ACTION]: ") in r.output
+    assert "Run: capellactl bucket create nova-dev orders --memory 100" in r.output
     assert "line " not in r.output and "buckets[0]" not in r.output  # no YAML path of an unsaved file
     assert run("--auto-approve", "bucket", "create", "nova-dev", "orders", "--memory", "100").exit_code == 0
     fake.reset_calls()
     r = run("--auto-approve", "bucket", "update", "nova-dev", "orders", "--replicas", "2")
     assert r.exit_code == 3
-    assert "so --replicas cannot be set. Only --memory and --cross-cluster-versioning can be set." in r.output
+    assert "so --replicas cannot be set. Only --memory and --cross-cluster-versioning can be set\n[ACTION]: " in r.output
     assert fake.writes() == []
 
 

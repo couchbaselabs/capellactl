@@ -52,7 +52,7 @@ def test_apply_ac2_non_interactive_requires_flag(fake, run, write_config):
     write_config()
     r = run("apply")
     assert r.exit_code == 1
-    assert "refusing to apply without approval; pass --auto-approve" in r.output
+    assert "[ERROR]: refusing to apply without approval: there is no terminal to ask\n[ACTION]: Add --auto-approve" in r.output
     assert fake.writes() == []
 
 
@@ -76,7 +76,7 @@ def test_apply_ac4_blocked_prevents_any_write(fake, run, write_config, stub_tree
     r = run("--auto-approve", "apply")
     assert r.exit_code == 4
     assert "! cluster nova-dev-01  immutable: cloudProvider.region (requires a new cluster)" in r.output
-    assert "Apply refused: 1 blocked change(s); nothing was changed." in r.output
+    assert "[ERROR]: Apply refused: 1 blocked change(s); nothing was changed\n[ACTION]: Resolve each change marked !" in r.output
     assert fake.writes() == []
 
 
@@ -108,7 +108,7 @@ def test_apply_ac5_rerun_resumes_without_duplicates(fake, run, write_config, stu
     fake.fail_next("POST", "*/scopes", 500)
     write_config(FULL)
     r = run("--auto-approve", "apply")
-    assert r.exit_code == 1 and "Hint: Capella returned an internal error for this scope" in r.output, r.output
+    assert r.exit_code == 1 and "[ACTION]: Capella returned an internal error for this scope" in r.output, r.output
     assert run("--auto-approve", "apply").exit_code == 0
     posts = [c.path for c in fake.writes() if c.method == "POST"]
     for suffix in ("allowedcidrs", "users", "collections"):
@@ -183,4 +183,4 @@ def test_apply_ac8_keyboard_interrupt_exit_130(fake, run, write_config):
     write_config()
     r = run("--auto-approve", "apply")
     assert r.exit_code == 130
-    assert "Interrupted; re-run apply to continue." in r.output
+    assert "[ERROR]: Interrupted\n[ACTION]: Run the command again to continue" in r.output

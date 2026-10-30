@@ -29,6 +29,7 @@ from capellactl.cli.resource_cmds import (
     _list_table,
     _project_id,
     complete_cluster_names,
+    file_projects,
     live_cluster,
     pick_project,
     project_of_cluster,
@@ -100,7 +101,7 @@ def next_backup(body: dict[str, Any], now: datetime) -> datetime | None:
 @PROJECT_OPT
 @pass_state
 def schedule_show(state: AppState, name: str, project: str | None) -> None:
-    """Show the cluster's backup schedule and the next backup (CAP-056 AC4)."""
+    """Show the cluster's backup schedule and the next backup."""
     client, pid, cl = _live(state, name, project)
     body = ep.get_snapshot_schedule(client, pid, str(cl["id"]))
     nxt = next_backup(body, get_clock().now()) if body else None
@@ -122,7 +123,7 @@ def schedule_show(state: AppState, name: str, project: str | None) -> None:
 @PROJECT_OPT
 @pass_state
 def schedule_options(state: AppState, name: str, project: str | None) -> None:
-    """What the cluster's support plan permits: backup intervals, retention range and copy regions (CAP-056 AC4)."""
+    """What the cluster's support plan permits: backup intervals, retention range and copy regions."""
     client, pid, cl = _live(state, name, project)
     options = ep.get_snapshot_schedule_options(client, pid, str(cl["id"]))
     regions = ep.list_snapshot_regions(client, pid, str(cl["id"]))
@@ -157,24 +158,28 @@ def schedule_options(state: AppState, name: str, project: str | None) -> None:
 @pass_state
 def schedule_set(state: AppState, name: str, every: int | None, retain: str | None, start: str | None,
                  copy_to: tuple[str, ...], no_copies: bool, project: str | None, no_apply: bool) -> None:
-    """Create or change the backup schedule: records it in capella.yaml and applies it (CAP-056 AC1)."""
+    """Create or change the backup schedule: records it in capella.yaml and applies it."""
     ed = open_editor(state)
     _, cl = locate(ed, name, project_of_cluster(state, name, project))
     if cl.get("tier") == "free":
-        raise CliExit(ExitCode.BLOCKED, "free-tier clusters have no backups; create a provisioned cluster for data "
-                                        "that needs them", topic="backup")
+        raise CliExit(ExitCode.BLOCKED, "free-tier clusters have no backups", topic="backup",
+                                        action="Create a provisioned cluster for data that needs backups "
+                                               "('capellactl cluster create NAME').")
     if every is None and retain is None and start is None and not copy_to and not no_copies:
-        raise CliExit(ExitCode.CONFIG_INVALID, "pass at least one of --every, --retain, --start, --copy-to or "
-                                               "--no-copies", topic="backup")
+        raise CliExit(ExitCode.CONFIG_INVALID, "nothing to set: no schedule option was given", topic="backup",
+                                               action="Add at least one of --every, --retain, --start, --copy-to or "
+                                                      "--no-copies.")
     if start is not None and start_hm(start) != start:
         raise CliExit(ExitCode.CONFIG_INVALID, f"--start takes a UTC time of day HH:MM, e.g. 02:00 (got '{start}')",
-                      topic="backup")
+                      topic="backup",
+                                               action="Give a UTC time of day as HH:MM, for example --start 02:00.")
     current = cl.get("backupSchedule")
     new = not isinstance(current, CommentedMap) or current.get("ensure") == "absent"
     if new and (every is None or retain is None):
-        raise CliExit(ExitCode.CONFIG_INVALID, "a new backup schedule needs --every HOURS and --retain DURATION "
-                                               f"(permitted values: capellactl cluster backup schedule options {name})",
-                      topic="backup")
+        raise CliExit(ExitCode.CONFIG_INVALID, "a new backup schedule needs --every HOURS and --retain DURATION",
+                      topic="backup",
+                                               action=f"Add both; 'capellactl cluster backup schedule options "
+                                                      f"{name}' lists the values Capella permits.")
     values: dict[str, Any] = {} if new else {k: v for k, v in dict(current).items() if k != "ensure"}
     if every is not None:
         values["interval"] = every
@@ -211,8 +216,10 @@ def _check_permitted(state: AppState, name: str, project: str | None, values: di
         return
     problem = options_problem(options, values, regions)
     if problem:
-        raise CliExit(ExitCode.CONFIG_INVALID, f"{problem} (see 'capellactl cluster backup schedule options {name}')",
-                      topic="backup")
+        raise CliExit(ExitCode.CONFIG_INVALID, problem,
+                      topic="backup",
+                                               action=f"Choose a value from 'capellactl cluster backup schedule "
+                                                      f"options {name}'.")
 
 
 # -------------------------------------------------------------- schedule delete
@@ -259,27 +266,35 @@ def _snapshot_rows(items: list[dict[str, Any]]) -> list[tuple[str, ...]]:
 
 
 @backup.command("list", epilog="\b\nExamples:\n  capellactl cluster backup list nova-prod-01\n"
-                                "  capellactl cluster backup list                 (every cluster of the project)\n"
+                                "  capellactl cluster backup list                 (every cluster in capella.yaml's "
+                                "projects)\n"
+                                "  capellactl cluster backup list --project nova  (every cluster of one project)\n"
                                 "  capellactl -o json cluster backup list nova-prod-01")
 @click.argument("name", required=False, shell_complete=complete_cluster_names)
 @PROJECT_OPT
 @pass_state
 def backup_list(state: AppState, name: str | None, project: str | None) -> None:
-    """List a cluster's backups, newest first; without NAME, the newest and oldest of each cluster (CAP-057 AC1)."""
+    """List a cluster's backups, newest first; without NAME, the newest and oldest of each cluster of every project
+    in capella.yaml, or of --project."""
     if name is None:
         client = state.client(_file_org(state))
-        pid, _ = _project_id(state, client, pick_project(state, project)[0])
-        items = ep.list_project_snapshots(client, pid)
+        names = [project] if project else [str(p.get("name")) for p in file_projects(state)] or [pick_project(state, None)[0]]
+        items = []
+        for pname in names:
+            pid, _ = _project_id(state, client, pname)
+            items += [{**c, "projectName": pname} for c in ep.list_project_snapshots(client, pid)]
         if state.json:
             out(dumps(items))
             return
         if not items:
             out("no backups")
             return
-        rows: list[tuple[str, ...]] = [("CLUSTER", "REGION", "NEWEST", "OLDEST", "CLUSTER ID")]
-        for c in sorted(items, key=lambda c: str(c.get("clusterName"))):
-            rows.append((str(c.get("clusterName")), str(c.get("region", "")),
-                         when((c.get("mostRecentSnapshot") or {}).get("createdAt")),
+        several = len(names) > 1
+        rows: list[tuple[str, ...]] = [("CLUSTER", *(("PROJECT",) if several else ()), "REGION", "NEWEST", "OLDEST",
+                                        "CLUSTER ID")]
+        for c in sorted(items, key=lambda c: (str(c.get("clusterName")), str(c["projectName"]))):
+            rows.append((str(c.get("clusterName")), *((str(c["projectName"]),) if several else ()),
+                         str(c.get("region", "")), when((c.get("mostRecentSnapshot") or {}).get("createdAt")),
                          when((c.get("oldestSnapshot") or {}).get("createdAt")), str(c.get("clusterId"))))
         out(_list_table(rows))
         return
@@ -307,7 +322,7 @@ def _find_snapshot(client: Any, pid: str, cid: str, backup_id: str) -> dict[str,
 @PROJECT_OPT
 @pass_state
 def backup_create(state: AppState, name: str, retain: str | None, copy_to: tuple[str, ...], project: str | None) -> None:
-    """Back the cluster up now and wait until the backup is complete (CAP-057 AC2)."""
+    """Back the cluster up now and wait until the backup is complete."""
     client, pid, cl = _live(state, name, project)
     cid = str(cl["id"])
     body: dict[str, Any] = {}
@@ -317,7 +332,9 @@ def backup_create(state: AppState, name: str, retain: str | None, copy_to: tuple
         regions = ep.list_snapshot_regions(client, pid, cid)
         problem = options_problem({}, {"interval": 0, "retention": 0, "copyToRegions": list(copy_to)}, regions)
         if problem:
-            raise CliExit(ExitCode.CONFIG_INVALID, problem, topic="backup")
+            raise CliExit(ExitCode.CONFIG_INVALID, problem, topic="backup",
+                                                   action=f"Choose a region from 'capellactl cluster backup regions "
+                                                          f"{name}'.")
         body["regionsToCopy"] = list(copy_to)
     note(f"→ backing up cluster {name} …")
     backup_id = ep.create_snapshot(client, pid, cid, body)
@@ -331,11 +348,13 @@ def backup_create(state: AppState, name: str, retain: str | None, copy_to: tuple
 
     try:
         wait_for_status(status, DONE, FAILED, state.timeout, get_clock(), f"backup {backup_id} of {name}",
-                        progress(f"backup of {name}"))
+                        **progress(f"backup of {name}"))
     except StatusFailed as exc:
-        raise CliExit(ExitCode.ERROR, f"Failed: {exc}", topic="backup") from None
+        raise CliExit(ExitCode.ERROR, f"Failed: {exc.what}", topic="backup",
+                                      action=exc.action) from None
     except StatusTimeout as exc:
-        raise CliExit(ExitCode.TIMEOUT, str(exc)) from None
+        raise CliExit(ExitCode.TIMEOUT, exc.what,
+                                        action=exc.action) from None
     out(f"backup {backup_id} of {name} is complete")
 
 
@@ -348,13 +367,13 @@ def backup_create(state: AppState, name: str, retain: str | None, copy_to: tuple
 @PROJECT_OPT
 @pass_state
 def backup_retain(state: AppState, name: str, backup_id: str, retain: str, project: str | None) -> None:
-    """Keep one backup longer (or shorter) (CAP-057 AC3)."""
+    """Keep one backup longer (or shorter)."""
     hours = parse_hours(retain, "--retain")
     client, pid, cl = _live(state, name, project)
     found = _find_snapshot(client, pid, str(cl["id"]), backup_id)
     if found is None:
-        raise CliExit(ExitCode.ERROR, f"backup {backup_id} of {name} not found; list them with 'capellactl cluster "
-                                      f"backup list {name}'")
+        raise CliExit(ExitCode.ERROR, f"backup {backup_id} of {name} not found",
+                                      action=f"List them with 'capellactl cluster backup list {name}'.")
     if int(found.get("retention") or 0) == hours:
         out(f"No changes: backup {backup_id} is already kept {hours_text(hours)}.")
         return
@@ -369,7 +388,7 @@ def backup_retain(state: AppState, name: str, backup_id: str, retain: str, proje
 @PROJECT_OPT
 @pass_state
 def backup_delete(state: AppState, name: str, backup_id: str, project: str | None) -> None:
-    """Delete one backup of the cluster (CAP-057 AC4)."""
+    """Delete one backup of the cluster."""
     client, pid, cl = _live(state, name, project)
     found = _find_snapshot(client, pid, str(cl["id"]), backup_id)
     if found is None:
@@ -396,16 +415,17 @@ def backup_delete(state: AppState, name: str, backup_id: str, project: str | Non
 @pass_state
 def backup_restore(state: AppState, name: str, backup_id: str, from_region: tuple[str, ...],
                    project: str | None) -> None:
-    """Replace all data of the cluster with a backup, and wait until the cluster is healthy (CAP-057 AC5)."""
+    """Replace all data of the cluster with a backup, and wait until the cluster is healthy."""
     client, pid, cl = _live(state, name, project)
     cid = str(cl["id"])
     if cl.get("currentState") in ("turnedOff", "turningOff"):
-        raise CliExit(ExitCode.BLOCKED, f"cluster {name} is turned off; power it on before restoring "
-                                        f"('capellactl cluster power {name} --on')", topic="hibernation")
+        raise CliExit(ExitCode.BLOCKED, f"cluster {name} is turned off", topic="hibernation",
+                                        action=f"Turn it on with 'capellactl cluster power {name} --on', then run "
+                                               f"the command again.")
     found = _find_snapshot(client, pid, cid, backup_id)
     if found is None:
-        raise CliExit(ExitCode.ERROR, f"backup {backup_id} of {name} not found; list them with 'capellactl cluster "
-                                      f"backup list {name}'")
+        raise CliExit(ExitCode.ERROR, f"backup {backup_id} of {name} not found",
+                                      action=f"List them with 'capellactl cluster backup list {name}'.")
     out(f"  ± cluster {name}  all data is replaced with the backup of {when(found.get('createdAt'))} UTC")
     if not console.confirm_typed(state, "Type the cluster name to confirm the restore", "restore a cluster", name):
         out("Cancelled; nothing was restored.")
@@ -424,13 +444,15 @@ def backup_restore(state: AppState, name: str, backup_id: str, from_region: tupl
 
     try:
         wait_for_status(status, DONE, FAILED, state.timeout, get_clock(), f"restore of {name}",
-                        progress(f"restore of {name}"))
+                        **progress(f"restore of {name}"))
         on_state, on_tick = wait_progress(f"cluster {name}")
         wait_for_cluster(client, pid, cid, "ready", state.timeout, get_clock(), on_state, name=name, on_tick=on_tick)
     except (StatusFailed, WaitFailed) as exc:
-        raise CliExit(ExitCode.ERROR, f"Failed: {exc}", topic="backup") from None
+        raise CliExit(ExitCode.ERROR, f"Failed: {exc.what}", topic="backup",
+                                      action=exc.action) from None
     except (StatusTimeout, WaitTimeout) as exc:
-        raise CliExit(ExitCode.TIMEOUT, str(exc)) from None
+        raise CliExit(ExitCode.TIMEOUT, exc.what,
+                                        action=exc.action) from None
     out(f"restored cluster {name} from the backup of {when(found.get('createdAt'))} UTC")
 
 
@@ -440,7 +462,7 @@ def backup_restore(state: AppState, name: str, backup_id: str, from_region: tupl
 @PROJECT_OPT
 @pass_state
 def backup_restores(state: AppState, name: str, project: str | None) -> None:
-    """List the restores of the cluster (CAP-057 AC6)."""
+    """List the restores of the cluster."""
     client, pid, cl = _live(state, name, project)
     items = ep.list_snapshot_restores(client, pid, str(cl["id"]))
     if state.json:
@@ -459,7 +481,7 @@ def backup_restores(state: AppState, name: str, project: str | None) -> None:
 @PROJECT_OPT
 @pass_state
 def backup_regions(state: AppState, name: str, project: str | None) -> None:
-    """List the regions where copies of the cluster's backups can be kept (AWS and Azure) (CAP-057 AC6)."""
+    """List the regions where copies of the cluster's backups can be kept (AWS and Azure)."""
     client, pid, cl = _live(state, name, project)
     regions = ep.list_snapshot_regions(client, pid, str(cl["id"]))
     if state.json:

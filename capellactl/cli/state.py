@@ -9,9 +9,9 @@ from datetime import timedelta
 from pathlib import Path
 
 from capellactl.api.client import CapellaClient
-from capellactl.cli.console import err, err_inline, note
+from capellactl.cli.console import err_inline, note, warning
 from capellactl.cli.exit_codes import CliExit, ExitCode
-from capellactl.config.loader import Config, ConfigError, load_config
+from capellactl.config.loader import FIX_PROBLEMS, Config, ConfigError, load_config
 from capellactl.config.settings import ConfigDiscoveryError, Settings, resolve_settings
 from capellactl.engine.clock import get_clock
 from capellactl.engine.context import RunContext
@@ -50,36 +50,49 @@ class AppState:
         try:
             s = resolve_settings(self.config_flag, self.profile_flag, self.env, file_org)
         except ConfigDiscoveryError as exc:
-            raise CliExit(ExitCode.CONFIG_INVALID, str(exc), topic="config") from None
+            raise CliExit(ExitCode.CONFIG_INVALID, str(exc), topic="config",
+                                                   action="Pass --config with the file to use, or remove one of the "
+                                                          "files.") from None
         if not self._warned:
             for w in s.warnings:
-                err(f"warning: {w}")
+                warning(w)
             self._warned = True
         return s
 
     def config_path(self) -> Path:
         return Path(str(self.settings().config_file.value))
 
-    def load_config(self) -> Config:
+    def load_config(self, warnings: str = "none") -> Config:
+        """`warnings`: "all" prints each config warning (validate), "count" prints one line pointing to validate
+        (plan, apply) and "none" prints nothing, so other commands are not buried in them."""
         path = self.config_path()
         try:
             cfg = load_config(path, env=self.env)
         except ConfigError as exc:
             topic = exc.issues[0].topic if exc.issues else "config"
-            raise CliExit(ExitCode.CONFIG_INVALID, str(exc), topic=topic) from None
+            raise CliExit(ExitCode.CONFIG_INVALID, str(exc), topic=topic, action=FIX_PROBLEMS) from None
         for hint in cfg.hints:
             note(hint)
+        if warnings == "all":
+            for w in cfg.warnings:
+                warning(w)
+        elif warnings == "count" and cfg.warnings:
+            n = len(cfg.warnings)
+            warning(f"capella.yaml has {n} setting{'s' if n != 1 else ''} that may not be intended",
+                    "Run 'capellactl validate' to see them.")
         return cfg
 
     def client(self, file_org: str | None = None, require_org: bool = True) -> CapellaClient:
         s = self.settings(file_org)
         if not s.api_key.value:
             raise CliExit(ExitCode.CONFIG_INVALID,
-                          "no API key: set CAPELLA_API_KEY or run 'capellactl configure'", topic="environment")
+                          "no API key", topic="environment",
+                          action="Set CAPELLA_API_KEY, or save the key with 'capellactl configure'.")
         if require_org and not s.org_id.value:
             raise CliExit(ExitCode.CONFIG_INVALID,
-                          "no organization: set CAPELLA_ORG_ID, run 'capellactl configure', or set organizationId "
-                          "in the config file", topic="environment")
+                          "no organization", topic="environment",
+                          action="Set CAPELLA_ORG_ID, run 'capellactl configure', or set organizationId in "
+                                 "capella.yaml.")
         return CapellaClient(str(s.api_key.value), s.org_id.value, str(s.base_url.value), clock=get_clock())
 
     def run_context(self, client: CapellaClient, config: Config | None) -> RunContext:
@@ -88,4 +101,4 @@ class AppState:
 
         return RunContext(client=client, config=config, clock=get_clock(), timeout=self.timeout,
                           no_wait=self.no_wait, progress=progress, progress_inline=err_inline,
-                          warn=lambda m: err(f"warning: {m}"))
+                          warn=warning)

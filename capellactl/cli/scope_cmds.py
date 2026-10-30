@@ -29,7 +29,7 @@ from capellactl.cli.resource_cmds import (
 from capellactl.cli.state import AppState
 from capellactl.config.editor import to_commented
 from capellactl.output.render import dumps
-from capellactl.resources.guards import deletion_protected, protection_message
+from capellactl.resources.guards import deletion_protected
 from capellactl.resources.scope import (
     DEFAULT,
     SYSTEM_DELETE_MESSAGE,
@@ -85,7 +85,8 @@ def _live_bucket(state: AppState, cluster: str, bucket: str,
 
 def _require_bucket(found: dict[str, Any] | None, cluster: str, bucket: str) -> dict[str, Any]:
     if found is None:
-        raise CliExit(ExitCode.ERROR, f"bucket {cluster}/{bucket} not found")
+        raise CliExit(ExitCode.ERROR, f"bucket {cluster}/{bucket} not found",
+                                      action=f"Check the name with 'capellactl bucket list {cluster}'.")
     return found
 
 
@@ -97,9 +98,10 @@ def _bucket_in_file(ed: Any, cluster: str, bucket: str, project: str | None) -> 
     _, cl = locate(ed, cluster, project)
     node = _bucket_node(cl, bucket)
     if node is None:
-        raise CliExit(ExitCode.CONFIG_INVALID, f"bucket {bucket} is not in capella.yaml for {cluster}; add it with "
-                                               f"'capellactl bucket create {cluster} {bucket}' (an existing bucket "
-                                               "is adopted, not re-created)")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"bucket {bucket} is not in capella.yaml for {cluster}",
+                                               action=f"Add it with 'capellactl bucket create {cluster} {bucket}' (a "
+                                                      f"bucket that exists in Capella is adopted, not created "
+                                                      f"again), then run the command again.")
     return node
 
 
@@ -187,10 +189,12 @@ def scope_list(state: AppState, cluster: str, bucket: str, project: str | None) 
 def scope_create(state: AppState, cluster: str, bucket: str, name: str, project: str | None, no_apply: bool) -> None:
     """Create a scope: records it in capella.yaml and creates it in Capella (an existing one is adopted)."""
     if is_system_scope(name):
-        raise CliExit(ExitCode.CONFIG_INVALID, f"{name} is a system scope that every bucket has; add collections to "
-                                               f"_default with 'capellactl collection create {cluster} {bucket} "
-                                               f"{DEFAULT} NAME'" if name == DEFAULT else
-                      f"{name} is a system scope and cannot be created")
+        if name == DEFAULT:
+            raise CliExit(ExitCode.CONFIG_INVALID, f"{name} is a system scope that every bucket has",
+                          action=f"Add collections to it with 'capellactl collection create {cluster} {bucket} "
+                                 f"{DEFAULT} NAME'.")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"{name} is a system scope and cannot be created",
+                      action="Choose a name that does not start with _ or %.")
     ed = open_editor(state)
     b = _bucket_in_file(ed, cluster, bucket, project)
     added = _child(b, "scopes", name) is None
@@ -210,9 +214,10 @@ def scope_create(state: AppState, cluster: str, bucket: str, name: str, project:
 @PROJECT_OPT
 @pass_state
 def scope_delete(state: AppState, cluster: str, bucket: str, name: str, project: str | None) -> None:
-    """Delete a scope, its collections and all their documents, and remove it from capella.yaml (CAP-026)."""
+    """Delete a scope, its collections and all their documents, and remove it from capella.yaml."""
     if is_system_scope(name):
-        raise CliExit(ExitCode.BLOCKED, SYSTEM_DELETE_MESSAGE, topic="safety")
+        raise CliExit(ExitCode.BLOCKED, SYSTEM_DELETE_MESSAGE, topic="safety",
+                                        action="None needed: Capella manages them.")
     key = f"{cluster}/{bucket}/{name}"
     client, pid, cl, found = _live_bucket(state, cluster, bucket, project)
     cid = str(cl["id"])
@@ -221,7 +226,9 @@ def scope_delete(state: AppState, cluster: str, bucket: str, name: str, project:
         _remove_from_file(state, cluster, bucket, name, None, project)
         return
     if deletion_protected(cl):
-        raise CliExit(ExitCode.BLOCKED, protection_message(cluster), topic="safety")
+        raise CliExit(ExitCode.BLOCKED, f"deletion protection is on for {cluster}", topic="safety",
+                                        action=f"Run 'capellactl cluster protect {cluster} --off' if you really mean "
+                                               f"to delete it, then run the command again.")
     out(f"  - scope {key}")
     for line in delete_details(client, pid, cid, bucket, str(found["id"]), name):
         out(f"  {line}")
@@ -279,14 +286,16 @@ def collection_create(state: AppState, cluster: str, bucket: str, scope_name: st
     An existing collection is adopted. A scope that is not in capella.yaml yet is added too.
     """
     if is_system_collection(scope_name, name) or scope_name == "_system":
-        raise CliExit(ExitCode.CONFIG_INVALID, f"{scope_name}.{name} is a system collection and cannot be created")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"{scope_name}.{name} is a system collection and cannot be created",
+                                               action="Choose a name that does not start with _ or %.")
     ed = open_editor(state)
     b = _bucket_in_file(ed, cluster, bucket, project)
     s = _child(b, "scopes", scope_name) or _append(b, "scopes", {"name": scope_name})
     if _child(s, "collections", name) is not None:
         raise CliExit(ExitCode.BLOCKED, f"collection {scope_name}.{name} is already in capella.yaml for "
-                                        f"{cluster}/{bucket}; change it with 'capellactl collection update {cluster} "
-                                        f"{bucket} {scope_name} {name}'", topic="idempotency")
+                                        f"{cluster}/{bucket}", topic="idempotency",
+                                        action=f"Change it with 'capellactl collection update {cluster} {bucket} "
+                                               f"{scope_name} {name}'.")
     _append(s, "collections", {"name": name, **({"maxTTL": max_ttl} if max_ttl is not None else {})})
     change_and_apply(state, ed, f"collection/{cluster}/{bucket}/{scope_name}/{name}",
                      f"Add collection {scope_name}.{name} to capella.yaml and create it in {cluster}/{bucket}?",
@@ -311,12 +320,14 @@ def collection_update(state: AppState, cluster: str, bucket: str, scope_name: st
     node = _child(s, "collections", name) if s is not None else None
     if node is None:
         raise CliExit(ExitCode.CONFIG_INVALID, f"collection {scope_name}.{name} is not in capella.yaml for "
-                                               f"{cluster}/{bucket}; add it with 'capellactl collection create "
-                                               f"{cluster} {bucket} {scope_name} {name}' (an existing collection is "
-                                               "adopted, not re-created)")
+                                               f"{cluster}/{bucket}",
+                                               action=f"Add it with 'capellactl collection create {cluster} {bucket} "
+                                                      f"{scope_name} {name}' (a collection that exists in Capella is "
+                                                      f"adopted, not created again), then run the command again.")
     if max_ttl is None:
         if not console.is_interactive():
-            raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change; pass --max-ttl SECONDS")
+            raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change: no option was given",
+                                                   action="Add --max-ttl SECONDS.")
         max_ttl = _ask("maxTTL seconds (-1 never expire, 0 bucket TTL)", node.get("maxTTL", 0),
                        kind=click.IntRange(min=-1))
     node["maxTTL"] = max_ttl
@@ -332,9 +343,10 @@ def collection_update(state: AppState, cluster: str, bucket: str, scope_name: st
 @pass_state
 def collection_delete(state: AppState, cluster: str, bucket: str, scope_name: str, name: str,
                       project: str | None) -> None:
-    """Delete a collection and all its documents, and remove it from capella.yaml (CAP-026)."""
+    """Delete a collection and all its documents, and remove it from capella.yaml."""
     if is_system_collection(scope_name, name):
-        raise CliExit(ExitCode.BLOCKED, SYSTEM_DELETE_MESSAGE, topic="safety")
+        raise CliExit(ExitCode.BLOCKED, SYSTEM_DELETE_MESSAGE, topic="safety",
+                                        action="None needed: Capella manages them.")
     key = f"{cluster}/{bucket}/{scope_name}/{name}"
     client, pid, cl, found = _live_bucket(state, cluster, bucket, project)
     cid = str(cl["id"])
@@ -348,7 +360,9 @@ def collection_delete(state: AppState, cluster: str, bucket: str, scope_name: st
         return
     assert found is not None
     if deletion_protected(cl):
-        raise CliExit(ExitCode.BLOCKED, protection_message(cluster), topic="safety")
+        raise CliExit(ExitCode.BLOCKED, f"deletion protection is on for {cluster}", topic="safety",
+                                        action=f"Run 'capellactl cluster protect {cluster} --off' if you really mean "
+                                               f"to delete it, then run the command again.")
     out(f"  - collection {key}")
     for line in delete_details(client, pid, cid, bucket, str(found["id"]), scope_name, name):
         out(f"  {line}")

@@ -147,7 +147,7 @@ class ConfigEditor:
             return found[0]  # type: ignore[no-any-return,unused-ignore]
         data = [g for g in groups if "data" in (g.get("services") or [])]
         if len(data) != 1:
-            raise LookupError("more than one group runs data; pass --group")
+            raise LookupError("more than one group runs data")
         return data[0]  # type: ignore[no-any-return,unused-ignore]
 
     # ------------------------------------------------------------ changes

@@ -9,6 +9,17 @@ The spec has **343 operations**. Release 1.0.0 is about the operational database
 - **73 App Services / App Endpoints operations**, including the 4 free-tier App Service operations. They are tracked in [release 2.0.0: App Services API coverage](../release-2.0.0/API-COVERAGE-APP-SERVICES.md).
 - **50 AI operations** (AI Data Plane, AI Workflows, Models, AI Agent Memory, MCP servers and tools). Not planned for now.
 
+**Where the spec's operations go**
+
+| Group | Operations | ✅ Done | Tracked in |
+|---|---|---|---|
+| Operational database, release 1.0.0 | 80 | 80 | [1.0.0 report](../release-1.0.0/API-COVERAGE.md) |
+| Operational database, not needed (another operation gives the same data) | 1 | — | [1.0.0 report](../release-1.0.0/API-COVERAGE.md) |
+| Operational database, release 1.5.0 | 139 | 0 | [1.5.0 report](../release-1.5.0/API-COVERAGE.md) |
+| App Services / App Endpoints, release 2.0.0 | 73 | 0 | [2.0.0 report](../release-2.0.0/API-COVERAGE-APP-SERVICES.md) |
+| AI (AI Data Plane, AI Workflows, Models, AI Agent Memory, MCP servers and tools) | 50 | — | Not planned |
+| **Total in the spec** | **343** | **80** | |
+
 **Status legend**
 
 | Status | Meaning |
@@ -17,7 +28,7 @@ The spec has **343 operations**. Release 1.0.0 is about the operational database
 | 🟡 Partial | Some of it is built (some of its stories are Implemented, or a read during `import`); the row says what is left. |
 | ⬜ Not built | Planned for 1.0.0 in a story that is not Implemented yet. Its command may exist as a stub that prints "not available in this build". |
 | ➖ Not needed | Not needed: another operation already provides the same data. |
-| ⏭️ Not in 1.0 | Outside the 1.0.0 scope (see [00-architecture.md §14](00-architecture.md)). Command names for these rows are proposals. |
+| ⏭️ Not in 1.0 | Outside the 1.0.0 scope (see [00-architecture.md §14](00-architecture.md)). Planned for [release 1.5.0](../release-1.5.0/API-COVERAGE.md), which tracks their stories. |
 
 ## Summary
 
@@ -30,11 +41,11 @@ The spec has **343 operations**. Release 1.0.0 is about the operational database
 
 ### Commands
 
-| | Commands | ✅ Done | 🟡 Partial | ⬜ Not built (stub) | ⏭️ Not in 1.0 (proposed) | Coverage (done / total) |
+| | Commands | ✅ Done | 🟡 Partial | ⬜ Not built (stub) | ⏭️ Not in 1.0 | Coverage (done / total) |
 |---|---|---|---|---|---|---|
 | **Resource commands planned for 1.0.0** | **67** | 67 | 0 | 0 | — | **100%** |
 | Workflow commands (`plan`, `apply`, …) | 12 | 12 | 0 | 0 | — | 100% |
-| All resource commands, including proposed ones | 192 | 67 | 0 | 0 | 125 | 35% |
+| All resource commands, including later releases | 194 | 67 | 0 | 0 | 127 | 35% |
 
 *Each verb counts as one command (for example `cluster schedule pause`). Each command maps to one or more API operations. For example, `bucket create` calls both the provisioned and the free-tier create.*
 
@@ -91,7 +102,7 @@ The spec has **343 operations**. Release 1.0.0 is about the operational database
 
 ## Command dictionary
 
-Every resource command: built, stubbed, or proposed, with the API operations it calls. A command's status comes from its stories.
+Every resource command: built, stubbed, or planned for a later release, with the API operations it calls. A command's status comes from its stories.
 
 ### Planned for 1.0.0
 
@@ -182,137 +193,139 @@ Every resource command: built, stubbed, or proposed, with the API operations it 
 | `capellactl help / completion` | ✅ Done | CAP-034 | No API calls. |
 | `capellactl cluster disk-types` | ✅ Done | CAP-060 | No API calls: disk types, sizes and IOPS from `config/disks.yaml` (Capella's documentation; the spec has only the type names). |
 
-### Proposed commands outside 1.0.0
+### Commands outside 1.0.0
 
-<details><summary>125 proposed commands</summary>
+<details><summary>127 commands planned for a later release</summary>
 
-| Command | API operations |
-|---|---|
-| `capellactl org update` | `PUT {org}/configuration` |
-| `capellactl apikey list` | `GET {org}/apikeys` |
-| `capellactl apikey get` | `GET {org}/apikeys/{ApiKeyId}` |
-| `capellactl apikey create` | `POST {org}/apikeys` |
-| `capellactl apikey delete` | `DELETE {org}/apikeys/{ApiKeyId}` |
-| `capellactl apikey rotate` | `POST {org}/apikeys/{ApiKeyId}/rotate` |
-| `capellactl user list` | `GET {org}/users` |
-| `capellactl user get` | `GET {org}/users/{userId}` |
-| `capellactl user create` | `POST {org}/users` |
-| `capellactl user update` | `PATCH {org}/users/{userId}` |
-| `capellactl user delete` | `DELETE {org}/users/{userId}` |
-| `capellactl cmek accounts` | `GET {org}/cloudAccounts` |
-| `capellactl cmek azure-app` | `GET {org}/cmekAzureApplication`<br>`GET {org}/projects/{p}/cmekAzureApplication` |
-| `capellactl cmek create` | `POST {org}/cmek`<br>`POST {org}/projects/{p}/cmek` |
-| `capellactl cmek list` | `GET {org}/cmek`<br>`GET {org}/projects/{p}/cmek` |
-| `capellactl cmek get` | `GET {org}/cmek/{cmekId}`<br>`GET {org}/projects/{p}/cmek/{cmekId}` |
-| `capellactl cmek history` | `GET {org}/cmek/{cmekId}/history` |
-| `capellactl cmek rotate` | `PUT {org}/cmek/{cmekId}`<br>`PUT {org}/projects/{p}/cmek/{cmekId}` |
-| `capellactl cmek delete` | `DELETE {org}/cmek/{cmekId}`<br>`DELETE {org}/projects/{p}/cmek/{cmekId}` |
-| `capellactl cmek enable-provider` | `PUT {org}/cmek/providers`<br>`PUT {org}/projects/{p}/cmek/providers` |
-| `capellactl cmek associate` | `POST {org}/projects/{p}/clusters/{c}/cmek/{cmekId}/associate` |
-| `capellactl cmek unassociate` | `POST {org}/projects/{p}/clusters/{c}/cmek/{cmekId}/unassociate` |
-| `capellactl audit-log get` | `GET {org}/projects/{p}/clusters/{c}/auditLog` |
-| `capellactl audit-log update` | `PUT {org}/projects/{p}/clusters/{c}/auditLog` |
-| `capellactl audit-log events` | `GET {org}/projects/{p}/clusters/{c}/auditLogEvents` |
-| `capellactl audit-log export create` | `POST {org}/projects/{p}/clusters/{c}/auditLogExports` |
-| `capellactl audit-log export list` | `GET {org}/projects/{p}/clusters/{c}/auditLogExports` |
-| `capellactl audit-log export get` | `GET {org}/projects/{p}/clusters/{c}/auditLogExports/{auditLogExportId}` |
-| `capellactl cluster migrate-buckets` | `PUT {org}/projects/{p}/clusters/{c}/bucketStorageMigration` |
-| `capellactl cluster certificate` | `GET {org}/projects/{p}/clusters/{c}/certificates` |
-| `capellactl db-role privileges` | `GET {org}/projects/{p}/clusters/{c}/privileges` |
-| `capellactl db-role list` | `GET {org}/projects/{p}/clusters/{c}/roles` |
-| `capellactl db-role get` | `GET {org}/projects/{p}/clusters/{c}/roles/{roleId}` |
-| `capellactl db-role create` | `POST {org}/projects/{p}/clusters/{c}/roles` |
-| `capellactl db-role update` | `PUT {org}/projects/{p}/clusters/{c}/roles/{roleId}` |
-| `capellactl db-role delete` | `DELETE {org}/projects/{p}/clusters/{c}/roles/{roleId}` |
-| `capellactl bucket flush` | `PUT {org}/projects/{p}/clusters/{c}/buckets/{b}/flush` |
-| `capellactl sample-bucket load` | `POST {org}/projects/{p}/clusters/{c}/sampleBuckets` |
-| `capellactl sample-bucket list` | `GET {org}/projects/{p}/clusters/{c}/sampleBuckets` |
-| `capellactl sample-bucket get` | `GET {org}/projects/{p}/clusters/{c}/sampleBuckets/{bucketId}` |
-| `capellactl sample-bucket delete` | `DELETE {org}/projects/{p}/clusters/{c}/sampleBuckets/{bucketId}` |
-| `capellactl cluster backup clone` | `POST {org}/projects/{p}/cloudsnapshotbackups/{backupId}/clone` |
-| `capellactl peer create` | `POST {org}/projects/{p}/clusters/{c}/networkPeers` |
-| `capellactl peer list` | `GET {org}/projects/{p}/clusters/{c}/networkPeers` |
-| `capellactl peer get` | `GET {org}/projects/{p}/clusters/{c}/networkPeers/{peerId}` |
-| `capellactl peer delete` | `DELETE {org}/projects/{p}/clusters/{c}/networkPeers/{peerId}` |
-| `capellactl peer azure-command` | `POST {org}/projects/{p}/clusters/{c}/networkPeers/networkPeerCommand` |
-| `capellactl private-endpoint show` | `GET {org}/projects/{p}/clusters/{c}/privateEndpointService` |
-| `capellactl private-endpoint enable` | `POST {org}/projects/{p}/clusters/{c}/privateEndpointService` |
-| `capellactl private-endpoint update` | `PUT {org}/projects/{p}/clusters/{c}/privateEndpointService` |
-| `capellactl private-endpoint disable` | `DELETE {org}/projects/{p}/clusters/{c}/privateEndpointService` |
-| `capellactl private-endpoint list` | `GET {org}/projects/{p}/clusters/{c}/privateEndpointService/endpoints` |
-| `capellactl private-endpoint command` | `POST {org}/projects/{p}/clusters/{c}/privateEndpointService/endpointCommand` |
-| `capellactl private-endpoint accept` | `POST {org}/projects/{p}/clusters/{c}/privateEndpointService/endpoints/{endpointId}/associate` |
-| `capellactl private-endpoint reject` | `POST {org}/projects/{p}/clusters/{c}/privateEndpointService/endpoints/{endpointId}/unassociate` |
-| `capellactl alert create` | `POST {org}/projects/{p}/alertIntegrations` |
-| `capellactl alert list` | `GET {org}/projects/{p}/alertIntegrations` |
-| `capellactl alert channels` | `POST {org}/projects/{p}/alertIntegrations/channels` |
-| `capellactl alert get` | `GET {org}/projects/{p}/alertIntegrations/{alertIntegrationId}` |
-| `capellactl alert update` | `PUT {org}/projects/{p}/alertIntegrations/{alertIntegrationId}` |
-| `capellactl alert delete` | `DELETE {org}/projects/{p}/alertIntegrations/{alertIntegrationId}` |
-| `capellactl alert test` | `POST {org}/projects/{p}/alertIntegrationTest` |
-| `capellactl event list` | `GET {org}/events`<br>`GET {org}/projects/{p}/events` |
-| `capellactl event get` | `GET {org}/events/{eventId}`<br>`GET {org}/projects/{p}/events/{eventId}` |
-| `capellactl index manage` | `POST {org}/projects/{p}/clusters/{c}/queryService/indexes` |
-| `capellactl index list` | `GET {org}/projects/{p}/clusters/{c}/queryService/indexes` |
-| `capellactl index get` | `GET {org}/projects/{p}/clusters/{c}/queryService/indexes/{indexName}` |
-| `capellactl index status` | `GET {org}/projects/{p}/clusters/{c}/queryService/indexBuildStatus/{indexName}` |
-| `capellactl replication list` | `GET {org}/projects/{p}/clusters/{c}/replications`<br>`GET {org}/projects/{p}/replications` |
-| `capellactl replication get` | `GET {org}/projects/{p}/clusters/{c}/replications/{replicationId}` |
-| `capellactl replication create` | `POST {org}/projects/{p}/clusters/{c}/replications` |
-| `capellactl replication update` | `PUT {org}/projects/{p}/clusters/{c}/replications/{replicationId}` |
-| `capellactl replication delete` | `DELETE {org}/projects/{p}/clusters/{c}/replications/{replicationId}` |
-| `capellactl replication pause` | `DELETE {org}/projects/{p}/clusters/{c}/replications/{replicationId}/activationStatus` |
-| `capellactl replication resume` | `POST {org}/projects/{p}/clusters/{c}/replications/{replicationId}/activationStatus` |
-| `capellactl replication job` | `GET {org}/projects/{p}/clusters/{c}/replications/jobs/{jobId}` |
-| `capellactl data-api show` | `GET {org}/projects/{p}/clusters/{c}/dataAPI` |
-| `capellactl data-api update` | `PUT {org}/projects/{p}/clusters/{c}/dataAPI` |
-| `capellactl data-api endpoint-command` | `POST {org}/projects/{p}/clusters/{c}/dataAPI/privateEndpointCommand` |
-| `capellactl data-api endpoint list` | `GET {org}/projects/{p}/clusters/{c}/dataAPI/privateEndpoints` |
-| `capellactl data-api endpoint accept` | `POST {org}/projects/{p}/clusters/{c}/dataAPI/privateEndpoints/{endpointId}/associate` |
-| `capellactl data-api endpoint reject` | `POST {org}/projects/{p}/clusters/{c}/dataAPI/privateEndpoints/{endpointId}/unassociate` |
-| `capellactl billing get` | `POST {org}/billing`<br>`POST {org}/projects/{p}/clusters/{c}/billing` |
-| `capellactl billing prepaid` | `GET {org}/billing/prePaidCredits` |
-| `capellactl billing payg` | `GET {org}/billing/payAsYouGo` |
-| `capellactl billing download` | `POST {org}/billing/download`<br>`POST {org}/projects/{p}/clusters/{c}/billing/download` |
-| `capellactl eventing list` | `GET {org}/projects/{p}/clusters/{c}/eventingFunctions` |
-| `capellactl eventing get` | `GET {org}/projects/{p}/clusters/{c}/eventingFunctions/{functionName}` |
-| `capellactl eventing create` | `POST {org}/projects/{p}/clusters/{c}/eventingFunctions` |
-| `capellactl eventing update` | `PUT {org}/projects/{p}/clusters/{c}/eventingFunctions/{functionName}` |
-| `capellactl eventing delete` | `DELETE {org}/projects/{p}/clusters/{c}/eventingFunctions/{functionName}` |
-| `capellactl eventing code get` | `GET {org}/projects/{p}/clusters/{c}/eventingFunctions/{functionName}/code` |
-| `capellactl eventing code set` | `PUT {org}/projects/{p}/clusters/{c}/eventingFunctions/{functionName}/code` |
-| `capellactl eventing state` | `PUT {org}/projects/{p}/clusters/{c}/eventingFunctions/{functionName}/activationState` |
-| `capellactl eventing logs` | `GET {org}/projects/{p}/clusters/{c}/eventingFunctions/{functionName}/logs` |
-| `capellactl insights list` | `GET {org}/projects/{p}/operationalInsightsClusters`<br>`GET {org}/operationalInsightsClusters` |
-| `capellactl insights get` | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}` |
-| `capellactl insights create` | `POST {org}/projects/{p}/operationalInsightsClusters` |
-| `capellactl insights update` | `PUT {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}` |
-| `capellactl insights delete` | `DELETE {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}` |
-| `capellactl insights power on` | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/activationState` |
-| `capellactl insights power off` | `DELETE {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/activationState` |
-| `capellactl insights schedule show` | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule` |
-| `capellactl insights schedule set` | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule`<br>`PUT {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule` |
-| `capellactl insights schedule delete` | `DELETE {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule` |
-| `capellactl insights cidr list` | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs` |
-| `capellactl insights cidr get` | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs/{allowedCidrId}` |
-| `capellactl insights cidr create` | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs` |
-| `capellactl insights cidr delete` | `DELETE {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs/{allowedCidrId}` |
-| `capellactl insights backup list` | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups` |
-| `capellactl insights backup create` | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups` |
-| `capellactl insights backup retain` | `PUT {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/{backupId}` |
-| `capellactl insights backup delete` | `DELETE {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/{backupId}` |
-| `capellactl insights backup restore` | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/{backupId}/restore` |
-| `capellactl insights backup restores` | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/restores` |
-| `capellactl insights backup schedule show` | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackupSchedule` |
-| `capellactl insights backup schedule set` | `PUT {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackupSchedule` |
-| `capellactl insights backup schedule delete` | `DELETE {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackupSchedule` |
-| `capellactl insights private-endpoint show` | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService` |
-| `capellactl insights private-endpoint enable` | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService` |
-| `capellactl insights private-endpoint disable` | `DELETE {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService` |
-| `capellactl insights private-endpoint command` | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpointCommand` |
-| `capellactl insights private-endpoint list` | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpoints` |
-| `capellactl insights private-endpoint accept` | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpoints/{endpointId}/associate` |
-| `capellactl insights private-endpoint reject` | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpoints/{endpointId}/unassociate` |
+| Command | Release | Stories | API operations |
+|---|---|---|---|
+| `capellactl db-role privileges` | 1.5.0 | [CAP-064](../release-1.5.0/CAP-064-custom-database-roles.md) | `GET {org}/projects/{p}/clusters/{c}/privileges` |
+| `capellactl db-role list` | 1.5.0 | [CAP-064](../release-1.5.0/CAP-064-custom-database-roles.md) | `GET {org}/projects/{p}/clusters/{c}/roles` |
+| `capellactl db-role get` | 1.5.0 | [CAP-064](../release-1.5.0/CAP-064-custom-database-roles.md) | `GET {org}/projects/{p}/clusters/{c}/roles/{roleId}` |
+| `capellactl db-role create` | 1.5.0 | [CAP-064](../release-1.5.0/CAP-064-custom-database-roles.md) | `POST {org}/projects/{p}/clusters/{c}/roles` |
+| `capellactl db-role update` | 1.5.0 | [CAP-064](../release-1.5.0/CAP-064-custom-database-roles.md) | `PUT {org}/projects/{p}/clusters/{c}/roles/{roleId}` |
+| `capellactl db-role delete` | 1.5.0 | [CAP-064](../release-1.5.0/CAP-064-custom-database-roles.md) | `DELETE {org}/projects/{p}/clusters/{c}/roles/{roleId}` |
+| `capellactl sample-bucket load` | 1.5.0 | [CAP-065](../release-1.5.0/CAP-065-sample-buckets.md) | `POST {org}/projects/{p}/clusters/{c}/sampleBuckets` |
+| `capellactl sample-bucket list` | 1.5.0 | [CAP-065](../release-1.5.0/CAP-065-sample-buckets.md) | `GET {org}/projects/{p}/clusters/{c}/sampleBuckets` |
+| `capellactl sample-bucket get` | 1.5.0 | [CAP-065](../release-1.5.0/CAP-065-sample-buckets.md) | `GET {org}/projects/{p}/clusters/{c}/sampleBuckets/{bucketId}` |
+| `capellactl sample-bucket delete` | 1.5.0 | [CAP-065](../release-1.5.0/CAP-065-sample-buckets.md) | `DELETE {org}/projects/{p}/clusters/{c}/sampleBuckets/{bucketId}` |
+| `capellactl bucket flush` | 1.5.0 | [CAP-066](../release-1.5.0/CAP-066-bucket-flush.md) | `PUT {org}/projects/{p}/clusters/{c}/buckets/{b}/flush` |
+| `capellactl index create` | 1.5.0 | [CAP-067](../release-1.5.0/CAP-067-query-indexes.md) | `POST {org}/projects/{p}/clusters/{c}/queryService/indexes` |
+| `capellactl index drop` | 1.5.0 | [CAP-067](../release-1.5.0/CAP-067-query-indexes.md) | `POST {org}/projects/{p}/clusters/{c}/queryService/indexes` |
+| `capellactl index build` | 1.5.0 | [CAP-067](../release-1.5.0/CAP-067-query-indexes.md) | `POST {org}/projects/{p}/clusters/{c}/queryService/indexes` |
+| `capellactl index list` | 1.5.0 | [CAP-067](../release-1.5.0/CAP-067-query-indexes.md) | `GET {org}/projects/{p}/clusters/{c}/queryService/indexes` |
+| `capellactl index get` | 1.5.0 | [CAP-067](../release-1.5.0/CAP-067-query-indexes.md) | `GET {org}/projects/{p}/clusters/{c}/queryService/indexes/{indexName}` |
+| `capellactl index status` | 1.5.0 | [CAP-067](../release-1.5.0/CAP-067-query-indexes.md) | `GET {org}/projects/{p}/clusters/{c}/queryService/indexBuildStatus/{indexName}` |
+| `capellactl eventing list` | 1.5.0 | [CAP-068](../release-1.5.0/CAP-068-eventing-functions.md) | `GET {org}/projects/{p}/clusters/{c}/eventingFunctions` |
+| `capellactl eventing get` | 1.5.0 | [CAP-068](../release-1.5.0/CAP-068-eventing-functions.md) | `GET {org}/projects/{p}/clusters/{c}/eventingFunctions/{functionName}` |
+| `capellactl eventing create` | 1.5.0 | [CAP-068](../release-1.5.0/CAP-068-eventing-functions.md) | `POST {org}/projects/{p}/clusters/{c}/eventingFunctions` |
+| `capellactl eventing update` | 1.5.0 | [CAP-068](../release-1.5.0/CAP-068-eventing-functions.md) | `PUT {org}/projects/{p}/clusters/{c}/eventingFunctions/{functionName}` |
+| `capellactl eventing delete` | 1.5.0 | [CAP-068](../release-1.5.0/CAP-068-eventing-functions.md) | `DELETE {org}/projects/{p}/clusters/{c}/eventingFunctions/{functionName}` |
+| `capellactl eventing code get` | 1.5.0 | [CAP-068](../release-1.5.0/CAP-068-eventing-functions.md) | `GET {org}/projects/{p}/clusters/{c}/eventingFunctions/{functionName}/code` |
+| `capellactl eventing code set` | 1.5.0 | [CAP-068](../release-1.5.0/CAP-068-eventing-functions.md) | `PUT {org}/projects/{p}/clusters/{c}/eventingFunctions/{functionName}/code` |
+| `capellactl eventing state` | 1.5.0 | [CAP-068](../release-1.5.0/CAP-068-eventing-functions.md) | `PUT {org}/projects/{p}/clusters/{c}/eventingFunctions/{functionName}/activationState` |
+| `capellactl eventing logs` | 1.5.0 | [CAP-068](../release-1.5.0/CAP-068-eventing-functions.md) | `GET {org}/projects/{p}/clusters/{c}/eventingFunctions/{functionName}/logs` |
+| `capellactl data-api show` | 1.5.0 | [CAP-069](../release-1.5.0/CAP-069-data-api.md) | `GET {org}/projects/{p}/clusters/{c}/dataAPI` |
+| `capellactl data-api update` | 1.5.0 | [CAP-069](../release-1.5.0/CAP-069-data-api.md) | `PUT {org}/projects/{p}/clusters/{c}/dataAPI` |
+| `capellactl data-api endpoint-command` | 1.5.0 | [CAP-069](../release-1.5.0/CAP-069-data-api.md) | `POST {org}/projects/{p}/clusters/{c}/dataAPI/privateEndpointCommand` |
+| `capellactl data-api endpoint list` | 1.5.0 | [CAP-069](../release-1.5.0/CAP-069-data-api.md) | `GET {org}/projects/{p}/clusters/{c}/dataAPI/privateEndpoints` |
+| `capellactl data-api endpoint accept` | 1.5.0 | [CAP-069](../release-1.5.0/CAP-069-data-api.md) | `POST {org}/projects/{p}/clusters/{c}/dataAPI/privateEndpoints/{endpointId}/associate` |
+| `capellactl data-api endpoint reject` | 1.5.0 | [CAP-069](../release-1.5.0/CAP-069-data-api.md) | `POST {org}/projects/{p}/clusters/{c}/dataAPI/privateEndpoints/{endpointId}/unassociate` |
+| `capellactl replication list` | 1.5.0 | [CAP-070](../release-1.5.0/CAP-070-xdcr-replications.md) | `GET {org}/projects/{p}/clusters/{c}/replications`<br>`GET {org}/projects/{p}/replications` |
+| `capellactl replication get` | 1.5.0 | [CAP-070](../release-1.5.0/CAP-070-xdcr-replications.md) | `GET {org}/projects/{p}/clusters/{c}/replications/{replicationId}` |
+| `capellactl replication create` | 1.5.0 | [CAP-070](../release-1.5.0/CAP-070-xdcr-replications.md) | `POST {org}/projects/{p}/clusters/{c}/replications` |
+| `capellactl replication update` | 1.5.0 | [CAP-070](../release-1.5.0/CAP-070-xdcr-replications.md) | `PUT {org}/projects/{p}/clusters/{c}/replications/{replicationId}` |
+| `capellactl replication delete` | 1.5.0 | [CAP-070](../release-1.5.0/CAP-070-xdcr-replications.md) | `DELETE {org}/projects/{p}/clusters/{c}/replications/{replicationId}` |
+| `capellactl replication pause` | 1.5.0 | [CAP-070](../release-1.5.0/CAP-070-xdcr-replications.md) | `DELETE {org}/projects/{p}/clusters/{c}/replications/{replicationId}/activationStatus` |
+| `capellactl replication resume` | 1.5.0 | [CAP-070](../release-1.5.0/CAP-070-xdcr-replications.md) | `POST {org}/projects/{p}/clusters/{c}/replications/{replicationId}/activationStatus` |
+| `capellactl replication job` | 1.5.0 | [CAP-070](../release-1.5.0/CAP-070-xdcr-replications.md) | `GET {org}/projects/{p}/clusters/{c}/replications/jobs/{jobId}` |
+| `capellactl cluster backup clone` | 1.5.0 | [CAP-071](../release-1.5.0/CAP-071-clone-cluster-from-backup.md) | `POST {org}/projects/{p}/cloudsnapshotbackups/{backupId}/clone` |
+| `capellactl cluster migrate-buckets` | 1.5.0 | [CAP-072](../release-1.5.0/CAP-072-migrate-bucket-storage.md) | `PUT {org}/projects/{p}/clusters/{c}/bucketStorageMigration` |
+| `capellactl cluster certificate` | 1.5.0 | [CAP-073](../release-1.5.0/CAP-073-cluster-certificate.md) | `GET {org}/projects/{p}/clusters/{c}/certificates` |
+| `capellactl peer create` | 1.5.0 | [CAP-074](../release-1.5.0/CAP-074-network-peering.md) | `POST {org}/projects/{p}/clusters/{c}/networkPeers` |
+| `capellactl peer list` | 1.5.0 | [CAP-074](../release-1.5.0/CAP-074-network-peering.md) | `GET {org}/projects/{p}/clusters/{c}/networkPeers` |
+| `capellactl peer get` | 1.5.0 | [CAP-074](../release-1.5.0/CAP-074-network-peering.md) | `GET {org}/projects/{p}/clusters/{c}/networkPeers/{peerId}` |
+| `capellactl peer delete` | 1.5.0 | [CAP-074](../release-1.5.0/CAP-074-network-peering.md) | `DELETE {org}/projects/{p}/clusters/{c}/networkPeers/{peerId}` |
+| `capellactl peer azure-command` | 1.5.0 | [CAP-074](../release-1.5.0/CAP-074-network-peering.md) | `POST {org}/projects/{p}/clusters/{c}/networkPeers/networkPeerCommand` |
+| `capellactl private-endpoint show` | 1.5.0 | [CAP-075](../release-1.5.0/CAP-075-private-endpoint-service.md) | `GET {org}/projects/{p}/clusters/{c}/privateEndpointService` |
+| `capellactl private-endpoint enable` | 1.5.0 | [CAP-075](../release-1.5.0/CAP-075-private-endpoint-service.md) | `POST {org}/projects/{p}/clusters/{c}/privateEndpointService` |
+| `capellactl private-endpoint update` | 1.5.0 | [CAP-075](../release-1.5.0/CAP-075-private-endpoint-service.md) | `PUT {org}/projects/{p}/clusters/{c}/privateEndpointService` |
+| `capellactl private-endpoint disable` | 1.5.0 | [CAP-075](../release-1.5.0/CAP-075-private-endpoint-service.md) | `DELETE {org}/projects/{p}/clusters/{c}/privateEndpointService` |
+| `capellactl private-endpoint list` | 1.5.0 | [CAP-075](../release-1.5.0/CAP-075-private-endpoint-service.md) | `GET {org}/projects/{p}/clusters/{c}/privateEndpointService/endpoints` |
+| `capellactl private-endpoint command` | 1.5.0 | [CAP-075](../release-1.5.0/CAP-075-private-endpoint-service.md) | `POST {org}/projects/{p}/clusters/{c}/privateEndpointService/endpointCommand` |
+| `capellactl private-endpoint accept` | 1.5.0 | [CAP-075](../release-1.5.0/CAP-075-private-endpoint-service.md) | `POST {org}/projects/{p}/clusters/{c}/privateEndpointService/endpoints/{endpointId}/associate` |
+| `capellactl private-endpoint reject` | 1.5.0 | [CAP-075](../release-1.5.0/CAP-075-private-endpoint-service.md) | `POST {org}/projects/{p}/clusters/{c}/privateEndpointService/endpoints/{endpointId}/unassociate` |
+| `capellactl audit-log get` | 1.5.0 | [CAP-076](../release-1.5.0/CAP-076-cluster-audit-logging.md) | `GET {org}/projects/{p}/clusters/{c}/auditLog` |
+| `capellactl audit-log update` | 1.5.0 | [CAP-076](../release-1.5.0/CAP-076-cluster-audit-logging.md) | `PUT {org}/projects/{p}/clusters/{c}/auditLog` |
+| `capellactl audit-log events` | 1.5.0 | [CAP-076](../release-1.5.0/CAP-076-cluster-audit-logging.md) | `GET {org}/projects/{p}/clusters/{c}/auditLogEvents` |
+| `capellactl audit-log export create` | 1.5.0 | [CAP-076](../release-1.5.0/CAP-076-cluster-audit-logging.md) | `POST {org}/projects/{p}/clusters/{c}/auditLogExports` |
+| `capellactl audit-log export list` | 1.5.0 | [CAP-076](../release-1.5.0/CAP-076-cluster-audit-logging.md) | `GET {org}/projects/{p}/clusters/{c}/auditLogExports` |
+| `capellactl audit-log export get` | 1.5.0 | [CAP-076](../release-1.5.0/CAP-076-cluster-audit-logging.md) | `GET {org}/projects/{p}/clusters/{c}/auditLogExports/{auditLogExportId}` |
+| `capellactl cmek accounts` | 1.5.0 | [CAP-077](../release-1.5.0/CAP-077-customer-managed-keys.md) | `GET {org}/cloudAccounts` |
+| `capellactl cmek azure-app` | 1.5.0 | [CAP-077](../release-1.5.0/CAP-077-customer-managed-keys.md) | `GET {org}/cmekAzureApplication`<br>`GET {org}/projects/{p}/cmekAzureApplication` |
+| `capellactl cmek create` | 1.5.0 | [CAP-077](../release-1.5.0/CAP-077-customer-managed-keys.md) | `POST {org}/cmek`<br>`POST {org}/projects/{p}/cmek` |
+| `capellactl cmek list` | 1.5.0 | [CAP-077](../release-1.5.0/CAP-077-customer-managed-keys.md) | `GET {org}/cmek`<br>`GET {org}/projects/{p}/cmek` |
+| `capellactl cmek get` | 1.5.0 | [CAP-077](../release-1.5.0/CAP-077-customer-managed-keys.md) | `GET {org}/cmek/{cmekId}`<br>`GET {org}/projects/{p}/cmek/{cmekId}` |
+| `capellactl cmek history` | 1.5.0 | [CAP-077](../release-1.5.0/CAP-077-customer-managed-keys.md) | `GET {org}/cmek/{cmekId}/history` |
+| `capellactl cmek rotate` | 1.5.0 | [CAP-077](../release-1.5.0/CAP-077-customer-managed-keys.md) | `PUT {org}/cmek/{cmekId}`<br>`PUT {org}/projects/{p}/cmek/{cmekId}` |
+| `capellactl cmek delete` | 1.5.0 | [CAP-077](../release-1.5.0/CAP-077-customer-managed-keys.md) | `DELETE {org}/cmek/{cmekId}`<br>`DELETE {org}/projects/{p}/cmek/{cmekId}` |
+| `capellactl cmek enable-provider` | 1.5.0 | [CAP-077](../release-1.5.0/CAP-077-customer-managed-keys.md) | `PUT {org}/cmek/providers`<br>`PUT {org}/projects/{p}/cmek/providers` |
+| `capellactl cmek associate` | 1.5.0 | [CAP-077](../release-1.5.0/CAP-077-customer-managed-keys.md) | `POST {org}/projects/{p}/clusters/{c}/cmek/{cmekId}/associate` |
+| `capellactl cmek unassociate` | 1.5.0 | [CAP-077](../release-1.5.0/CAP-077-customer-managed-keys.md) | `POST {org}/projects/{p}/clusters/{c}/cmek/{cmekId}/unassociate` |
+| `capellactl org update` | 1.5.0 | [CAP-078](../release-1.5.0/CAP-078-organization-settings.md) | `PUT {org}/configuration` |
+| `capellactl user list` | 1.5.0 | [CAP-079](../release-1.5.0/CAP-079-organization-users.md) | `GET {org}/users` |
+| `capellactl user get` | 1.5.0 | [CAP-079](../release-1.5.0/CAP-079-organization-users.md) | `GET {org}/users/{userId}` |
+| `capellactl user create` | 1.5.0 | [CAP-079](../release-1.5.0/CAP-079-organization-users.md) | `POST {org}/users` |
+| `capellactl user update` | 1.5.0 | [CAP-079](../release-1.5.0/CAP-079-organization-users.md) | `PATCH {org}/users/{userId}` |
+| `capellactl user delete` | 1.5.0 | [CAP-079](../release-1.5.0/CAP-079-organization-users.md) | `DELETE {org}/users/{userId}` |
+| `capellactl apikey list` | 1.5.0 | [CAP-080](../release-1.5.0/CAP-080-api-keys.md) | `GET {org}/apikeys` |
+| `capellactl apikey get` | 1.5.0 | [CAP-080](../release-1.5.0/CAP-080-api-keys.md) | `GET {org}/apikeys/{ApiKeyId}` |
+| `capellactl apikey create` | 1.5.0 | [CAP-080](../release-1.5.0/CAP-080-api-keys.md) | `POST {org}/apikeys` |
+| `capellactl apikey delete` | 1.5.0 | [CAP-080](../release-1.5.0/CAP-080-api-keys.md) | `DELETE {org}/apikeys/{ApiKeyId}` |
+| `capellactl apikey rotate` | 1.5.0 | [CAP-080](../release-1.5.0/CAP-080-api-keys.md) | `POST {org}/apikeys/{ApiKeyId}/rotate` |
+| `capellactl alert create` | 1.5.0 | [CAP-081](../release-1.5.0/CAP-081-alert-integrations.md) | `POST {org}/projects/{p}/alertIntegrations` |
+| `capellactl alert list` | 1.5.0 | [CAP-081](../release-1.5.0/CAP-081-alert-integrations.md) | `GET {org}/projects/{p}/alertIntegrations` |
+| `capellactl alert channels` | 1.5.0 | [CAP-081](../release-1.5.0/CAP-081-alert-integrations.md) | `POST {org}/projects/{p}/alertIntegrations/channels` |
+| `capellactl alert get` | 1.5.0 | [CAP-081](../release-1.5.0/CAP-081-alert-integrations.md) | `GET {org}/projects/{p}/alertIntegrations/{alertIntegrationId}` |
+| `capellactl alert update` | 1.5.0 | [CAP-081](../release-1.5.0/CAP-081-alert-integrations.md) | `PUT {org}/projects/{p}/alertIntegrations/{alertIntegrationId}` |
+| `capellactl alert delete` | 1.5.0 | [CAP-081](../release-1.5.0/CAP-081-alert-integrations.md) | `DELETE {org}/projects/{p}/alertIntegrations/{alertIntegrationId}` |
+| `capellactl alert test` | 1.5.0 | [CAP-081](../release-1.5.0/CAP-081-alert-integrations.md) | `POST {org}/projects/{p}/alertIntegrationTest` |
+| `capellactl event list` | 1.5.0 | [CAP-082](../release-1.5.0/CAP-082-events.md) | `GET {org}/events`<br>`GET {org}/projects/{p}/events` |
+| `capellactl event get` | 1.5.0 | [CAP-082](../release-1.5.0/CAP-082-events.md) | `GET {org}/events/{eventId}`<br>`GET {org}/projects/{p}/events/{eventId}` |
+| `capellactl billing get` | 1.5.0 | [CAP-083](../release-1.5.0/CAP-083-billing-reports.md) | `POST {org}/billing`<br>`POST {org}/projects/{p}/clusters/{c}/billing` |
+| `capellactl billing prepaid` | 1.5.0 | [CAP-083](../release-1.5.0/CAP-083-billing-reports.md) | `GET {org}/billing/prePaidCredits` |
+| `capellactl billing payg` | 1.5.0 | [CAP-083](../release-1.5.0/CAP-083-billing-reports.md) | `GET {org}/billing/payAsYouGo` |
+| `capellactl billing download` | 1.5.0 | [CAP-083](../release-1.5.0/CAP-083-billing-reports.md) | `POST {org}/billing/download`<br>`POST {org}/projects/{p}/clusters/{c}/billing/download` |
+| `capellactl insights list` | 1.5.0 | [CAP-084](../release-1.5.0/CAP-084-operational-insights-clusters.md) | `GET {org}/projects/{p}/operationalInsightsClusters`<br>`GET {org}/operationalInsightsClusters` |
+| `capellactl insights get` | 1.5.0 | [CAP-084](../release-1.5.0/CAP-084-operational-insights-clusters.md) | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}` |
+| `capellactl insights create` | 1.5.0 | [CAP-084](../release-1.5.0/CAP-084-operational-insights-clusters.md) | `POST {org}/projects/{p}/operationalInsightsClusters` |
+| `capellactl insights update` | 1.5.0 | [CAP-084](../release-1.5.0/CAP-084-operational-insights-clusters.md) | `PUT {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}` |
+| `capellactl insights delete` | 1.5.0 | [CAP-084](../release-1.5.0/CAP-084-operational-insights-clusters.md) | `DELETE {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}` |
+| `capellactl insights power on` | 1.5.0 | [CAP-084](../release-1.5.0/CAP-084-operational-insights-clusters.md) | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/activationState` |
+| `capellactl insights power off` | 1.5.0 | [CAP-084](../release-1.5.0/CAP-084-operational-insights-clusters.md) | `DELETE {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/activationState` |
+| `capellactl insights schedule show` | 1.5.0 | [CAP-085](../release-1.5.0/CAP-085-insights-on-off-schedule.md) | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule` |
+| `capellactl insights schedule set` | 1.5.0 | [CAP-085](../release-1.5.0/CAP-085-insights-on-off-schedule.md) | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule`<br>`PUT {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule` |
+| `capellactl insights schedule delete` | 1.5.0 | [CAP-085](../release-1.5.0/CAP-085-insights-on-off-schedule.md) | `DELETE {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule` |
+| `capellactl insights cidr list` | 1.5.0 | [CAP-086](../release-1.5.0/CAP-086-insights-allowed-cidrs.md) | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs` |
+| `capellactl insights cidr get` | 1.5.0 | [CAP-086](../release-1.5.0/CAP-086-insights-allowed-cidrs.md) | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs/{allowedCidrId}` |
+| `capellactl insights cidr create` | 1.5.0 | [CAP-086](../release-1.5.0/CAP-086-insights-allowed-cidrs.md) | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs` |
+| `capellactl insights cidr delete` | 1.5.0 | [CAP-086](../release-1.5.0/CAP-086-insights-allowed-cidrs.md) | `DELETE {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs/{allowedCidrId}` |
+| `capellactl insights backup list` | 1.5.0 | [CAP-087](../release-1.5.0/CAP-087-insights-backups.md) | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups` |
+| `capellactl insights backup create` | 1.5.0 | [CAP-087](../release-1.5.0/CAP-087-insights-backups.md) | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups` |
+| `capellactl insights backup retain` | 1.5.0 | [CAP-087](../release-1.5.0/CAP-087-insights-backups.md) | `PUT {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/{backupId}` |
+| `capellactl insights backup delete` | 1.5.0 | [CAP-087](../release-1.5.0/CAP-087-insights-backups.md) | `DELETE {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/{backupId}` |
+| `capellactl insights backup restore` | 1.5.0 | [CAP-087](../release-1.5.0/CAP-087-insights-backups.md) | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/{backupId}/restore` |
+| `capellactl insights backup restores` | 1.5.0 | [CAP-087](../release-1.5.0/CAP-087-insights-backups.md) | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/restores` |
+| `capellactl insights backup schedule show` | 1.5.0 | [CAP-087](../release-1.5.0/CAP-087-insights-backups.md) | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackupSchedule` |
+| `capellactl insights backup schedule set` | 1.5.0 | [CAP-087](../release-1.5.0/CAP-087-insights-backups.md) | `PUT {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackupSchedule` |
+| `capellactl insights backup schedule delete` | 1.5.0 | [CAP-087](../release-1.5.0/CAP-087-insights-backups.md) | `DELETE {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackupSchedule` |
+| `capellactl insights private-endpoint show` | 1.5.0 | [CAP-088](../release-1.5.0/CAP-088-insights-private-endpoints.md) | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService` |
+| `capellactl insights private-endpoint enable` | 1.5.0 | [CAP-088](../release-1.5.0/CAP-088-insights-private-endpoints.md) | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService` |
+| `capellactl insights private-endpoint disable` | 1.5.0 | [CAP-088](../release-1.5.0/CAP-088-insights-private-endpoints.md) | `DELETE {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService` |
+| `capellactl insights private-endpoint command` | 1.5.0 | [CAP-088](../release-1.5.0/CAP-088-insights-private-endpoints.md) | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpointCommand` |
+| `capellactl insights private-endpoint list` | 1.5.0 | [CAP-088](../release-1.5.0/CAP-088-insights-private-endpoints.md) | `GET {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpoints` |
+| `capellactl insights private-endpoint accept` | 1.5.0 | [CAP-088](../release-1.5.0/CAP-088-insights-private-endpoints.md) | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpoints/{endpointId}/associate` |
+| `capellactl insights private-endpoint reject` | 1.5.0 | [CAP-088](../release-1.5.0/CAP-088-insights-private-endpoints.md) | `POST {org}/projects/{p}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpoints/{endpointId}/unassociate` |
 
 </details>
 
@@ -412,7 +425,7 @@ Paths are abbreviated: `{org}` = `/v4/organizations/{organizationId}`, `{p}` = p
 | Get Bucket | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}` | `bucket get` | ✅ Done |  |
 | Update Bucket | `PUT` | `{org}/projects/{p}/clusters/{c}/buckets/{b}` | `bucket update` | ✅ Done | Immutable fields (type, storage backend, vbuckets, conflict resolution, eviction) are blocked. |
 | Delete Bucket | `DELETE` | `{org}/projects/{p}/clusters/{c}/buckets/{b}` | `bucket delete` | ✅ Done |  |
-| Flush Bucket Data | `PUT` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/flush` | `bucket flush` | ⏭️ Not in 1.0 | Deliberately not exposed in 1.0.0 (CAP-024). |
+| Flush Bucket Data | `PUT` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/flush` | `bucket flush` | ⏭️ Not in 1.0 | Not exposed in 1.0.0 (CAP-024); 1.5.0 adds it behind a typed confirmation. |
 | Create Scope | `POST` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes` | `scope create` | ✅ Done | Also `collection create` for a new scope, and `apply`. |
 | List Scopes | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes` | `scope list` | ✅ Done | Also read by `plan`, `import` and `collection delete`. |
 | Get Scope | `GET` | `{org}/projects/{p}/clusters/{c}/buckets/{b}/scopes/{scopeName}` | `scope delete` | ✅ Done | Lists the collections the confirmation shows. |
@@ -465,7 +478,7 @@ Paths are abbreviated: `{org}` = `/v4/organizations/{organizationId}`, `{p}` = p
 
 | Operation | Method | Path | capellactl command | Status | Notes / what's left |
 |---|---|---|---|---|---|
-| Manage Query Indexes | `POST` | `{org}/projects/{p}/clusters/{c}/queryService/indexes` | `index manage` | ⏭️ Not in 1.0 |  |
+| Manage Query Indexes | `POST` | `{org}/projects/{p}/clusters/{c}/queryService/indexes` | `index create` / `index drop` / `index build` | ⏭️ Not in 1.0 | One `CREATE`, `DROP` or `BUILD INDEX` statement per call. |
 | Get List Of Index Definitions | `GET` | `{org}/projects/{p}/clusters/{c}/queryService/indexes` | `index list` | ⏭️ Not in 1.0 |  |
 | Get Index Properties | `GET` | `{org}/projects/{p}/clusters/{c}/queryService/indexes/{indexName}` | `index get` | ⏭️ Not in 1.0 |  |
 | Get Index Build Status | `GET` | `{org}/projects/{p}/clusters/{c}/queryService/indexBuildStatus/{indexName}` | `index status` | ⏭️ Not in 1.0 |  |
@@ -556,7 +569,7 @@ Paths are abbreviated: `{org}` = `/v4/organizations/{organizationId}`, `{p}` = p
 | Delete Backup | `DELETE` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}` | `cluster backup delete` | ✅ Done |  |
 | Restore Backup | `POST` | `{org}/projects/{p}/clusters/{c}/cloudsnapshotbackups/{backupId}/restore` | `cluster backup restore` | ✅ Done |  |
 | List Cloud Snapshot Backups at the Project Level | `GET` | `{org}/projects/{p}/cloudsnapshotbackups` | `cluster backup list` | ✅ Done | Project-wide listing (no cluster name). |
-| Clone Cluster Backup | `POST` | `{org}/projects/{p}/cloudsnapshotbackups/{backupId}/clone` | `cluster backup clone` | ⏭️ Not in 1.0 | Creates a cluster; out of scope of CAP-057. |
+| Clone Cluster Backup | `POST` | `{org}/projects/{p}/cloudsnapshotbackups/{backupId}/clone` | `cluster backup clone` | ⏭️ Not in 1.0 | Creates a new cluster from the backup. |
 
 ### Cloud snapshot backup schedule (cluster) — 4 ops (4 ✅)
 
@@ -602,7 +615,7 @@ Paths are abbreviated: `{org}` = `/v4/organizations/{organizationId}`, `{p}` = p
 
 | Operation | Method | Path | capellactl command | Status | Notes / what's left |
 |---|---|---|---|---|---|
-| Get Certificate | `GET` | `{org}/projects/{p}/clusters/{c}/certificates` | `cluster certificate` | ⏭️ Not in 1.0 | Useful for TLS client setup; a cheap candidate for 1.1. |
+| Get Certificate | `GET` | `{org}/projects/{p}/clusters/{c}/certificates` | `cluster certificate` | ⏭️ Not in 1.0 | Useful for TLS client setup. |
 
 ### Audit logs — 6 ops (6 ⏭️)
 

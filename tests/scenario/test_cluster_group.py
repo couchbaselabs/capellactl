@@ -91,7 +91,7 @@ def test_group_cmd_ac3_add_rerun_noop(fake, run, imported):
 @pytest.mark.story("CAP-052", "AC3")
 @pytest.mark.parametrize("args,code,msg", [
     (["--services", "data,index,query", "--nodes", "5"], 3,
-     "group data,index,query exists with 3 × 4/16; use 'capellactl cluster scale nova-dev-01 --group data,index,query"),
+     "group data,index,query already exists with 3 × 4/16\n[ACTION]: Change its node count with 'capellactl cluster scale nova-dev-01 --group data,index,query"),
     (["--services", "search", "--nodes", "25"], 3, "additional service groups allow 2–24 nodes"),
     (["--services", "cache"], 3, "unknown service 'cache'"),
 ])
@@ -196,5 +196,5 @@ def test_group_cmd_ac3_add_refused_total_and_free_tier(fake, run, three_groups):
     assert run("--auto-approve", "cluster", "create", "try-01", "--free-tier").exit_code == 0
     fake.reset_calls()
     r = run("--auto-approve", "cluster", "group", "add", "try-01", "--services", "search")
-    assert r.exit_code == 4 and "free-tier clusters have 1 node and fixed size" in r.output
+    assert r.exit_code == 4 and "[ERROR]: free-tier clusters have 1 node and a fixed size" in r.output
     assert fake.writes() == []

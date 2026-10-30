@@ -17,6 +17,7 @@ from typing import Any
 import yaml
 
 from capellactl import DEFAULT_BASE_URL
+from capellactl.output.notice import Notice
 
 KEYRING_SERVICE = "capellactl"
 DEFAULT_PROFILE = "default"
@@ -123,7 +124,7 @@ class Settings:
     org_id: Value
     base_url: Value
     config_file: Value
-    warnings: list[str] = field(default_factory=list)
+    warnings: list[Notice] = field(default_factory=list)
 
     def rows(self) -> list[tuple[str, str, str]]:
         def mask(v: str | None) -> str:
@@ -169,19 +170,22 @@ def resolve_settings(
     cwd: Path | None = None,
 ) -> Settings:
     env = dict(os.environ) if env is None else env
-    warnings: list[str] = []
+    warnings: list[Notice] = []
     profile_name = profile_flag or env.get("CAPELLACTL_PROFILE") or DEFAULT_PROFILE
     profiles = load_profiles(env)
     profile = profiles.get(profile_name, {})
     if profile_flag and profile_name not in profiles:
-        warnings.append(f"profile '{profile_name}' not found; run 'capellactl configure --profile {profile_name}'")
+        warnings.append(Notice(f"profile '{profile_name}' not found",
+                               f"Save it with 'capellactl configure --profile {profile_name}', or leave out --profile "
+                               "to use the default profile."))
 
     # API key
     if env.get("CAPELLA_API_KEY"):
         api_key = Value(env["CAPELLA_API_KEY"], "CAPELLA_API_KEY")
     elif env.get("BEARER_TOKEN"):
         api_key = Value(env["BEARER_TOKEN"], "BEARER_TOKEN (deprecated)")
-        warnings.append("BEARER_TOKEN is deprecated; use CAPELLA_API_KEY or 'capellactl configure'")
+        warnings.append(Notice("BEARER_TOKEN is deprecated", "Set CAPELLA_API_KEY instead, or save the key with "
+                                                             "'capellactl configure'."))
     else:
         key = keychain_get(profile_name) if profile_name in profiles else None
         api_key = Value(key, f"keychain (profile {profile_name})") if key else Value(None, "not set")
@@ -191,7 +195,8 @@ def resolve_settings(
         org = Value(env["CAPELLA_ORG_ID"], "CAPELLA_ORG_ID")
     elif env.get("ORG_ID"):
         org = Value(env["ORG_ID"], "ORG_ID (deprecated)")
-        warnings.append("ORG_ID is deprecated; use CAPELLA_ORG_ID or 'capellactl configure'")
+        warnings.append(Notice("ORG_ID is deprecated", "Set CAPELLA_ORG_ID instead, or save the organization with "
+                                                       "'capellactl configure'."))
     elif profile.get("organizationId"):
         org = Value(str(profile["organizationId"]), f"profile {profile_name}")
     elif file_org_id:
@@ -204,7 +209,7 @@ def resolve_settings(
         base = Value(env["CAPELLA_API_BASE_URL"], "CAPELLA_API_BASE_URL")
     elif env.get("API_BASE_URL"):
         base = Value(env["API_BASE_URL"], "API_BASE_URL (deprecated)")
-        warnings.append("API_BASE_URL is deprecated; use CAPELLA_API_BASE_URL")
+        warnings.append(Notice("API_BASE_URL is deprecated", "Set CAPELLA_API_BASE_URL instead."))
     elif profile.get("apiBaseUrl"):
         base = Value(str(profile["apiBaseUrl"]), f"profile {profile_name}")
     else:

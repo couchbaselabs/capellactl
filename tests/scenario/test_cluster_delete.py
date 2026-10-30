@@ -119,7 +119,7 @@ def test_cluster_delete_ac5_destroy_failed(fake, run, cluster, tmp_path):
     fake.fail_destroy(cid)
     r = run("--auto-approve", "cluster", "delete", "nova-dev-01")
     assert r.exit_code == 1
-    assert "cluster nova-dev-01 entered destroyFailed; check the Capella UI activity log" in r.output
+    assert "[ERROR]: Failed: cluster nova-dev-01 entered destroyFailed\n[ACTION]: Open the cluster's activity log in the Capella UI" in r.output
     assert len(file_clusters(tmp_path / "capella.yaml")) == 1  # still there: it was not deleted
 
 

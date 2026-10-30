@@ -97,10 +97,11 @@ def build_plan(ctx: RunContext, config: Config, root: Reconciler, targets: list[
             matched.update(id(m) for m in matches)
             if len(matches) > 1:
                 ids = ", ".join(str(m.id) for m in matches)
-                where = " under project:" if rec.kind == "project" else ""
                 action = Action(
                     rec.kind, key, ActionType.BLOCKED, rec, desired=d, parent=parent,
-                    reason=f"{len(matches)} {rec.kind}s share this name (ids: {ids}); add id:{where} to choose one",
+                    reason=f"{len(matches)} {rec.kind}s share this name (ids: {ids}), so capellactl cannot tell which "
+                           "one capella.yaml means; 'capellactl sync --force' rewrites the file from Capella with "
+                           "each one's id (the current file is kept as .bak)",
                     topic="idempotency",
                 )
             else:

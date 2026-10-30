@@ -94,7 +94,7 @@ def test_free_tier_ac5_scale_refused(fake, run, imported):
                  ("cluster", "update", "try-01", "--cpu", "8"),
                  ("cluster", "update", "try-01", "--support-plan", "enterprise")):
         r = run("--auto-approve", *args)
-        assert r.exit_code == 4 and "free-tier clusters have 1 node and fixed size" in r.output, args
+        assert r.exit_code == 4 and "[ERROR]: free-tier clusters have 1 node and a fixed size" in r.output, args
     assert fake.writes() == []
     r = run("--auto-approve", "cluster", "create", "x", "--free-tier", "--size", "small")
     assert r.exit_code == 3 and "free-tier clusters have a fixed size and plan" in r.output

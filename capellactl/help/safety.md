@@ -21,6 +21,7 @@
   the cluster, keep snapshot backups unless `--discard-snapshots`, ask you to type the cluster name, and wait
   until the cluster is gone.
 - **Allowed CIDRs** that are in Capella but not in the file are listed by `plan` as unmanaged; only
-  `apply --prune` deletes them. `0.0.0.0/0` needs `allowAnyIp: true`.
+  `apply --prune` deletes them. `0.0.0.0/0` (every address) is created only with `allowAnyIp: true`
+  (`cidr create … --allow-any-ip`); one that already exists in Capella without it is only a warning.
 - **No cascade by default**: deleting a project with clusters needs `--cascade`.
 - **Partial failure**: apply stops at the first error. Fix it and re-run; finished steps are not repeated.

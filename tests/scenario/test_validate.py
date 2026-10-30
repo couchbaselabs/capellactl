@@ -14,8 +14,8 @@ def test_validate_ac1_exit_code_3(run, write_config):
     write_config(MINIMAL.replace("numOfNodes: 3", "numOfNodes: 2"))
     r = run("validate")
     assert r.exit_code == 3
-    assert "clusters[0].serviceGroups[0].numOfNodes: must be between 3 and 27 (line 16)" in r.output
-    assert "See: capellactl help scaling" in r.output
+    assert "service group data,index,query › numOfNodes (line 16)\n    must be between 3 and 27" in r.output
+    assert "See 'capellactl help scaling'." in r.output
 
 
 @pytest.mark.story("CAP-002", "AC6")

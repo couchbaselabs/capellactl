@@ -65,7 +65,9 @@ python3.12 --version               # if python3 is older, try a specific version
 If you have no suitable version, install one: `brew install python@3.12` on macOS, or from
 [python.org](https://www.python.org/downloads/). Ubuntu 22.04 and later already include a suitable `python3`.
 
-**2. Install capellactl.** Replace `python3.12` with the command that printed a suitable version:
+**2. Install capellactl.** Replace `python3.12` with the command that printed a suitable version. Run the commands
+from the folder that `git clone` creates, the one that holds `pyproject.toml`, not from the `capellactl/capellactl`
+folder inside it. That is where the `.venv` environment belongs:
 
 ```bash
 git clone https://github.com/couchbaselabs/capellactl.git && cd capellactl
@@ -78,6 +80,9 @@ capellactl --version
 capellactl 1.0.0.devN+g… (Management API v4.0)
 Licensed under Apache-2.0 · Copyright 2026 Couchbase, Inc.
 ```
+
+`does not appear to be a Python project: neither 'setup.py' nor 'pyproject.toml' found` means pip ran in the wrong
+folder: `cd ..` until `ls` shows `pyproject.toml`, delete any `.venv` you created elsewhere, and repeat the steps.
 
 To update later, run `git pull` in the `capellactl` folder; the environment picks up the new code. Then continue
 with [Quick start](#quick-start), or the step-by-step [getting started guide](docs/getting-started.md).
@@ -138,31 +143,70 @@ capellactl configure                       # saves the token in your OS keychain
 capellactl plan                            # "No changes" for what was discovered
 capellactl cluster create nova-dev-02      # asks a few questions, deploys, waits until healthy
 capellactl bucket create nova-dev-02 orders --memory 1024
-export ORDERS_APP_PW='Orders-Passw0rd-2026!'
-capellactl credential create nova-dev-02 orders_app --privileges read+write --bucket orders --password-env ORDERS_APP_PW
+export ORDERS_APP_PASSWORD='Orders-Passw0rd-2026!'
+capellactl credential create nova-dev-02 orders_app --privileges read+write --bucket orders --password-env ORDERS_APP_PASSWORD
 capellactl sync                            # pick up changes made in the Capella UI
 ```
 
-For CI, set `CAPELLA_API_KEY` and `CAPELLA_ORG_ID` instead of running `configure`, and pass `--auto-approve` (or `-y`); `--quiet` keeps pipeline logs short. `capellactl help ci` has GitHub Actions and GitLab CI examples.
+- `--memory 1024` is the memory the bucket may use, in MB.
+- `--privileges read+write --bucket orders` lets the app read and write every scope and collection of `orders`, and
+  nothing else.
+- `--password-env ORDERS_APP_PASSWORD` reads the password from that environment variable. `capella.yaml` records
+  only `${ORDERS_APP_PASSWORD}`.
+
+The [getting started guide](docs/getting-started.md) explains every option of these commands, step by step.
+
+For CI, set `CAPELLA_API_KEY` and `CAPELLA_ORG_ID` instead of running `configure`, and pass `--auto-approve` (see
+[Options for every command](#options-for-every-command)). `capellactl help ci` has GitHub Actions and GitLab CI examples.
 
 ## Commands
 
-```
-capellactl help | completion | configure | init | import | sync
-capellactl validate | plan | apply | drift | destroy
-capellactl project    list | get | create | update | delete
-capellactl cluster    options | list | get | create | update | scale | delete | protect | power
-capellactl cluster schedule show | set | apply | pause | resume | delete
-capellactl cidr       list | create | delete
-capellactl bucket     list | get | create | update | delete
-capellactl scope      list | create | delete
-capellactl collection list | create | update | delete
-capellactl credential list | get | create | update [--rotate-password] | delete
-```
+There are two kinds of command. **Resource commands** change one thing, such as a cluster or a bucket, in Capella
+and record it in `capella.yaml`. **Environment commands** work on the whole file at once.
 
-Global flags: `--config`, `--profile`, `-o text|json`, `--log-level`, `--auto-approve` (`--yes`, `-y`), `--quiet` (`-q`), `--no-wait`, `--timeout`. `capellactl help topics` lists the guides built into the tool; `capellactl help exit-codes` explains exit codes.
+| Command | What it works on | Subcommands |
+|---|---|---|
+| `configure` | Your API key and organization (a profile) | `list`, `show`, `remove` |
+| `project` | Projects | `list`, `get`, `create`, `update`, `delete` |
+| `cluster` | Clusters | `options`, `disk-types`, `list`, `get`, `create`, `clone`, `update`, `scale`, `power`, `protect`, `delete` |
+| `cluster group` | A cluster's service groups | `list`, `add`, `remove` |
+| `cluster schedule` | A cluster's hibernation schedule | `show`, `set`, `apply`, `pause`, `resume`, `delete` |
+| `cluster backup` | Backups of a whole cluster | `list`, `create`, `schedule`, `retain`, `restore`, `restores`, `regions`, `delete` |
+| `cidr` | IP ranges allowed to connect to a cluster | `list`, `create`, `delete` |
+| `bucket` | Buckets | `list`, `get`, `create`, `update`, `delete` |
+| `bucket backup` | Backups of a bucket | `list`, `get`, `create`, `schedule`, `cycle`, `restore`, `export`, `delete` |
+| `scope`, `collection` | Scopes and collections in a bucket | `list`, `create`, `delete`; collections also `update` |
+| `credential` | Database credentials (app logins) | `list`, `get`, `create`, `update`, `delete` |
+| `init`, `sync` | Write `capella.yaml`: from questions (`init`), or from what is in Capella (`sync`; `import` is an older name for it) | |
+| `validate`, `plan`, `drift` | Check the file, or compare it with Capella; change nothing | |
+| `apply`, `destroy` | Make Capella match the file, or delete what the file describes | |
+| `help`, `completion` | Built-in guides (`capellactl help topics`) and shell completion | |
 
-Passwords are never written to `capella.yaml` or printed: give them as `--password-env VAR` or `--password-file PATH` (recorded as `${VAR}`). A password Capella generates is saved once to `.capellactl/credentials/` with owner-only permissions.
+Every command takes `--help`, which lists its options with examples.
+
+### Options for every command
+
+These options go **before** the command name, for example `capellactl -o json cluster list`:
+
+| Option | Meaning |
+|---|---|
+| `-c`, `--config PATH` | The `capella.yaml` to use. Default: `./capella.yaml` in the current folder (`capellactl help config`) |
+| `--profile NAME` | The saved profile, with its API key and organization, to use. Default: `default` |
+| `-o`, `--output text\|json` | `json` prints machine-readable output for scripts |
+| `--log-level error\|warn\|info\|debug` | How much detail to log; `debug` shows every API call, with secrets masked |
+| `-y`, `--yes`, `--auto-approve` | Answer `y` to every confirmation, for scripts and CI |
+| `-q`, `--quiet` | Print only errors and results, without progress or hints |
+| `--no-wait` | Return as soon as Capella accepts a change, without waiting for the cluster to be ready |
+| `--timeout DURATION` | The longest time to wait for a cluster operation. Default: `60m` |
+
+Where a setting comes from when it is given more than once, highest first: a command-line option, then an environment
+variable (`CAPELLA_API_KEY`, `CAPELLA_ORG_ID`, `CAPELLACTL_CONFIG`, `CAPELLACTL_PROFILE`), then the profile, then
+`organizationId` in `capella.yaml`. `capellactl configure show` prints each setting and where it came from, and
+`capellactl help exit-codes` explains the exit codes.
+
+Passwords are never written to `capella.yaml` or printed: give them as `--password-env VAR` or `--password-file PATH`
+(recorded as `${VAR}` or `${file:PATH}`). A password Capella generates is saved once to `.capellactl/credentials/`,
+which only you can read.
 
 ## Documentation
 

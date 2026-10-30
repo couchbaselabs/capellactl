@@ -38,7 +38,7 @@ def test_loader_ac2_env_reference_resolved(tmp_path):
 def test_loader_ac2_unset_env_names_variable(tmp_path):
     with pytest.raises(ConfigError) as ei:
         load_config(_write(tmp_path, "${APP_PW}"), env={"CAPELLA_ORG_ID": "o"})
-    assert "clusters[0].databaseCredentials[0].password: environment variable APP_PW is not set" in str(ei.value)
+    assert "credential app › password (line 24)\n    environment variable APP_PW is not set" in str(ei.value)
 
 
 @pytest.mark.story("CAP-002", "AC2")

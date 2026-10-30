@@ -50,7 +50,8 @@ def test_ci_ac2_ask_uses_default_or_names_flag(monkeypatch):
     with pytest.raises(CliExit) as exc:
         console.ask("Memory (MB)", flag="--memory")
     assert exc.value.code == ExitCode.CONFIG_INVALID
-    assert exc.value.message == "missing --memory (no terminal to ask; pass it on the command line)"
+    assert exc.value.message == "missing --memory: there is no terminal to ask for it"
+    assert exc.value.action == "Give it on the command line: --memory VALUE."
 
 
 @pytest.mark.story("CAP-042", "AC3")
@@ -60,9 +61,10 @@ def test_ci_ac3_refusal_message(monkeypatch):
     with pytest.raises(CliExit) as exc:
         console.confirm(state, "Delete it?", "delete a bucket")
     assert exc.value.code == ExitCode.ERROR
-    assert exc.value.message == "refusing to delete a bucket without approval; pass --auto-approve"
+    assert exc.value.message == "refusing to delete a bucket without approval: there is no terminal to ask"
+    assert exc.value.action.startswith("Add --auto-approve")
     state = AppState(env={"CI": "true", "CAPELLACTL_AUTO_APPROVE": "true"})
     with pytest.raises(CliExit) as exc:
         console.confirm_typed(state, "Type the name", "delete a bucket", "orders")
-    assert exc.value.message.endswith("\nadd --auto-approve to this pipeline step")
+    assert exc.value.action == "Add --auto-approve to this pipeline step."
     assert console.confirm(AppState(auto_approve=True, env={}), "Delete it?", "delete a bucket") is True

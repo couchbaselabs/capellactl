@@ -81,10 +81,10 @@ def test_bucket_backup_ac2_rerun_zero_writes(fake, run, imported):
 
 @pytest.mark.story("CAP-058", "AC3")
 @pytest.mark.parametrize("extra,message", [
-    (["--incremental-every", "3"], "incrementalEvery: must be one of: 1, 2, 4, 6, 8, 12, 24"),
-    (["--retention", "45days"], "retentionTime: must be one of: 30days, 60days"),
-    (["--day", "someday"], "dayOfWeek: must be one of: sunday"),
-    (["--start-at", "24"], "startAt: must be one of: 0, 1, 2"),
+    (["--incremental-every", "3"], "backupSchedule.incrementalEvery (line 34)\n    must be one of: 1, 2, 4, 6, 8, 12, 24"),
+    (["--retention", "45days"], "backupSchedule.retentionTime (line 35)\n    must be one of: 30days, 60days"),
+    (["--day", "someday"], "backupSchedule.dayOfWeek (line 32)\n    must be one of: sunday"),
+    (["--start-at", "24"], "backupSchedule.startAt (line 33)\n    must be one of: 0, 1, 2"),
 ])
 def test_bucket_backup_ac3_invalid_values(fake, run, imported, extra, message):
     path, _ = imported

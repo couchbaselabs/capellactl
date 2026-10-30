@@ -6,7 +6,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-from capellactl.cli.console import note
+from capellactl.cli.console import err_inline, note
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.engine.clock import format_duration
 from capellactl.resources.cluster import is_free
@@ -19,7 +19,9 @@ FREE_NO_BACKUPS = "free-tier clusters have no backups; create a provisioned clus
 
 def refuse_free(cluster: dict[str, Any]) -> None:
     if is_free(cluster):
-        raise CliExit(ExitCode.BLOCKED, FREE_NO_BACKUPS, topic="backup")
+        raise CliExit(ExitCode.BLOCKED, "free-tier clusters have no backups", topic="backup",
+                                        action="Create a provisioned cluster for data that needs backups "
+                                               "('capellactl cluster create NAME').")
 
 
 def when(value: Any) -> str:
@@ -52,12 +54,19 @@ def parse_hours(text: str, flag: str) -> int:
     m = re.fullmatch(r"\s*(\d+)\s*([hd]?)\s*", str(text).lower())
     if not m or int(m.group(1)) == 0:
         raise CliExit(ExitCode.CONFIG_INVALID, f"{flag} takes hours or days, for example 168, 168h or 7d (got "
-                                               f"'{text}')", topic="backup")
+                                               f"'{text}')", topic="backup",
+                                               action="Give a number of hours, or days with d, for example 168, "
+                                                      "168h or 7d.")
     return int(m.group(1)) * (24 if m.group(2) == "d" else 1)
 
 
-def progress(label: str) -> Any:
-    """on_state for wait_for_status: one line per status change."""
+def progress(label: str) -> dict[str, Any]:
+    """on_state/on_tick for wait_for_status, shown like a cluster wait (console.wait_progress): `  LABEL: STATUS
+    (time) ....`, a dot every 30s while it runs, and the final status on a line of its own."""
     def on_state(state: str, elapsed: float) -> None:
-        note(f"  {label}: {state} ({format_duration(elapsed)})")
-    return on_state
+        line = f"  {label}: {state} ({format_duration(elapsed)})"
+        if state.lower() in DONE | FAILED:
+            note(line)
+        else:
+            err_inline(line + " ", start=True)
+    return {"on_state": on_state, "on_tick": lambda: err_inline(".")}

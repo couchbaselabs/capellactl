@@ -173,7 +173,7 @@ def test_cluster_backup_ac6_sync_keeps_schedule_the_key_cannot_read(fake, run, i
     fake.fail_next("GET", "*/cloudsnapshotbackupschedule", 403, times=5)
     r = run("sync")
     assert r.exit_code == 0, r.output
-    assert "needs the Organization Owner or Project Owner role" in r.output
+    assert "[WARNING]: backup schedules not read: the API key does not have the Organization Owner or Project Owner role" in r.output
     assert _schedule(path) == {"interval": 24, "retention": 720}
 
 

@@ -66,12 +66,18 @@ allowedCidrs:
 | `test_cidr_ac4_unmanaged_not_deleted` | `tests/scenario/test_allowed_cidrs.py` | |
 
 ### AC5 — Open-to-the-world guard
-**Given** `0.0.0.0/0` without `allowAnyIp: true`, **then** `validate` exits 3. **With** it, **then** `plan` prints a warning line.
+**Given** `0.0.0.0/0` (or `::/0`) without `allowAnyIp: true`, **then** `validate` prints a
+warning with the commands that resolve it (`sync` to record what Capella allows, `cidr delete` to close it); the
+file stays valid. **When** that range does not exist in Capella yet, **then** the plan blocks creating it (exit 4)
+and names `cidr create … --allow-any-ip`. **When** it already exists in Capella, **then** nothing is blocked.
+**With** `allowAnyIp: true`, **then** `plan` prints a warning line and creates it.
 
 | Test | Location | Verifies |
 |---|---|---|
-| `test_cidr_validate_ac5_any_ip_requires_flag` | `tests/unit/config/test_cidr_rules.py` | |
-| `test_cidr_ac5_any_ip_warning` | `tests/scenario/test_allowed_cidrs.py` | |
+| `test_cidr_validate_ac5_any_ip_unconfirmed_warns` | `tests/unit/config/test_cidr_rules.py` | A warning, not an error |
+| `test_cidr_ac5_unconfirmed_any_ip_create_blocked` | `tests/scenario/test_allowed_cidrs.py` | Blocked, zero writes |
+| `test_cidr_ac5_unconfirmed_any_ip_already_in_capella_warns_only` | same | Plan and another command run |
+| `test_cidr_ac5_any_ip_warning` | same | |
 
 ### AC6 — Expired entries
 **Given** an entry in the file whose `expiresAt` is in the past, **then** `validate` warns `expiresAt is in the past; Capella will remove it`, and `plan` treats a missing (expired) entry as `+` only if `expiresAt` is in the future.
@@ -106,6 +112,12 @@ allowedCidrs:
 - **AC3**: `±` lines read `± allowed-cidr nova-dev-01/203.0.113.10/32  (replace: API has no update)` with the field changes on the following lines; REPLACE counts as "to add" in the summary. Whether Capella rejects a duplicate CIDR with 409 is still open; both orders are implemented and tested (`FakeCapella.cidr_duplicates_allowed` selects the behaviour).
 - **AC4**: new engine support, usable by other kinds: `Reconciler.reports_unmanaged` / `unmanaged_label`, `Plan.unmanaged` (also in `-o json` as `plan.unmanaged`), printed under `Unmanaged (not in capella.yaml; use --prune to delete):`. Allowed CIDRs are observed for every existing cluster, also when the file declares none, so unmanaged entries are always listed; listing them is not a change (`--detailed-exitcode` stays 0). `apply --prune` deletes them (no typed confirmation, unlike buckets).
 - **AC5**: the `0.0.0.0/0` / `::/0` rule existed in `config/crossref.py`; it now also applies to free-tier clusters. With `allowAnyIp: true` the plan prints `warning: allowed CIDR 0.0.0.0/0 on CLUSTER lets any IP address connect (allowAnyIp: true)`.
-- **AC6**: every command that loads the file prints `warning: PATH: expiresAt is in the past; Capella will remove it (line N)` (`crossref.config_warnings`). `validate` also rejects an `expiresAt` that is not RFC 3339. In the plan, a missing entry with a past `expiresAt` is `=` with `(expiresAt is in the past; Capella removed it, not re-created)`.
+- **AC6**: `validate` prints (and `plan`/`apply` count, CAP-063 AC6) `warning: PATH: expiresAt is in the past; Capella will remove it (line N)` (`crossref.config_warnings`). `validate` also rejects an `expiresAt` that is not RFC 3339. In the plan, a missing entry with a past `expiresAt` is `=` with `(expiresAt is in the past; Capella removed it, not re-created)`.
 - **CLI**: `cidr list CLUSTER`, `cidr create CLUSTER CIDR [--comment] [--expires-at] [--allow-any-ip] [--no-apply]` (records it in `capella.yaml` and applies it, like `bucket create`) and `cidr delete CLUSTER CIDR` (asks y/N, deletes, removes it from the file). The test-only stub tree now uses the real reconciler.
 - Tests: AC1 `tests/scenario/test_allowed_cidrs.py::test_cidr_ac1_create_missing`, `test_cidr_cli_ac1_create_records_and_applies`, `tests/unit/resources/test_allowed_cidr.py::test_cidr_ac1_create_body_omits_empty_fields`, `tests/contract/test_endpoints_cidr.py::test_endpoints_ac1_allowed_cidr_contract`; AC2 `test_cidr_normalize_ac2_bare_ip_is_32`, `tests/unit/config/test_cidr_rules.py::test_cidr_validate_ac2_host_bits_rejected`, `test_cidr_validate_ac2_cli_exit_3`, `test_cidr_ac2_bare_ip_matches_32`; AC3 `test_cidr_ac3_replace_create_then_delete`, `test_cidr_ac3_replace_fallback_on_409`, `test_cidr_ac3_changes_compare_comment_and_expiry`; AC4 `test_cidr_ac4_unmanaged_not_deleted`, `test_cidr_ac4_unmanaged_listed_when_file_has_none`; AC5 `test_cidr_validate_ac5_any_ip_requires_flag`, `test_cidr_ac5_any_ip_warning`; AC6 `test_cidr_ac6_past_expiry_warning_and_no_recreate` (freezegun), `test_cidr_validate_ac6_expires_at_format`; AC7 `test_cidr_cli_ac7_delete_and_absent`; AC8 `test_cidr_ac8_rerun_zero_writes`.
+- **AC5 revised (2026-10-30, customer report)**: `0.0.0.0/0` without `allowAnyIp` was a validation error, so a file
+  imported before import recorded `allowAnyIp` blocked every command, even in other projects, although the ranges
+  already existed in Capella and `apply` would not create anything. The rule moved to where it protects: `validate`
+  warns (`crossref.config_warnings`), and the allowed-CIDR reconciler blocks only a create of an unconfirmed
+  any-IP range. Tests: `test_cidr_validate_ac5_any_ip_unconfirmed_warns`, `test_cidr_ac5_unconfirmed_any_ip_create_blocked`,
+  `test_cidr_ac5_unconfirmed_any_ip_already_in_capella_warns_only`.

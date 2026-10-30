@@ -7,6 +7,7 @@ import re
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
+from capellactl.output.notice import Notice
 from capellactl.output.password_gen import RULES, meets_rules
 
 if TYPE_CHECKING:
@@ -52,6 +53,9 @@ def _check_region(cl: dict[str, Any], cp: tuple[Any, ...], add: Any) -> None:
         looks = f"; it looks like {a(other)} region" if other else ""
         add(cp + ("cloudProvider", "region"),
             f"{region} is not {a(prov)} region name{looks} ({prov} regions look like {examples})")
+
+
+ANY_IP = ("0.0.0.0/0", "::/0")
 
 
 def normalize_cidr(value: str) -> str:
@@ -122,7 +126,8 @@ def parse_rfc3339(value: Any) -> datetime | None:
 
 
 def _check_cidrs(cl: dict[str, Any], cp: tuple[Any, ...], add: Any, dupes: Any) -> None:
-    """Allowed CIDRs (CAP-022 AC2/AC5): network addresses, no duplicates, 0.0.0.0/0 only with allowAnyIp."""
+    """Allowed CIDRs (CAP-022 AC2): network addresses, no duplicates. 0.0.0.0/0 without allowAnyIp is a warning
+    (config_warnings), and the plan blocks creating it (AC5)."""
     cidrs = cl.get("allowedCidrs") or []
     for i, c in enumerate(cidrs):
         raw = c.get("cidr", "")
@@ -130,7 +135,7 @@ def _check_cidrs(cl: dict[str, Any], cp: tuple[Any, ...], add: Any, dupes: Any) 
             add(cp + ("allowedCidrs", i, "expiresAt"), f"{c['expiresAt']} is not an RFC 3339 time (for example "
                                                        "2026-12-31T23:59:59Z)")
         try:
-            canon = normalize_cidr(raw)
+            normalize_cidr(raw)
         except ValueError:
             try:
                 net = ipaddress.ip_network(raw, strict=False)
@@ -138,9 +143,6 @@ def _check_cidrs(cl: dict[str, Any], cp: tuple[Any, ...], add: Any, dupes: Any) 
             except ValueError:
                 add(cp + ("allowedCidrs", i, "cidr"), f"{raw} is not a valid CIDR")
             continue
-        if canon in ("0.0.0.0/0", "::/0") and not cl.get("allowAnyIp"):
-            add(cp + ("allowedCidrs", i, "cidr"), f"{raw} allows every IP address; set allowAnyIp: true on the cluster "
-                                                  "to confirm", "safety")
     dupes(cidrs, "cidr", cp + ("allowedCidrs",), "allowed CIDR", normalize_cidr)
 
 
@@ -216,21 +218,35 @@ def _low_iops(provider: str, disk: dict[str, Any]) -> int | None:
     return recommended
 
 
-def config_warnings(cfg: Config) -> list[str]:
-    """Valid but probably unintended settings, printed by every command that loads the file."""
-    from capellactl.config.loader import fmt_path
+def config_warnings(cfg: Config) -> list[Notice]:
+    """Valid but probably unintended settings, printed in full by validate and counted by plan and apply (CAP-063)."""
+    from capellactl.config.loader import describe
 
     out = []
     now = datetime.now(timezone.utc)
     for entry in cfg.projects():
         for ci, cl in enumerate(entry.clusters):
             for i, c in enumerate(cl.get("allowedCidrs") or []):
+                try:
+                    any_ip = normalize_cidr(str(c.get("cidr", ""))) in ANY_IP
+                except ValueError:
+                    any_ip = False
+                if any_ip and not cl.get("allowAnyIp"):
+                    path = entry.clusters_base + (ci, "allowedCidrs", i, "cidr")
+                    out.append(Notice(f"{describe(cfg.data, path)}{_on_line(cfg.line_of(path))}: {c.get('cidr')} lets "
+                                      "every IP address connect, and capella.yaml does not record that this is "
+                                      "intended, so 'apply' will not create it where it does not exist yet",
+                                      f"'capellactl sync --project {entry.name}' records what Capella allows, or "
+                                      f"'capellactl cidr delete {cl.get('name')} {c.get('cidr')} --project "
+                                      f"{entry.name}' stops allowing it."))
                 t = parse_rfc3339(c.get("expiresAt"))
                 if t is not None and t <= now:
                     path = entry.clusters_base + (ci, "allowedCidrs", i, "expiresAt")
                     line = cfg.line_of(path)
-                    out.append(f"warning: {fmt_path(path)}: expiresAt is in the past; Capella will remove it"
-                               + (f" (line {line})" if line else ""))
+                    out.append(Notice(f"{describe(cfg.data, path)}{_on_line(line)}: expiresAt is in the past, so "
+                                      "Capella will remove this IP range",
+                                      f"Run 'capellactl cidr delete {cl.get('name')} {c.get('cidr')}' to remove it now, "
+                                      "or create it again with a later --expires-at."))
             provider = str((cl.get("cloudProvider") or {}).get("type"))
             for gi, g in enumerate(cl.get("serviceGroups") or []):
                 disk = (g.get("node") or {}).get("disk") or {}
@@ -238,17 +254,25 @@ def config_warnings(cfg: Config) -> list[str]:
                 if recommended is not None:
                     path = entry.clusters_base + (ci, "serviceGroups", gi, "node", "disk", "iops")
                     line = cfg.line_of(path)
-                    out.append(f"warning: {fmt_path(path)}: {disk['iops']} IOPS is below Capella's recommended "
-                               f"{recommended} for {disk['storage']} GB; Capella may refuse a lower value on the next "
-                               "change" + (f" (line {line})" if line else ""))
+                    out.append(Notice(f"{describe(cfg.data, path)}{_on_line(line)}: {disk['iops']} IOPS is below "
+                                      f"Capella's recommended {recommended} for {disk['storage']} GB, and Capella may "
+                                      "refuse a lower value on the next change",
+                                      f"Run 'capellactl cluster update {cl.get('name')} --group "
+                                      f"{','.join(sorted(g.get('services') or []))} --disk-iops {recommended}'."))
             for ui, u in enumerate(cl.get("databaseCredentials") or []):
                 for ai, a in enumerate(u.get("access") or []):
                     if not (a.get("resources") or {}).get("buckets"):  # CAP-027 AC5
                         path = entry.clusters_base + (ci, "databaseCredentials", ui, "access", ai)
                         line = cfg.line_of(path)
-                        out.append(f"warning: {fmt_path(path)}: grants access to ALL buckets"
-                                   + (f" (line {line})" if line else ""))
+                        out.append(Notice(f"{describe(cfg.data, path)}{_on_line(line)}: grants access to ALL "
+                                          "buckets",
+                                          f"If that is not intended, run 'capellactl credential update {cl.get('name')} "
+                                          f"{u.get('name')} --bucket BUCKET' to limit it to one bucket."))
     return out
+
+
+def _on_line(line: int | None) -> str:
+    return f" (line {line})" if line else ""
 
 
 def check_cross_references(cfg: Config) -> list[ConfigIssue]:
@@ -256,8 +280,8 @@ def check_cross_references(cfg: Config) -> list[ConfigIssue]:
 
     issues: list[ConfigIssue] = []
 
-    def add(path: tuple[Any, ...], msg: str, topic: str = "config") -> None:
-        issues.append(ConfigIssue(fmt_path(path), msg, cfg.line_of(path), topic=topic))
+    def add(path: tuple[Any, ...], msg: str, topic: str = "config", fix: str = "") -> None:
+        issues.append(ConfigIssue(fmt_path(path), msg, cfg.line_of(path), topic=topic, fix=fix))
 
     def dupes(items: list[dict[str, Any]], key: str, base: tuple[Any, ...], label: str, norm: Any = None) -> None:
         seen: dict[str, int] = {}
@@ -270,7 +294,7 @@ def check_cross_references(cfg: Config) -> list[ConfigIssue]:
             except ValueError:
                 continue
             if k in seen:
-                add(base + (i, key), f"duplicate {label} name '{raw}' (also at index {seen[k]})")
+                add(base + (i, key), f"duplicate {label} name '{raw}' (also on line {cfg.line_of(base + (seen[k],))})")
             else:
                 seen[k] = i
 
@@ -294,7 +318,7 @@ def _check_project(cfg: Config, entry: Any, add: Any, dupes: Any) -> None:
     for i, c in unpinned:
         n = str(c.get("name"))
         if n in seen:
-            add(cb + (i, "name"), f"duplicate cluster name '{n}' (also at index {seen[n]})")
+            add(cb + (i, "name"), f"duplicate cluster name '{n}' (also on line {cfg.line_of(cb + (seen[n],))})")
         else:
             seen[n] = i
 
@@ -443,8 +467,10 @@ def _check_project(cfg: Config, entry: Any, add: Any, dupes: Any) -> None:
                     if bname == "*":  # Capella's wildcard (files written before sync dropped it)
                         continue
                     if bname not in defined:
-                        add(rp + ("name",), f"bucket '{bname}' is not defined in cluster '{cl.get('name')}' "
-                                            "(define it under buckets, or set external: true)", "credentials")
+                        add(rp + ("name",), f"the credential gives access to bucket '{bname}', which capella.yaml "
+                                            f"does not list for cluster '{cl.get('name')}'", "credentials",
+                            f"'capellactl sync --project {entry.name}' adds the bucket if it exists in Capella, or "
+                            f"'capellactl bucket create {cl.get('name')} {bname} --project {entry.name}' creates it")
                         continue
                     for rsi, rs in enumerate(rb.get("scopes") or []):
                         sname = rs.get("name")
