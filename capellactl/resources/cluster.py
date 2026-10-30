@@ -26,7 +26,7 @@ CREATE_FIELDS = ["name", "description", "configurationType", "cloudProvider", "c
                  "availability", "support", "zones", "cmekId", "enablePrivateDNSResolution"]
 IMMUTABLE = ["configurationType", "cloudProvider", "availability", "zones", "cmekId", "enablePrivateDNSResolution",
              "couchbaseServer"]
-NOT_API = {"id", "tier", "deletionProtection", "allowAnyIp", "allowedCidrs", "hibernation", "buckets",
+NOT_API = {"id", "tier", "deletionProtection", "allowAnyIp", "allowedCidrs", "hibernation", "backupSchedule", "buckets",
            "databaseCredentials"}
 FREE_SERVICES = "data,index,query,search"
 

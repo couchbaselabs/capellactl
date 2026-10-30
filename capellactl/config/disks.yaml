@@ -1,0 +1,50 @@
+# Disk types Capella offers per cloud provider, and what each means (CAP-060). Change values here without changing
+# code. The Management API spec gives only the type names and minimum sizes ("see documentation"), so the rest comes
+# from the Capella documentation:
+#   aws    https://docs.couchbase.com/cloud/reference/aws.html
+#   gcp    https://docs.couchbase.com/cloud/reference/gcp.html
+#   azure  https://docs.couchbase.com/cloud/reference/azure.html
+#   IOPS defaults  https://docs.couchbase.com/cloud/clusters/scale-database.html#IOPS-Defaults
+# Read 2026-10-29. Capella has the last word: a value it does not accept is rejected with its own message.
+#
+#   for        what the type is for (shown by `capellactl cluster disk-types` and the disk picker)
+#   size       [min, max] GB per node ([min]: no documented maximum); sizes: the only sizes allowed;
+#              fixedSize: set by the type (no choice)
+#   iops       [min, max]; iopsCap: the highest IOPS per size; fixedIops: set by the type; perGb: IOPS follow size
+#   defaults   recommended IOPS per size, as [from GB, IOPS] steps (used when no IOPS is given)
+
+aws:
+  gp3:
+    for: general-purpose SSD (default)
+    size: [50, 16000]
+    iops: [3000, 16000]
+    defaults: &ebs [[50, 3000], [100, 4370], [200, 5740], [300, 7110], [400, 8480], [500, 9850], [600, 11220],
+                    [700, 12590], [800, 13960], [900, 15330], [1000, 16000]]
+  io2:
+    for: provisioned-IOPS SSD for latency-sensitive, write-heavy workloads; costs more
+    size: [50, 16000]
+    iops: [3000, 64000]
+    defaults: *ebs
+
+gcp:
+  pd-ssd:
+    for: SSD persistent disk (the only type); grow the disk to make it faster
+    size: [50]  # no documented maximum
+    perGb: 60  # 30 read + 30 write IOPS per GB
+
+azure:
+  P6: {for: "premium SSD; size and speed set by the type (default)", fixedSize: 64, fixedIops: 240}
+  P10: {for: "premium SSD; size and speed set by the type", fixedSize: 128, fixedIops: 500}
+  P15: {for: "premium SSD; size and speed set by the type", fixedSize: 256, fixedIops: 1100}
+  P20: {for: "premium SSD; size and speed set by the type", fixedSize: 512, fixedIops: 2300}
+  P30: {for: "premium SSD; size and speed set by the type", fixedSize: 1024, fixedIops: 5000}
+  P40: {for: "premium SSD; size and speed set by the type", fixedSize: 2048, fixedIops: 7500}
+  P50: {for: "premium SSD; size and speed set by the type", fixedSize: 4096, fixedIops: 7500}
+  P60: {for: "premium SSD; size and speed set by the type", fixedSize: 8192, fixedIops: 16000}
+  Ultra:
+    for: Ultra Disk for intensive, transaction-heavy workloads; lowest latency; only in regions that offer it
+    sizes: [64, 128, 256, 512, 1024, 2048, 3072, 4096, 5120, 6144, 7168, 8192, 9216, 10240, 11264, 12288, 13312,
+            14336, 15360]
+    iops: [3000, 80000]
+    iopsCap: [[64, 19200], [128, 38400], [256, 76800], [512, 80000]]
+    defaults: [[64, 3000], [128, 4000], [256, 6000], [512, 8000], [1024, 16000]]

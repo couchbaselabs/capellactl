@@ -734,6 +734,72 @@
             }
           }
         },
+        "backupSchedule": {
+          "type": "object",
+          "description": "Cloud snapshot backups of the whole cluster (CAP-056): how often, how long each is kept, copies in other regions. Not available on the free tier.",
+          "additionalProperties": false,
+          "properties": {
+            "interval": {
+              "type": "integer",
+              "description": "Hours between backups; one of the intervals the cluster's support plan permits ('capellactl cluster backup schedule options NAME').",
+              "x-mutability": "updatable",
+              "x-api": "interval (Cloud Snapshot Backup Schedule)",
+              "minimum": 1,
+              "examples": [
+                24
+              ]
+            },
+            "retention": {
+              "type": "integer",
+              "description": "Hours each backup is kept, within the support plan's range (720 = 30 days).",
+              "x-mutability": "updatable",
+              "x-api": "retention (Cloud Snapshot Backup Schedule)",
+              "minimum": 1,
+              "examples": [
+                720
+              ]
+            },
+            "startTime": {
+              "type": "string",
+              "description": "Time of day (UTC) of the first backup, HH:MM. Sent as the next such instant.",
+              "x-mutability": "updatable",
+              "x-api": "startTime (Cloud Snapshot Backup Schedule)",
+              "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+              "examples": [
+                "02:00"
+              ]
+            },
+            "copyToRegions": {
+              "type": "array",
+              "description": "Other regions that keep a copy of each backup (AWS and Azure; at most two).",
+              "x-mutability": "updatable",
+              "x-api": "copyToRegions (Cloud Snapshot Backup Schedule)",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 2,
+              "examples": [
+                [
+                  "us-west-2"
+                ]
+              ]
+            },
+            "ensure": {
+              "type": "string",
+              "description": "present (default) or absent to delete the schedule.",
+              "x-mutability": "tool",
+              "enum": [
+                "present",
+                "absent"
+              ],
+              "default": "present"
+            }
+          },
+          "required": [
+            "interval",
+            "retention"
+          ]
+        },
         "buckets": {
           "type": "array",
           "description": "Buckets in this cluster.",
@@ -917,6 +983,113 @@
                   "required": [
                     "name"
                   ]
+                }
+              },
+              "backupSchedule": {
+                "type": "object",
+                "description": "Bucket backups (CAP-058): a weekly full backup starts a cycle, followed by incremental backups. Not available on the free tier.",
+                "additionalProperties": false,
+                "properties": {
+                  "dayOfWeek": {
+                    "type": "string",
+                    "description": "Day of the weekly full backup.",
+                    "x-mutability": "updatable",
+                    "x-api": "weeklySchedule.dayOfWeek (Backup Schedule (Bucket))",
+                    "enum": [
+                      "sunday",
+                      "monday",
+                      "tuesday",
+                      "wednesday",
+                      "thursday",
+                      "friday",
+                      "saturday"
+                    ],
+                    "default": "sunday"
+                  },
+                  "startAt": {
+                    "type": "integer",
+                    "description": "Hour (UTC, 0\u201323) the backups start.",
+                    "x-mutability": "updatable",
+                    "x-api": "weeklySchedule.startAt (Backup Schedule (Bucket))",
+                    "enum": [
+                      0,
+                      1,
+                      2,
+                      3,
+                      4,
+                      5,
+                      6,
+                      7,
+                      8,
+                      9,
+                      10,
+                      11,
+                      12,
+                      13,
+                      14,
+                      15,
+                      16,
+                      17,
+                      18,
+                      19,
+                      20,
+                      21,
+                      22,
+                      23
+                    ],
+                    "default": 0
+                  },
+                  "incrementalEvery": {
+                    "type": "integer",
+                    "description": "Hours between incremental backups.",
+                    "x-mutability": "updatable",
+                    "x-api": "weeklySchedule.incrementalEvery (Backup Schedule (Bucket))",
+                    "enum": [
+                      1,
+                      2,
+                      4,
+                      6,
+                      8,
+                      12,
+                      24
+                    ],
+                    "default": 24
+                  },
+                  "retentionTime": {
+                    "type": "string",
+                    "description": "How long backups are kept.",
+                    "x-mutability": "updatable",
+                    "x-api": "weeklySchedule.retentionTime (Backup Schedule (Bucket))",
+                    "enum": [
+                      "30days",
+                      "60days",
+                      "90days",
+                      "180days",
+                      "1year",
+                      "2years",
+                      "3years",
+                      "4years",
+                      "5years"
+                    ],
+                    "default": "30days"
+                  },
+                  "costOptimizedRetention": {
+                    "type": "boolean",
+                    "description": "Capella's cost-optimized retention.",
+                    "x-mutability": "updatable",
+                    "x-api": "weeklySchedule.costOptimizedRetention (Backup Schedule (Bucket))",
+                    "default": false
+                  },
+                  "ensure": {
+                    "type": "string",
+                    "description": "present (default) or absent to delete the schedule.",
+                    "x-mutability": "tool",
+                    "enum": [
+                      "present",
+                      "absent"
+                    ],
+                    "default": "present"
+                  }
                 }
               }
             },

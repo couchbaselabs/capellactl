@@ -78,6 +78,12 @@ Clusters in this project.
 | `hibernation.friday` | boolean or string |  | updatable | days[] (On/Off Schedule) | Friday: 'on', 'off', or an on-window 'HH:MM-HH:MM' (minutes 00 or 30). Overrides weekdays/weekend. |
 | `hibernation.saturday` | boolean or string |  | updatable | days[] (On/Off Schedule) | Saturday: 'on', 'off', or an on-window 'HH:MM-HH:MM' (minutes 00 or 30). Overrides weekdays/weekend. |
 | `hibernation.sunday` | boolean or string |  | updatable | days[] (On/Off Schedule) | Sunday: 'on', 'off', or an on-window 'HH:MM-HH:MM' (minutes 00 or 30). Overrides weekdays/weekend. |
+| `backupSchedule` | object |  |  |  | Cloud snapshot backups of the whole cluster (CAP-056): how often, how long each is kept, copies in other regions. Not available on the free tier. |
+| `backupSchedule.interval` | integer (1–…) |  | updatable | interval (Cloud Snapshot Backup Schedule) | Hours between backups; one of the intervals the cluster's support plan permits ('capellactl cluster backup schedule options NAME'). |
+| `backupSchedule.retention` | integer (1–…) |  | updatable | retention (Cloud Snapshot Backup Schedule) | Hours each backup is kept, within the support plan's range (720 = 30 days). |
+| `backupSchedule.startTime` | string |  | updatable | startTime (Cloud Snapshot Backup Schedule) | Time of day (UTC) of the first backup, HH:MM. Sent as the next such instant. |
+| `backupSchedule.copyToRegions` | list of string |  | updatable | copyToRegions (Cloud Snapshot Backup Schedule) | Other regions that keep a copy of each backup (AWS and Azure; at most two). |
+| `backupSchedule.ensure` | string: `present`, `absent` | `present` | capellactl only |  | present (default) or absent to delete the schedule. |
 | `buckets` | list of objects |  |  |  | Buckets in this cluster. |
 | `databaseCredentials` | list of objects |  |  |  | Application credentials. |
 
@@ -129,6 +135,13 @@ Buckets in this cluster.
 | `priority` | integer (0–…) | `0` | updatable | priority (Create/Update Bucket) | Recovery priority during failover (server 7.6+). |
 | `enableCrossClusterVersioning` | boolean |  | updatable | enableCrossClusterVersioning (Update Bucket) | Store XDCR versioning metadata (prerequisite for some XDCR features). |
 | `scopes` | list of objects |  |  |  | Scopes in this bucket. |
+| `backupSchedule` | object |  |  |  | Bucket backups (CAP-058): a weekly full backup starts a cycle, followed by incremental backups. Not available on the free tier. |
+| `backupSchedule.dayOfWeek` | string: `sunday`, `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday` | `sunday` | updatable | weeklySchedule.dayOfWeek (Backup Schedule (Bucket)) | Day of the weekly full backup. |
+| `backupSchedule.startAt` | integer: `0`, `1`, `2`, `3` … (24 values: `capellactl help config projects.clusters.buckets.backupSchedule.startAt`) | `0` | updatable | weeklySchedule.startAt (Backup Schedule (Bucket)) | Hour (UTC, 0–23) the backups start. |
+| `backupSchedule.incrementalEvery` | integer: `1`, `2`, `4`, `6`, `8`, `12`, `24` | `24` | updatable | weeklySchedule.incrementalEvery (Backup Schedule (Bucket)) | Hours between incremental backups. |
+| `backupSchedule.retentionTime` | string: `30days`, `60days`, `90days`, `180days`, `1year`, `2years`, `3years`, `4years`, `5years` | `30days` | updatable | weeklySchedule.retentionTime (Backup Schedule (Bucket)) | How long backups are kept. |
+| `backupSchedule.costOptimizedRetention` | boolean | `false` | updatable | weeklySchedule.costOptimizedRetention (Backup Schedule (Bucket)) | Capella's cost-optimized retention. |
+| `backupSchedule.ensure` | string: `present`, `absent` | `present` | capellactl only |  | present (default) or absent to delete the schedule. |
 
 ## projects.clusters.buckets.scopes
 

@@ -14,6 +14,11 @@ TASKS = {
     "Add a collection": "collection create", "Add an app credential": "credential create",
     "Rotate a password": "--rotate-password", "Add an office IP": "cidr create",
     "Recover from deploymentFailed": "cluster delete", "Tear down": "destroy",
+    # CAP-060, CAP-056–CAP-059 (made live by CAP-061)
+    "Change a disk type": "cluster update", "Set a cluster backup schedule": "cluster backup schedule set",
+    "Set a bucket backup schedule": "bucket backup schedule set", "Take a cluster backup before a change":
+    "cluster backup create", "Restore a cluster from a backup": "cluster backup restore",
+    "Restore a bucket from a backup": "bucket backup restore", "Download a bucket backup": "bucket backup export",
 }
 
 

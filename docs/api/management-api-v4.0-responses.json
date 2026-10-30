@@ -1,7 +1,7 @@
 {
- "source": "/private/tmp/claude-503/-Users-anuj-sahni-couchbase-cbtools-capellactl/c682a2d1-3559-4121-8362-a2ac0dee55f3/scratchpad/spec/openapi.yaml",
+ "source": "https://docs.couchbase.com/cloud/management-api-reference/_attachments/openapi.external.generated.yaml",
  "apiVersion": "v4.0",
- "retrieved": "2026-10-08",
+ "retrieved": "2026-10-29",
  "operations": [
   {
    "method": "GET",
@@ -648,7 +648,8 @@
             "enum": [
              "basic",
              "developer pro",
-             "enterprise"
+             "enterprise",
+             "free"
             ]
            },
            "timezone": {
@@ -1077,7 +1078,8 @@
          "enum": [
           "basic",
           "developer pro",
-          "enterprise"
+          "enterprise",
+          "free"
          ]
         },
         "timezone": {
@@ -3104,6 +3106,1478 @@
    "summary": "Delete Database Credentials",
    "responses": {
     "204": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackupschedule",
+   "documented": true,
+   "summary": "Get Backup Schedule",
+   "responses": {
+    "200": {
+     "type": "object",
+     "properties": {
+      "interval": {
+       "type": "integer"
+      },
+      "retention": {
+       "type": "integer"
+      },
+      "startTime": {
+       "type": "string",
+       "format": "date-time"
+      },
+      "copyToRegions": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     }
+    },
+    "204": null
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackupschedule",
+   "documented": true,
+   "summary": "Upsert Backup Schedule",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackupschedule",
+   "documented": true,
+   "summary": "Delete Backup Schedule",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackupschedule/options",
+   "documented": true,
+   "summary": "Get Backup Schedule Options",
+   "responses": {
+    "200": {
+     "type": "object",
+     "properties": {
+      "intervals": {
+       "type": "array",
+       "items": {
+        "type": "integer"
+       }
+      },
+      "minimumRetention": {
+       "type": "integer"
+      },
+      "maximumRetention": {
+       "type": "integer"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/regions",
+   "documented": true,
+   "summary": "List Available Geographic Regions for Cross-region Operations",
+   "responses": {
+    "200": {
+     "type": "array",
+     "required": [
+      "items"
+     ],
+     "items": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups",
+   "documented": true,
+   "summary": "List Cloud Snapshot Backups",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "data",
+      "cursor"
+     ],
+     "properties": {
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "clusterId": {
+          "type": "string"
+         },
+         "createdAt": {
+          "type": "string",
+          "format": "date-time"
+         },
+         "expiration": {
+          "type": "string",
+          "format": "date-time"
+         },
+         "id": {
+          "type": "string"
+         },
+         "progress": {
+          "type": "object",
+          "properties": {
+           "status": {
+            "type": "string"
+           },
+           "time": {
+            "type": "string",
+            "format": "date-time"
+           }
+          }
+         },
+         "projectId": {
+          "type": "string"
+         },
+         "appService": {
+          "type": "string"
+         },
+         "cmek": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "required": [
+            "id"
+           ],
+           "properties": {
+            "id": {
+             "type": "string",
+             "format": "uuid"
+            },
+            "providerId": {
+             "type": "string"
+            }
+           }
+          }
+         },
+         "crossRegionCopies": {
+          "type": "array",
+          "items": {
+           "type": "object",
+           "properties": {
+            "regionCode": {
+             "type": "string"
+            },
+            "status": {
+             "type": "string"
+            },
+            "time": {
+             "type": "string",
+             "format": "date-time"
+            }
+           }
+          }
+         },
+         "retention": {
+          "type": "integer"
+         },
+         "server": {
+          "type": "object",
+          "properties": {
+           "version": {
+            "type": "string"
+           }
+          }
+         },
+         "databaseSize": {
+          "type": "integer",
+          "format": "uint64"
+         },
+         "tenantId": {
+          "type": "string"
+         },
+         "type": {
+          "type": "string"
+         }
+        }
+       }
+      },
+      "cursor": {
+       "type": "object",
+       "required": [
+        "pages",
+        "hrefs"
+       ],
+       "properties": {
+        "pages": {
+         "type": "object",
+         "required": [
+          "page",
+          "last",
+          "perPage",
+          "totalItems"
+         ],
+         "properties": {
+          "page": {
+           "type": "integer"
+          },
+          "next": {
+           "type": "integer"
+          },
+          "previous": {
+           "type": "integer"
+          },
+          "last": {
+           "type": "integer"
+          },
+          "perPage": {
+           "type": "integer"
+          },
+          "totalItems": {
+           "type": "integer"
+          }
+         }
+        },
+        "hrefs": {
+         "type": "object",
+         "required": [
+          "first",
+          "last",
+          "previous",
+          "next"
+         ],
+         "properties": {
+          "first": {
+           "type": "string",
+           "format": "uri"
+          },
+          "last": {
+           "type": "string",
+           "format": "uri"
+          },
+          "previous": {
+           "type": "string",
+           "format": "uri"
+          },
+          "next": {
+           "type": "string",
+           "format": "uri"
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/cloudsnapshotbackups",
+   "documented": true,
+   "summary": "List Cloud Snapshot Backups at the Project Level",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "data",
+      "cursor"
+     ],
+     "properties": {
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "clusterId": {
+          "type": "string"
+         },
+         "clusterName": {
+          "type": "string"
+         },
+         "creationDateTime": {
+          "type": "string",
+          "format": "date-time"
+         },
+         "createdBy": {
+          "type": "string"
+         },
+         "currentStatus": {
+          "type": "string"
+         },
+         "cloudProvider": {
+          "type": "string"
+         },
+         "region": {
+          "type": "string"
+         },
+         "mostRecentSnapshot": {
+          "type": "object",
+          "properties": {
+           "clusterId": {
+            "type": "string"
+           },
+           "createdAt": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "expiration": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "id": {
+            "type": "string"
+           },
+           "progress": {
+            "type": "object",
+            "properties": {
+             "status": {
+              "type": "string"
+             },
+             "time": {
+              "type": "string",
+              "format": "date-time"
+             }
+            }
+           },
+           "projectId": {
+            "type": "string"
+           },
+           "appService": {
+            "type": "string"
+           },
+           "cmek": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "required": [
+              "id"
+             ],
+             "properties": {
+              "id": {
+               "type": "string",
+               "format": "uuid"
+              },
+              "providerId": {
+               "type": "string"
+              }
+             }
+            }
+           },
+           "crossRegionCopies": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "properties": {
+              "regionCode": {
+               "type": "string"
+              },
+              "status": {
+               "type": "string"
+              },
+              "time": {
+               "type": "string",
+               "format": "date-time"
+              }
+             }
+            }
+           },
+           "retention": {
+            "type": "integer"
+           },
+           "server": {
+            "type": "object",
+            "properties": {
+             "version": {
+              "type": "string"
+             }
+            }
+           },
+           "databaseSize": {
+            "type": "integer",
+            "format": "uint64"
+           },
+           "tenantId": {
+            "type": "string"
+           },
+           "type": {
+            "type": "string"
+           }
+          }
+         },
+         "oldestSnapshot": {
+          "type": "object",
+          "properties": {
+           "clusterId": {
+            "type": "string"
+           },
+           "createdAt": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "expiration": {
+            "type": "string",
+            "format": "date-time"
+           },
+           "id": {
+            "type": "string"
+           },
+           "progress": {
+            "type": "object",
+            "properties": {
+             "status": {
+              "type": "string"
+             },
+             "time": {
+              "type": "string",
+              "format": "date-time"
+             }
+            }
+           },
+           "projectId": {
+            "type": "string"
+           },
+           "appService": {
+            "type": "string"
+           },
+           "cmek": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "required": [
+              "id"
+             ],
+             "properties": {
+              "id": {
+               "type": "string",
+               "format": "uuid"
+              },
+              "providerId": {
+               "type": "string"
+              }
+             }
+            }
+           },
+           "crossRegionCopies": {
+            "type": "array",
+            "items": {
+             "type": "object",
+             "properties": {
+              "regionCode": {
+               "type": "string"
+              },
+              "status": {
+               "type": "string"
+              },
+              "time": {
+               "type": "string",
+               "format": "date-time"
+              }
+             }
+            }
+           },
+           "retention": {
+            "type": "integer"
+           },
+           "server": {
+            "type": "object",
+            "properties": {
+             "version": {
+              "type": "string"
+             }
+            }
+           },
+           "databaseSize": {
+            "type": "integer",
+            "format": "uint64"
+           },
+           "tenantId": {
+            "type": "string"
+           },
+           "type": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       }
+      },
+      "cursor": {
+       "type": "object",
+       "required": [
+        "pages",
+        "hrefs"
+       ],
+       "properties": {
+        "pages": {
+         "type": "object",
+         "required": [
+          "page",
+          "last",
+          "perPage",
+          "totalItems"
+         ],
+         "properties": {
+          "page": {
+           "type": "integer"
+          },
+          "next": {
+           "type": "integer"
+          },
+          "previous": {
+           "type": "integer"
+          },
+          "last": {
+           "type": "integer"
+          },
+          "perPage": {
+           "type": "integer"
+          },
+          "totalItems": {
+           "type": "integer"
+          }
+         }
+        },
+        "hrefs": {
+         "type": "object",
+         "required": [
+          "first",
+          "last",
+          "previous",
+          "next"
+         ],
+         "properties": {
+          "first": {
+           "type": "string",
+           "format": "uri"
+          },
+          "last": {
+           "type": "string",
+           "format": "uri"
+          },
+          "previous": {
+           "type": "string",
+           "format": "uri"
+          },
+          "next": {
+           "type": "string",
+           "format": "uri"
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups",
+   "documented": true,
+   "summary": "Create Cloud Snapshot Backup",
+   "responses": {
+    "202": {
+     "type": "object",
+     "properties": {
+      "backupId": {
+       "type": "string"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/{backupId}",
+   "documented": true,
+   "summary": "Edit Backup Retention",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/{backupId}",
+   "documented": true,
+   "summary": "Delete Backup",
+   "responses": {
+    "202": {
+     "type": "object",
+     "properties": {}
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/{backupId}/restore",
+   "documented": true,
+   "summary": "Restore Backup",
+   "responses": {
+    "202": {
+     "type": "object",
+     "properties": {
+      "restoreId": {
+       "type": "string"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackups/restores",
+   "documented": true,
+   "summary": "List Cloud Snapshot Restores",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "data",
+      "cursor"
+     ],
+     "properties": {
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "clusterId": {
+          "type": "string"
+         },
+         "id": {
+          "type": "string"
+         },
+         "createdAt": {
+          "type": "string",
+          "format": "date-time"
+         },
+         "projectId": {
+          "type": "string"
+         },
+         "restoreEnd": {
+          "type": "string",
+          "format": "date-time"
+         },
+         "restoreTo": {
+          "type": "string"
+         },
+         "snapshot": {
+          "type": "string",
+          "format": "date-time"
+         },
+         "status": {
+          "type": "string"
+         },
+         "tenantId": {
+          "type": "string"
+         }
+        }
+       }
+      },
+      "cursor": {
+       "type": "object",
+       "required": [
+        "pages",
+        "hrefs"
+       ],
+       "properties": {
+        "pages": {
+         "type": "object",
+         "required": [
+          "page",
+          "last",
+          "perPage",
+          "totalItems"
+         ],
+         "properties": {
+          "page": {
+           "type": "integer"
+          },
+          "next": {
+           "type": "integer"
+          },
+          "previous": {
+           "type": "integer"
+          },
+          "last": {
+           "type": "integer"
+          },
+          "perPage": {
+           "type": "integer"
+          },
+          "totalItems": {
+           "type": "integer"
+          }
+         }
+        },
+        "hrefs": {
+         "type": "object",
+         "required": [
+          "first",
+          "last",
+          "previous",
+          "next"
+         ],
+         "properties": {
+          "first": {
+           "type": "string",
+           "format": "uri"
+          },
+          "last": {
+           "type": "string",
+           "format": "uri"
+          },
+          "previous": {
+           "type": "string",
+           "format": "uri"
+          },
+          "next": {
+           "type": "string",
+           "format": "uri"
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/schedules",
+   "documented": true,
+   "summary": "Get Backup Schedule",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "type",
+      "clusterID",
+      "bucketId",
+      "weeklySchedule"
+     ],
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "clusterID": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "bucketId": {
+       "type": "string"
+      },
+      "weeklySchedule": {
+       "type": "object",
+       "required": [
+        "dayOfWeek",
+        "startAt",
+        "incrementalEvery",
+        "retentionTime",
+        "costOptimizedRetention"
+       ],
+       "properties": {
+        "dayOfWeek": {
+         "type": "string"
+        },
+        "startAt": {
+         "type": "integer"
+        },
+        "incrementalEvery": {
+         "type": "integer"
+        },
+        "retentionTime": {
+         "type": "string"
+        },
+        "costOptimizedRetention": {
+         "type": "boolean"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/schedules",
+   "documented": true,
+   "summary": "Create Backup Schedule",
+   "responses": {
+    "202": null
+   }
+  },
+  {
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/schedules",
+   "documented": true,
+   "summary": "Update Backup Schedule",
+   "responses": {
+    "204": null
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/schedules",
+   "documented": true,
+   "summary": "Delete Backup Schedule",
+   "responses": {
+    "202": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/cycles",
+   "documented": true,
+   "summary": "List Cycles",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "data"
+     ],
+     "properties": {
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "cycleID",
+         "createdAt"
+        ],
+        "properties": {
+         "cycleID": {
+          "type": "string",
+          "format": "uuid"
+         },
+         "createdAt": {
+          "type": "string",
+          "format": "date-time"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backup/cycles/{cycleId}",
+   "documented": true,
+   "summary": "List Backups",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "data"
+     ],
+     "properties": {
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "id",
+         "clusterID",
+         "tenantID",
+         "projectID",
+         "cycleID",
+         "status",
+         "method",
+         "bucketName",
+         "bucketID",
+         "source",
+         "provider",
+         "stats",
+         "elapsedTimeInSeconds",
+         "scheduleInfo"
+        ],
+        "properties": {
+         "id": {
+          "type": "string",
+          "format": "uuid"
+         },
+         "clusterID": {
+          "type": "string",
+          "format": "uuid"
+         },
+         "tenantID": {
+          "type": "string",
+          "format": "uuid"
+         },
+         "projectID": {
+          "type": "string",
+          "format": "uuid"
+         },
+         "cycleID": {
+          "type": "string"
+         },
+         "date": {
+          "type": "string",
+          "format": "date-time"
+         },
+         "restoreBefore": {
+          "type": "string",
+          "format": "date-time"
+         },
+         "status": {
+          "type": "string",
+          "enum": [
+           "pending",
+           "ready",
+           "failed"
+          ]
+         },
+         "method": {
+          "type": "string",
+          "enum": [
+           "incremental",
+           "full"
+          ]
+         },
+         "bucketName": {
+          "type": "string"
+         },
+         "bucketID": {
+          "type": "string"
+         },
+         "source": {
+          "type": "string",
+          "enum": [
+           "manual",
+           "scheduled"
+          ]
+         },
+         "provider": {
+          "type": "string"
+         },
+         "stats": {
+          "type": "object",
+          "required": [
+           "cbas",
+           "event",
+           "fts",
+           "gsi",
+           "tombstones",
+           "mutations",
+           "items",
+           "sizeInMb"
+          ],
+          "properties": {
+           "sizeInMb": {
+            "type": "number",
+            "format": "float"
+           },
+           "items": {
+            "type": "integer"
+           },
+           "mutations": {
+            "type": "integer"
+           },
+           "tombstones": {
+            "type": "integer"
+           },
+           "gsi": {
+            "type": "integer"
+           },
+           "fts": {
+            "type": "integer"
+           },
+           "cbas": {
+            "type": "integer"
+           },
+           "event": {
+            "type": "integer"
+           }
+          }
+         },
+         "elapsedTimeInSeconds": {
+          "type": "integer"
+         },
+         "scheduleInfo": {
+          "type": "object",
+          "required": [
+           "backupType",
+           "backupTime",
+           "increment",
+           "retention"
+          ],
+          "properties": {
+           "backupType": {
+            "type": "string"
+           },
+           "backupTime": {
+            "type": "string"
+           },
+           "increment": {
+            "type": "integer"
+           },
+           "retention": {
+            "type": "string"
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backups",
+   "documented": true,
+   "summary": "Create Backup",
+   "responses": {
+    "202": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/backups",
+   "documented": true,
+   "summary": "List Cluster Backups",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "data"
+     ],
+     "properties": {
+      "data": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "required": [
+         "id",
+         "clusterID",
+         "tenantID",
+         "projectID",
+         "cycleID",
+         "status",
+         "method",
+         "bucketName",
+         "bucketID",
+         "source",
+         "provider",
+         "stats",
+         "elapsedTimeInSeconds",
+         "scheduleInfo"
+        ],
+        "properties": {
+         "id": {
+          "type": "string",
+          "format": "uuid"
+         },
+         "clusterID": {
+          "type": "string",
+          "format": "uuid"
+         },
+         "tenantID": {
+          "type": "string",
+          "format": "uuid"
+         },
+         "projectID": {
+          "type": "string",
+          "format": "uuid"
+         },
+         "cycleID": {
+          "type": "string"
+         },
+         "date": {
+          "type": "string",
+          "format": "date-time"
+         },
+         "restoreBefore": {
+          "type": "string",
+          "format": "date-time"
+         },
+         "status": {
+          "type": "string",
+          "enum": [
+           "pending",
+           "ready",
+           "failed"
+          ]
+         },
+         "method": {
+          "type": "string",
+          "enum": [
+           "incremental",
+           "full"
+          ]
+         },
+         "bucketName": {
+          "type": "string"
+         },
+         "bucketID": {
+          "type": "string"
+         },
+         "source": {
+          "type": "string",
+          "enum": [
+           "manual",
+           "scheduled"
+          ]
+         },
+         "provider": {
+          "type": "string"
+         },
+         "stats": {
+          "type": "object",
+          "required": [
+           "cbas",
+           "event",
+           "fts",
+           "gsi",
+           "tombstones",
+           "mutations",
+           "items",
+           "sizeInMb"
+          ],
+          "properties": {
+           "sizeInMb": {
+            "type": "number",
+            "format": "float"
+           },
+           "items": {
+            "type": "integer"
+           },
+           "mutations": {
+            "type": "integer"
+           },
+           "tombstones": {
+            "type": "integer"
+           },
+           "gsi": {
+            "type": "integer"
+           },
+           "fts": {
+            "type": "integer"
+           },
+           "cbas": {
+            "type": "integer"
+           },
+           "event": {
+            "type": "integer"
+           }
+          }
+         },
+         "elapsedTimeInSeconds": {
+          "type": "integer"
+         },
+         "scheduleInfo": {
+          "type": "object",
+          "required": [
+           "backupType",
+           "backupTime",
+           "increment",
+           "retention"
+          ],
+          "properties": {
+           "backupType": {
+            "type": "string"
+           },
+           "backupTime": {
+            "type": "string"
+           },
+           "increment": {
+            "type": "integer"
+           },
+           "retention": {
+            "type": "string"
+           }
+          }
+         },
+         "bucketDownloadsCount": {
+          "type": "integer"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/backups/{backupId}",
+   "documented": true,
+   "summary": "Get Backup",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "id",
+      "clusterID",
+      "tenantID",
+      "projectID",
+      "cycleID",
+      "status",
+      "method",
+      "bucketName",
+      "bucketID",
+      "source",
+      "provider",
+      "stats",
+      "elapsedTimeInSeconds",
+      "scheduleInfo"
+     ],
+     "properties": {
+      "id": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "clusterID": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "tenantID": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "projectID": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "cycleID": {
+       "type": "string"
+      },
+      "date": {
+       "type": "string",
+       "format": "date-time"
+      },
+      "restoreBefore": {
+       "type": "string",
+       "format": "date-time"
+      },
+      "status": {
+       "type": "string",
+       "enum": [
+        "pending",
+        "ready",
+        "failed"
+       ]
+      },
+      "method": {
+       "type": "string",
+       "enum": [
+        "incremental",
+        "full"
+       ]
+      },
+      "bucketName": {
+       "type": "string"
+      },
+      "bucketID": {
+       "type": "string"
+      },
+      "source": {
+       "type": "string",
+       "enum": [
+        "manual",
+        "scheduled"
+       ]
+      },
+      "provider": {
+       "type": "string"
+      },
+      "stats": {
+       "type": "object",
+       "required": [
+        "cbas",
+        "event",
+        "fts",
+        "gsi",
+        "tombstones",
+        "mutations",
+        "items",
+        "sizeInMb"
+       ],
+       "properties": {
+        "sizeInMb": {
+         "type": "number",
+         "format": "float"
+        },
+        "items": {
+         "type": "integer"
+        },
+        "mutations": {
+         "type": "integer"
+        },
+        "tombstones": {
+         "type": "integer"
+        },
+        "gsi": {
+         "type": "integer"
+        },
+        "fts": {
+         "type": "integer"
+        },
+        "cbas": {
+         "type": "integer"
+        },
+        "event": {
+         "type": "integer"
+        }
+       }
+      },
+      "elapsedTimeInSeconds": {
+       "type": "integer"
+      },
+      "scheduleInfo": {
+       "type": "object",
+       "required": [
+        "backupType",
+        "backupTime",
+        "increment",
+        "retention"
+       ],
+       "properties": {
+        "backupType": {
+         "type": "string"
+        },
+        "backupTime": {
+         "type": "string"
+        },
+        "increment": {
+         "type": "integer"
+        },
+        "retention": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/backups/{backupId}",
+   "documented": true,
+   "summary": "Delete Backup Cycle",
+   "responses": {
+    "202": null
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/backups/{backupId}/restore",
+   "documented": true,
+   "summary": "Restore Backup",
+   "responses": {
+    "202": null
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backups/{backupId}/export",
+   "documented": true,
+   "summary": "Create Backup Export",
+   "responses": {
+    "202": {
+     "type": "object",
+     "required": [
+      "exportId",
+      "createdAt"
+     ],
+     "properties": {
+      "exportId": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "createdAt": {
+       "type": "string",
+       "format": "date-time"
+      }
+     }
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backups/{backupId}/exports/{exportId}",
+   "documented": true,
+   "summary": "Get Backup Export",
+   "responses": {
+    "200": {
+     "type": "object",
+     "required": [
+      "id",
+      "tenantId",
+      "projectId",
+      "clusterId",
+      "cycleId",
+      "bucketName",
+      "status",
+      "createdAt"
+     ],
+     "properties": {
+      "id": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "tenantId": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "projectId": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "clusterId": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "cycleId": {
+       "type": "string",
+       "format": "uuid"
+      },
+      "bucketName": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string",
+       "enum": [
+        "pending",
+        "processing",
+        "complete",
+        "failed",
+        "expired"
+       ]
+      },
+      "createdAt": {
+       "type": "string",
+       "format": "date-time"
+      },
+      "sizeInBytes": {
+       "type": "integer",
+       "format": "int64"
+      },
+      "sha256Checksum": {
+       "type": "string"
+      },
+      "expiration": {
+       "type": "string",
+       "format": "date-time"
+      },
+      "backupDownloadURL": {
+       "type": "string",
+       "format": "uri"
+      }
+     }
+    }
    }
   }
  ]

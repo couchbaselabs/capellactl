@@ -135,8 +135,8 @@ def build_plan(ctx: RunContext, config: Config, root: Reconciler, targets: list[
 # Within one cluster, every resource of a kind comes before the next kind (CAP-030 AC1): all buckets, then all
 # scopes, then all collections, so apply reads top-down and destroy (the reverse) bottom-up. Dependencies still hold:
 # each kind ranks after its parent's.
-KIND_ORDER = ("project", "cluster", "deletion-protection", "schedule", "allowed-cidr", "bucket", "scope", "collection",
-              "credential")
+KIND_ORDER = ("project", "cluster", "deletion-protection", "schedule", "backup-schedule", "allowed-cidr", "bucket",
+              "bucket-backup-schedule", "scope", "collection", "credential")
 
 
 def _by_kind(actions: list[Action]) -> list[Action]:

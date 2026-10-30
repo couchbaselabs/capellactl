@@ -42,10 +42,15 @@ class UnsupportedReconciler(Reconciler):
 def placeholders() -> list[Reconciler]:
     """Cluster children in dependency order (00-architecture.md section 4.2).
 
-    Every kind is a real reconciler now: deletion protection (CAP-013), the on/off schedule (CAP-020), allowed CIDRs
-    (CAP-022), buckets (CAP-023), scopes and collections (CAP-025) and database credentials (CAP-027).
+    Every kind is a real reconciler now: deletion protection (CAP-013), the on/off schedule (CAP-020), the cluster
+    backup schedule (CAP-056), allowed CIDRs (CAP-022), buckets (CAP-023) and their backup schedules (CAP-058), scopes
+    and collections (CAP-025) and database credentials (CAP-027).
     """
     from capellactl.resources.allowed_cidr import AllowedCidrReconciler
+    from capellactl.resources.backup_schedule import (
+        BucketBackupScheduleReconciler,
+        ClusterBackupScheduleReconciler,
+    )
     from capellactl.resources.bucket import BucketReconciler
     from capellactl.resources.credential import CredentialReconciler
     from capellactl.resources.deletion_protection import DeletionProtectionReconciler
@@ -55,7 +60,9 @@ def placeholders() -> list[Reconciler]:
     return [
         DeletionProtectionReconciler(),
         ScheduleReconciler(),
+        ClusterBackupScheduleReconciler(),  # CAP-056
         AllowedCidrReconciler(),
-        BucketReconciler(children=[ScopeReconciler(children=[CollectionReconciler()])]),
+        BucketReconciler(children=[BucketBackupScheduleReconciler(),  # CAP-058
+                                   ScopeReconciler(children=[CollectionReconciler()])]),
         CredentialReconciler(),  # last: after the data model it grants access to (CAP-027 AC7)
     ]

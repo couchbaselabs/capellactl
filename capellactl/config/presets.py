@@ -36,3 +36,61 @@ def known_size(provider: str, cpu: int, ram: int, single: bool) -> bool:
     if kinds is None:
         return True
     return (cpu, ram) in kinds.get("sizes", []) or (single and (cpu, ram) in kinds.get("singleNode", []))
+
+
+@cache
+def load_disk_types() -> dict[str, dict[str, dict[str, Any]]]:
+    """Disk types per provider and what each means, from disks.yaml (CAP-060): {provider: {type: facts}}."""
+    text = resources.files("capellactl.config").joinpath("disks.yaml").read_text(encoding="utf-8")
+    return {str(p): {str(t): dict(v) for t, v in (types or {}).items()} for p, types in (yaml.safe_load(text) or {}).items()}
+
+
+def _step(table: list[list[int]], size: int) -> int | None:
+    """The value of the last [from, value] step at or below `size` (None below the first step)."""
+    found = None
+    for start, value in table:
+        if size >= start:
+            found = value
+    return found
+
+
+def disk_facts(provider: str, disk_type: str) -> dict[str, Any] | None:
+    return load_disk_types().get(provider, {}).get(disk_type)
+
+
+def default_iops(provider: str, disk_type: str, size: int | None) -> int | None:
+    """Capella's recommended IOPS for a disk of this size (gp3, io2, Ultra); None when the type sets or derives it."""
+    facts = disk_facts(provider, disk_type)
+    if not facts or not facts.get("defaults"):
+        return None
+    lowest = facts["defaults"][0]
+    return _step(facts["defaults"], size if size is not None else lowest[0]) or lowest[1]
+
+
+def iops_range(provider: str, disk_type: str, size: int | None) -> tuple[int, int] | None:
+    """(min, max) IOPS a disk of this type and size takes; None when IOPS cannot be set."""
+    facts = disk_facts(provider, disk_type)
+    if not facts or "iops" not in facts:
+        return None
+    lo, hi = facts["iops"]
+    cap = _step(facts.get("iopsCap") or [], size) if size is not None else None
+    return int(lo), int(min(hi, cap) if cap else hi)
+
+
+def disk_size_text(facts: dict[str, Any]) -> str:
+    if "fixedSize" in facts:
+        return str(facts["fixedSize"])
+    if "sizes" in facts:
+        s = facts["sizes"]
+        return f"{s[0]}, {s[1]}, … {s[-1]}"
+    size = facts["size"]
+    return f"{size[0]}–{size[1]}" if len(size) > 1 else f"{size[0]} and up"
+
+
+def disk_iops_text(facts: dict[str, Any]) -> str:
+    if "fixedIops" in facts:
+        return str(facts["fixedIops"])
+    if "perGb" in facts:
+        return f"{facts['perGb']} per GB"
+    lo, hi = facts["iops"]
+    return f"{lo}–{hi}"

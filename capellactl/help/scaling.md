@@ -17,6 +17,14 @@ cluster is healthy again.
   `--allow-service-group-removal`. If cluster stats cannot be read: `--skip-capacity-check`.
 - **Disk size** cannot be reduced.
 
+**Disk types**: each service group has its own disk; `capellactl cluster disk-types [--provider P]` lists the
+types with their size range, speed and use. AWS: `gp3` (general purpose, default) or `io2` (provisioned IOPS, up to
+64000). Google Cloud: `pd-ssd` only, 60 IOPS per GB, so a larger disk is a faster one. Azure: `P6`…`P60` (size and
+speed set by the type) or `Ultra` (size and IOPS chosen). Choose with `--disk-type` on `cluster create`, `cluster
+group add` and `cluster update NAME --group SERVICES --disk-type io2`; interactive commands offer the list. Without
+`--disk-iops`, capellactl uses Capella's recommended IOPS for the disk size. Changing a disk type replaces and
+rebalances the group's nodes, except an in-place change on AWS (at most once every 6 hours).
+
 **Limits**: first service group 3–27 nodes; additional groups 2–24; at most 27 nodes per cluster;
 `singleNode` clusters have exactly 1 node and cannot be scaled.
 

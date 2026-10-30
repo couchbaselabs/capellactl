@@ -50,7 +50,7 @@ GET_FIELDS = ("id", "name", "type", "storageBackend", "vbuckets", "memoryAllocat
                                          "  capellactl bucket get nova-dev-01 orders\n"
                                          "  capellactl bucket delete nova-dev-01 orders")
 def bucket() -> None:
-    """Buckets: list, get, create, update, delete."""
+    """Buckets: list, get, create, update, delete, backup."""
 
 
 def _file_buckets(state: AppState, cluster: str, project: str | None) -> set[str]:

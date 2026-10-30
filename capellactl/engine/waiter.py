@@ -116,3 +116,47 @@ def wait_for_cluster(
         if rest > 0:
             clock.sleep(rest)
         interval = min(interval * POLL_FACTOR, MAX_POLL)
+
+
+class StatusFailed(Exception):
+    def __init__(self, label: str, state: str) -> None:
+        super().__init__(f"{label} ended {state}; check the Capella UI activity log")
+        self.state = state
+
+
+class StatusTimeout(Exception):
+    def __init__(self, label: str, state: str, timeout: timedelta) -> None:
+        super().__init__(f"{label} still {state} after {format_duration(timeout.total_seconds())}; it continues in "
+                         "Capella")
+        self.state = state
+
+
+def wait_for_status(
+    read: Callable[[], str | None],
+    done: set[str],
+    failed: set[str],
+    timeout: timedelta,
+    clock: Clock,
+    label: str,
+    on_state: Callable[[str, float], None] | None = None,
+) -> str:
+    """Poll `read()` (a backup's, export's or restore's status; None while Capella does not list it yet) with the
+    cluster waiter's intervals until a `done` or `failed` status, or the timeout (CAP-057, CAP-059)."""
+    start = clock.monotonic()
+    interval = FIRST_POLL
+    last: str | None = None
+    while True:
+        state = read() or "queued"
+        elapsed = clock.monotonic() - start
+        if state != last:
+            if on_state:
+                on_state(state, elapsed)
+            last = state
+        if state.lower() in done:
+            return state
+        if state.lower() in failed:
+            raise StatusFailed(label, state)
+        if elapsed >= timeout.total_seconds():
+            raise StatusTimeout(label, state, timeout)
+        clock.sleep(min(interval, MAX_POLL))
+        interval = min(interval * POLL_FACTOR, MAX_POLL)

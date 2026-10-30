@@ -46,8 +46,10 @@ def to_commented(obj: Any, key: str | None = None) -> Any:
 # Key order of a cluster, as import writes it; new keys are inserted in this order, not appended at the end.
 CLUSTER_KEY_ORDER = ("id", "name", "description", "configurationType", "cloudProvider", "couchbaseServer",
                      "availability", "support", "serviceGroups", "cmekId", "enablePrivateDNSResolution",
-                     "deletionProtection", "allowAnyIp", "hibernation", "allowedCidrs", "buckets",
+                     "deletionProtection", "allowAnyIp", "hibernation", "backupSchedule", "allowedCidrs", "buckets",
                      "databaseCredentials")
+# A bucket's backup schedule goes before its scopes (as sync writes it).
+BUCKET_KEY_ORDER = ("backupSchedule", "scopes")
 
 
 def put(node: CommentedMap, key: str, value: Any, order: tuple[str, ...] = CLUSTER_KEY_ORDER) -> None:

@@ -36,6 +36,9 @@ def clean_api_key(raw: str) -> tuple[str, list[str]]:
     if _PASTE_MARKERS.search(key):
         key = _PASTE_MARKERS.sub("", key)
         fixed.append("removed terminal paste markers")
+    if "﻿" in key:                                           # Windows PowerShell piping with a UTF-8 BOM
+        key = key.replace("﻿", "")
+        fixed.append("removed a byte-order mark")
     key = key.strip()
     if len(key) >= 2 and key[0] == key[-1] and key[0] in "'\"":
         key = key[1:-1].strip()

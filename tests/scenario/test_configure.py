@@ -42,6 +42,14 @@ def test_configure_ac1_key_not_echoed(fake, run):
     assert_no_secret(profiles_path().read_text(encoding="utf-8"), KEY)
 
 
+@pytest.mark.story("CAP-055", "AC4")
+def test_windows_docs_ac4_powershell_piped_key_stored_clean(fake, run, keychain):
+    r = run("configure", "--api-key-stdin", input=f"﻿{KEY}\r\n", no_env=True)       # Get-Clipboard | …
+    assert r.exit_code == 0, r.output
+    assert keychain.store[("capellactl", "default")] == KEY
+    assert fake.calls("GET", "/v4/organizations")[0].headers["Authorization"] == f"Bearer {KEY}"
+
+
 @pytest.mark.story("CAP-037", "AC2")
 def test_configure_ac2_invalid_key_not_saved(fake, run, keychain):
     fake.api_keys = {"the-real-key"}

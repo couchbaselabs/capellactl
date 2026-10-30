@@ -1,7 +1,7 @@
 {
  "source": "https://docs.couchbase.com/cloud/management-api-reference/_attachments/openapi.external.generated.yaml",
  "apiVersion": "v4.0",
- "retrieved": "2026-10-06",
+ "retrieved": "2026-10-29",
  "operations": [
   {
    "tag": "CMEK",
@@ -1061,6 +1061,18 @@
   },
   {
    "tag": "Backups & Restore (Bucket)",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backups/{backupId}/export",
+   "summary": "Create Backup Export"
+  },
+  {
+   "tag": "Backups & Restore (Bucket)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/buckets/{bucketId}/backups/{backupId}/exports/{exportId}",
+   "summary": "Get Backup Export"
+  },
+  {
+   "tag": "Backups & Restore (Bucket)",
    "method": "GET",
    "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/backups",
    "summary": "List Cluster Backups"
@@ -1148,6 +1160,12 @@
    "method": "DELETE",
    "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackupschedule",
    "summary": "Delete Backup Schedule"
+  },
+  {
+   "tag": "Cloud Snapshot Backups Schedule",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/cloudsnapshotbackupschedule/options",
+   "summary": "Get Backup Schedule Options"
   },
   {
    "tag": "Backup Schedule (Bucket)",
@@ -1256,6 +1274,198 @@
    "method": "GET",
    "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/networkPeers",
    "summary": "List Network Peering Records"
+  },
+  {
+   "tag": "Operational Insights Clusters",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters",
+   "summary": "Create New Operational Insights Cluster"
+  },
+  {
+   "tag": "Operational Insights Clusters",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters",
+   "summary": "List Project Level Operational Insights Clusters"
+  },
+  {
+   "tag": "Operational Insights Clusters",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/operationalInsightsClusters",
+   "summary": "List Organization Level Operational Insights Clusters"
+  },
+  {
+   "tag": "Operational Insights Clusters",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}",
+   "summary": "Get Operational Insights Cluster Details"
+  },
+  {
+   "tag": "Operational Insights Clusters",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}",
+   "summary": "Update an Operational Insights Cluster"
+  },
+  {
+   "tag": "Operational Insights Clusters",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}",
+   "summary": "Delete Operational Insights Cluster"
+  },
+  {
+   "tag": "Operational Insights Clusters",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/activationState",
+   "summary": "Turn On Operational Insights Cluster"
+  },
+  {
+   "tag": "Operational Insights Clusters",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/activationState",
+   "summary": "Turn Off Operational Insights Cluster"
+  },
+  {
+   "tag": "Operational Insights On/Off Schedule",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule",
+   "summary": "Create Operational Insights Cluster On/Off Schedule"
+  },
+  {
+   "tag": "Operational Insights On/Off Schedule",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule",
+   "summary": "Get Operational Insights Cluster On/Off Schedule"
+  },
+  {
+   "tag": "Operational Insights On/Off Schedule",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule",
+   "summary": "Update Operational Insights Cluster On/Off Schedule"
+  },
+  {
+   "tag": "Operational Insights On/Off Schedule",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/onOffSchedule",
+   "summary": "Delete Operational Insights Cluster On/Off Schedule"
+  },
+  {
+   "tag": "Allowed CIDRs (Operational Insights Cluster)",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs",
+   "summary": "Create Allowed CIDR"
+  },
+  {
+   "tag": "Allowed CIDRs (Operational Insights Cluster)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs",
+   "summary": "List Allowed CIDRs"
+  },
+  {
+   "tag": "Allowed CIDRs (Operational Insights Cluster)",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs/{allowedCidrId}",
+   "summary": "Get Allowed CIDR"
+  },
+  {
+   "tag": "Allowed CIDRs (Operational Insights Cluster)",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/allowedcidrs/{allowedCidrId}",
+   "summary": "Delete Allowed CIDR"
+  },
+  {
+   "tag": "Operational Insights Cloud Snapshot Backups & Restore",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups",
+   "summary": "Create Cloud Snapshot Backup"
+  },
+  {
+   "tag": "Operational Insights Cloud Snapshot Backups & Restore",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups",
+   "summary": "List Cloud Snapshot Backups"
+  },
+  {
+   "tag": "Operational Insights Cloud Snapshot Backups & Restore",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/{backupId}",
+   "summary": "Update Backup Retention"
+  },
+  {
+   "tag": "Operational Insights Cloud Snapshot Backups & Restore",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/{backupId}",
+   "summary": "Delete Backup"
+  },
+  {
+   "tag": "Operational Insights Cloud Snapshot Backups Schedule",
+   "method": "PUT",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackupSchedule",
+   "summary": "Upsert Backup Schedule"
+  },
+  {
+   "tag": "Operational Insights Cloud Snapshot Backups Schedule",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackupSchedule",
+   "summary": "Get Backup Schedule"
+  },
+  {
+   "tag": "Operational Insights Cloud Snapshot Backups Schedule",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackupSchedule",
+   "summary": "Delete Backup Schedule"
+  },
+  {
+   "tag": "Operational Insights Cloud Snapshot Backups & Restore",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/{backupId}/restore",
+   "summary": "Restore Backup"
+  },
+  {
+   "tag": "Operational Insights Cloud Snapshot Backups & Restore",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/cloudSnapshotBackups/restores",
+   "summary": "List Cloud Snapshot Restores"
+  },
+  {
+   "tag": "Operational Insights Private Endpoint Service",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService",
+   "summary": "Get Operational Insights Private Endpoint Service Status"
+  },
+  {
+   "tag": "Operational Insights Private Endpoint Service",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService",
+   "summary": "Enable Operational Insights Private Endpoint Service"
+  },
+  {
+   "tag": "Operational Insights Private Endpoint Service",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService",
+   "summary": "Disable Operational Insights Private Endpoint Service."
+  },
+  {
+   "tag": "Operational Insights Private Endpoint Service",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpointCommand",
+   "summary": "Get Operational Insights Private Endpoint CLI Command Required to Setup Private Endpoint for Specific CSP"
+  },
+  {
+   "tag": "Operational Insights Private Endpoint Service",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpoints",
+   "summary": "List Operational Insights Private Endpoint Connections"
+  },
+  {
+   "tag": "Operational Insights Private Endpoint Service",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpoints/{endpointId}/associate",
+   "summary": "Accept or Associate Operational Insights Private Endpoint Request"
+  },
+  {
+   "tag": "Operational Insights Private Endpoint Service",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/operationalInsightsClusters/{analyticsClusterId}/privateEndpointService/endpoints/{endpointId}/unassociate",
+   "summary": "Reject or Disassociate Operational Insights Private Endpoint Connection."
   },
   {
    "tag": "Network Peers",
@@ -1454,6 +1664,144 @@
    "method": "GET",
    "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/workflows/supportedExternalEmbeddingModels",
    "summary": "Get Supported External Embedding Models"
+  },
+  {
+   "tag": "AI Agent Memory Servers",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/agentMemoryServers",
+   "summary": "List Agent Memory Servers"
+  },
+  {
+   "tag": "AI Agent Memory Servers",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/agentMemoryServers",
+   "summary": "Create Agent Memory Server"
+  },
+  {
+   "tag": "AI Agent Memory Servers",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/agentMemoryServers/{agentMemoryServerId}",
+   "summary": "Get Agent Memory Server"
+  },
+  {
+   "tag": "AI Agent Memory Servers",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/agentMemoryServers/{agentMemoryServerId}",
+   "summary": "Delete Agent Memory Server"
+  },
+  {
+   "tag": "AI Agent Memory Servers",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/agentMemoryServers/copy",
+   "summary": "Copy Agent Memory Server"
+  },
+  {
+   "tag": "AI Agent Memory Servers",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/agentMemoryServers/deploymentOptions",
+   "summary": "Get Agent Memory Server Deployment Options"
+  },
+  {
+   "tag": "AI Agent Memory Allowed CIDRs",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/agentMemoryServers/{agentMemoryServerId}/allowedCidrs",
+   "summary": "List Agent Memory Server Allowed CIDRs"
+  },
+  {
+   "tag": "AI Agent Memory Allowed CIDRs",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/agentMemoryServers/{agentMemoryServerId}/allowedCidrs",
+   "summary": "Create Agent Memory Server Allowed CIDR"
+  },
+  {
+   "tag": "AI Agent Memory Allowed CIDRs",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/agentMemoryServers/{agentMemoryServerId}/allowedCidrs",
+   "summary": "Delete Agent Memory Server Allowed CIDR"
+  },
+  {
+   "tag": "AI Agent Memory API Keys",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/agentMemoryServers/{agentMemoryServerId}/apiKeys",
+   "summary": "List Agent Memory API Keys"
+  },
+  {
+   "tag": "AI Agent Memory API Keys",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/agentMemoryServers/{agentMemoryServerId}/apiKeys",
+   "summary": "Create Agent Memory API Key"
+  },
+  {
+   "tag": "AI Agent Memory API Keys",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/agentMemoryServers/{agentMemoryServerId}/apiKeys/{apiKeyId}",
+   "summary": "Get Agent Memory API Key"
+  },
+  {
+   "tag": "AI Agent Memory API Keys",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/aiServices/agentMemoryServers/{agentMemoryServerId}/apiKeys/{apiKeyId}",
+   "summary": "Delete Agent Memory API Key"
+  },
+  {
+   "tag": "AI Agent Memory Servers",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/aiServices/agentMemoryServers",
+   "summary": "List Organization Agent Memory Servers"
+  },
+  {
+   "tag": "AI Agent Memory Servers",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/aiServices/agentMemoryServers/eligibleClusters",
+   "summary": "List Agent Memory Server Eligible Clusters"
+  },
+  {
+   "tag": "AI Agent Memory Allowed CIDRs",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/aiServices/agentMemoryAllowedCidrs",
+   "summary": "List Organization Agent Memory Allowed CIDRs"
+  },
+  {
+   "tag": "AI Agent Memory API Keys",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/aiServices/agentMemoryApiKeys",
+   "summary": "List Organization Agent Memory API Keys"
+  },
+  {
+   "tag": "MCP Servers",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/mcpServers",
+   "summary": "List MCP Servers"
+  },
+  {
+   "tag": "MCP Servers",
+   "method": "POST",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/mcpServers",
+   "summary": "Create MCP Server"
+  },
+  {
+   "tag": "MCP Servers",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/mcpServers/{mcpServerId}",
+   "summary": "Get MCP Server"
+  },
+  {
+   "tag": "MCP Servers",
+   "method": "DELETE",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/mcpServers/{mcpServerId}",
+   "summary": "Delete MCP Server"
+  },
+  {
+   "tag": "MCP Servers",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/projects/{projectId}/clusters/{clusterId}/mcpServers/{mcpServerId}/clientConfig",
+   "summary": "Get MCP Server Client Config"
+  },
+  {
+   "tag": "MCP Tools",
+   "method": "GET",
+   "path": "/v4/organizations/{organizationId}/mcpTools",
+   "summary": "List MCP Tools"
   },
   {
    "tag": "Models (AI Data Plane)",

@@ -17,6 +17,7 @@ step 3. Every example below uses project `sandbox`.
 - [7. Change the layout later](#7-change-the-layout-later)
 - [8. Single-node and advanced options](#8-single-node-and-advanced-options)
 - [9. Keep capella.yaml in step with Capella](#9-keep-capellayaml-in-step-with-capella)
+- [10. Choose the disk type](#10-choose-the-disk-type)
 - [Troubleshooting](#troubleshooting)
 
 ## Service groups in one minute
@@ -295,6 +296,43 @@ added project non-prod (5 clusters)
   not read yet: buckets and credentials of RMPRCCBETST, RMPRCCBWTST, ct-n-zweus-mktfareevl-stg — run 'capellactl sync' again when they are on
 capella.yaml updated from Capella (previous version kept as capella.yaml.bak).
 ```
+
+## 10. Choose the disk type
+
+Each service group has its own disk. You choose its type the way you choose vCPU and RAM; the type decides how large
+and how fast the disk can be:
+
+```bash
+capellactl cluster disk-types --provider aws
+```
+```
+S.NO  PROVIDER  TYPE  SIZE (GB)  IOPS        FOR
+1     aws       gp3   50–16000   3000–16000  general-purpose SSD (default)
+2     aws       io2   50–16000   3000–64000  provisioned-IOPS SSD for latency-sensitive, write-heavy workloads; costs more
+```
+
+| Provider | Type | Size per node | Speed (IOPS) |
+|---|---|---|---|
+| AWS | `gp3` (default) | 50 GB – 16 TB | 3,000 – 16,000, set on its own |
+| AWS | `io2` | 50 GB – 16 TB | 3,000 – 64,000 |
+| Google Cloud | `pd-ssd` (only type) | 50 GB and up | follows the size: 60 per GB (50 GB → 1,500 read + 1,500 write) |
+| Azure | `P6` `P10` `P15` `P20` `P30` `P40` `P50` `P60` | fixed by the type: 64, 128, 256, 512, 1,024, 2,048, 4,096, 8,192 GiB | fixed: 240, 500, 1,100, 2,300, 5,000, 7,500, 7,500, 16,000 |
+| Azure | `Ultra` (regions that offer it) | 64, 128, 256, 512 GiB, 1–15 TiB | set by you, up to 19,200 (64 GiB) … 80,000 (512 GiB+) |
+
+When you don't give `--disk-iops`, capellactl uses Capella's recommended IOPS for the disk size (for gp3 and io2:
+3,000 up to 99 GB, 4,370 for 100–199 GB, … 16,000 from 1,000 GB). A higher value is allowed.
+
+```bash
+capellactl cluster create prod-05 --provider aws --region us-east-1 --size medium --disk-type gp3 --disk-size 200
+capellactl cluster group add prod-05 --services search --nodes 2 --disk-type io2 --disk-size 200
+capellactl cluster update prod-05 --group data,index,query --disk-type io2 --disk-iops 20000
+```
+
+Answering questions instead (`capellactl cluster create prod-05`, size `custom`), the disk type is asked right after
+the node size, with the same table, and then only what that type lets you set: the size (with its range) and the
+IOPS (with the recommendation for that size). `cluster group add` asks the same, starting from the data group's disk.
+Changing the disk type of a running cluster replaces and rebalances the group's nodes, except an in-place change on
+AWS (at most once every 6 hours); the plan says so before you confirm.
 
 ## Troubleshooting
 

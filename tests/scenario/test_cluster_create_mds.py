@@ -104,7 +104,7 @@ def test_cluster_mds_ac4_data_group_first(fake, run, imported):
 @pytest.mark.story("CAP-051", "AC5")
 @pytest.mark.parametrize("provider,region,extra,disks", [
     ("aws", "us-east-1", ["--disk-size", "100"],
-     [{"type": "gp3", "storage": 100, "iops": 3000}, {"type": "gp3", "storage": 200, "iops": 3000}]),
+     [{"type": "gp3", "storage": 100, "iops": 4370}, {"type": "gp3", "storage": 200, "iops": 5740}]),  # CAP-060 AC3
     ("gcp", "us-east1", ["--disk-size", "100"], [{"type": "pd-ssd", "storage": 100}, {"type": "pd-ssd", "storage": 200}]),
     ("azure", "eastus", [], [{"type": "P6", "autoExpansion": True}, {"type": "P6"}]),
 ])
@@ -129,9 +129,9 @@ def test_cluster_mds_ac5_auto_expansion_azure_only(fake, run, imported):
 def test_cluster_mds_ac6_interactive_two_groups(fake, run, imported, monkeypatch):
     monkeypatch.setattr(console, "is_interactive", lambda: True)
     answers = ["provisioned", "aws", "custom", "multiple",  # a single word is enough
-               "data", "3", "4", "",  # group 1: data, 3 nodes, size 4 (8/32), disk default
+               "data", "3", "4", "", "", "",  # group 1: data, 3 nodes, size 4 (8/32), disk type, size, IOPS default
                "y",
-               "index,query", "2", "2", "100",  # group 2: 4/32 with 100 GB
+               "index,query", "2", "2", "", "100", "",  # group 2: 4/32 with gp3 100 GB (CAP-060 picker)
                "n", "", "", "", "y"]
     r = run("cluster", "create", "nova-prod-01", input="\n".join(answers) + "\n")
     assert r.exit_code == 0, r.output
@@ -147,8 +147,8 @@ def test_cluster_mds_ac6_interactive_two_groups(fake, run, imported, monkeypatch
 def test_cluster_mds_ac6_interactive_reasks_bad_answer(fake, run, imported, monkeypatch):
     monkeypatch.setattr(console, "is_interactive", lambda: True)
     answers = ["provisioned", "aws", "custom", "multiple groups",
-               "dat", "data", "2", "3", "4", "", "y",
-               "data", "cache", "search", "25", "2", "1", "",
+               "dat", "data", "2", "3", "4", "", "", "", "y",
+               "data", "cache", "search", "25", "2", "1", "", "", "",
                "n", "", "", "", "y"]
     r = run("cluster", "create", "nova-prod-01", input="\n".join(answers) + "\n")
     assert r.exit_code == 0, r.output
@@ -161,7 +161,7 @@ def test_cluster_mds_ac6_interactive_reasks_bad_answer(fake, run, imported, monk
 @pytest.mark.story("CAP-051", "AC6")
 def test_cluster_mds_ac6_one_group_keeps_questions(fake, run, imported, monkeypatch):
     monkeypatch.setattr(console, "is_interactive", lambda: True)
-    answers = ["provisioned", "aws", "custom", "one group", "3", "8", "32", "", "", "", "y"]
+    answers = ["provisioned", "aws", "custom", "one group", "3", "8", "32", "", "", "", "", "", "", "y"]
     r = run("cluster", "create", "nova-qa-01", input="\n".join(answers) + "\n")
     assert r.exit_code == 0, r.output
     assert "vCPUs per node" in r.output and "Node size" not in r.output
@@ -208,7 +208,7 @@ def test_cluster_mds_ac8_help_and_options(fake, run, imported):
 @pytest.mark.story("CAP-051", "AC9")
 def test_cluster_mds_ac9_interactive_offers_known_sizes(fake, run, imported, monkeypatch):
     monkeypatch.setattr(console, "is_interactive", lambda: True)
-    answers = ["provisioned", "aws", "custom", "multiple groups", "data", "3", "18", "6", "30", "", "n",
+    answers = ["provisioned", "aws", "custom", "multiple groups", "data", "3", "18", "6", "30", "", "", "", "n",
                "", "", "", "y"]
     r = run("cluster", "create", "nova-prod-01", input="\n".join(answers) + "\n")
     assert r.exit_code == 0, r.output
@@ -255,9 +255,9 @@ def test_cluster_mds_ac10_deployment_failed_not_deleted(fake, run, imported):
 def test_cluster_mds_ac6_default_is_unused_services(fake, run, imported, monkeypatch):
     monkeypatch.setattr(console, "is_interactive", lambda: True)
     answers = ["provisioned", "aws", "custom", "multiple",
-               "data", "3", "4", "", "y",
-               "index,query", "2", "1", "", "y",
-               "", "2", "1", "",  # Enter: one group with every service not used yet
+               "data", "3", "4", "", "", "", "y",
+               "index,query", "2", "1", "", "", "", "y",
+               "", "2", "1", "", "", "",  # Enter: one group with every service not used yet
                "n", "", "", "", "y"]
     r = run("cluster", "create", "nova-prod-01", input="\n".join(answers) + "\n")
     assert r.exit_code == 0, r.output

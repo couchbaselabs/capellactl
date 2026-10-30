@@ -9,9 +9,9 @@ from tests.conftest import MINIMAL, seed_healthy
 @pytest.mark.parametrize(("group", "verbs"), [
     ("project", {"list", "get", "create", "update", "delete"}),
     ("cluster", {"list", "get", "create", "clone", "update", "delete", "options", "scale", "protect", "power",
-                 "schedule", "group"}),
+                 "schedule", "group", "disk-types", "backup"}),
     ("cidr", {"list", "create", "delete"}),
-    ("bucket", {"list", "get", "create", "update", "delete"}),
+    ("bucket", {"list", "get", "create", "update", "delete", "backup"}),
     ("scope", {"list", "create", "delete"}),
     ("collection", {"list", "create", "update", "delete"}),
     ("credential", {"list", "get", "create", "update", "delete"}),
