@@ -22,7 +22,7 @@ FREE_TIER_REGIONS = {
 }
 SINGLE_NODE_SERVICES = {"data", "index", "query", "search"}  # spec: configurationType singleNode
 FREE_TIER_FORBIDDEN = ("configurationType", "couchbaseServer", "serviceGroups", "availability", "support", "zones",
-                       "cmekId", "enablePrivateDNSResolution", "hibernation")
+                       "cmekId", "enablePrivateDNSResolution", "hibernation", "backupSchedule")
 PROVISIONED_REQUIRED = ("availability", "support", "serviceGroups")
 
 # Region naming per provider (shape only, so new regions pass): aws us-east-1, gcp us-east1, azure eastus.
@@ -177,6 +177,45 @@ def _check_hibernation(cl: dict[str, Any], cp: tuple[Any, ...], add: Any) -> Non
         add(cp + ("hibernation",), "the cluster cannot be off every day of the week (Capella rule)", "hibernation")
 
 
+DISK_HINT = " (see 'capellactl cluster disk-types')"
+
+
+def _check_disk_range(provider: str, disk: dict[str, Any], dp: tuple[Any, ...], add: Any) -> None:
+    """Sizes and IOPS a disk type accepts, from config/disks.yaml (CAP-060 AC4)."""
+    from capellactl.config.presets import disk_facts, iops_range
+
+    disk_type, size, iops = disk.get("type"), disk.get("storage"), disk.get("iops")
+    facts = disk_facts(provider, str(disk_type)) if disk_type else None
+    if facts is None or "fixedSize" in facts:  # unknown type: reported above; Azure premium: set by the type
+        return
+    if isinstance(size, int):
+        if facts.get("sizes") and size not in facts["sizes"]:
+            shown = facts["sizes"]
+            add(dp + ("storage",), f"{disk_type} disks come in {', '.join(map(str, shown[:5]))}, … {shown[-1]} GB "
+                                   f"(got {size}){DISK_HINT}", "scaling")
+        elif facts.get("size") and len(facts["size"]) > 1 and size > facts["size"][1]:
+            add(dp + ("storage",), f"{disk_type} disks are at most {facts['size'][1]} GB (got {size}){DISK_HINT}",
+                "scaling")
+    rng = iops_range(provider, str(disk_type), size if isinstance(size, int) else None)
+    if isinstance(iops, int) and rng and not rng[0] <= iops <= rng[1]:
+        at = f" at {size} GB" if facts.get("iopsCap") and isinstance(size, int) else ""
+        add(dp + ("iops",), f"{disk_type} disks take {rng[0]}–{rng[1]} IOPS{at} (got {iops}){DISK_HINT}", "scaling")
+
+
+def _low_iops(provider: str, disk: dict[str, Any]) -> int | None:
+    """Capella's recommended IOPS when the disk's IOPS are below it (a warning: existing disks may have less)."""
+    from capellactl.config.presets import default_iops
+
+    size, iops = disk.get("storage"), disk.get("iops")
+    if not isinstance(size, int) or not isinstance(iops, int) or not disk.get("type"):
+        return None
+    recommended = default_iops(provider, str(disk["type"]), size)
+    # Capella allows 3000 for 100–199 GB disks (IOPS Defaults, note 1)
+    if recommended is None or iops >= recommended or (100 <= size < 200 and iops >= 3000):
+        return None
+    return recommended
+
+
 def config_warnings(cfg: Config) -> list[str]:
     """Valid but probably unintended settings, printed by every command that loads the file."""
     from capellactl.config.loader import fmt_path
@@ -192,6 +231,16 @@ def config_warnings(cfg: Config) -> list[str]:
                     line = cfg.line_of(path)
                     out.append(f"warning: {fmt_path(path)}: expiresAt is in the past; Capella will remove it"
                                + (f" (line {line})" if line else ""))
+            provider = str((cl.get("cloudProvider") or {}).get("type"))
+            for gi, g in enumerate(cl.get("serviceGroups") or []):
+                disk = (g.get("node") or {}).get("disk") or {}
+                recommended = _low_iops(provider, disk)
+                if recommended is not None:
+                    path = entry.clusters_base + (ci, "serviceGroups", gi, "node", "disk", "iops")
+                    line = cfg.line_of(path)
+                    out.append(f"warning: {fmt_path(path)}: {disk['iops']} IOPS is below Capella's recommended "
+                               f"{recommended} for {disk['storage']} GB; Capella may refuse a lower value on the next "
+                               "change" + (f" (line {line})" if line else ""))
             for ui, u in enumerate(cl.get("databaseCredentials") or []):
                 for ai, a in enumerate(u.get("access") or []):
                     if not (a.get("resources") or {}).get("buckets"):  # CAP-027 AC5
@@ -337,6 +386,7 @@ def _check_project(cfg: Config, entry: Any, add: Any, dupes: Any) -> None:
                 add(gp + ("node", "disk", "iops"), "iops is required for aws disks")
             if provider in ("aws", "gcp") and ((g.get("node") or {}).get("disk") or {}).get("autoExpansion") is not None:
                 add(gp + ("node", "disk", "autoExpansion"), "autoExpansion is for azure disks only")
+            _check_disk_range(str(provider), (g.get("node") or {}).get("disk") or {}, gp + ("node", "disk"), add)
             if single and set(g.get("services") or []) - SINGLE_NODE_SERVICES:
                 add(gp + ("services",), "singleNode clusters run only data, index, query and search")
         if not single and total > 27:

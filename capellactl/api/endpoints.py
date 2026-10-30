@@ -1,4 +1,4 @@
-"""One function per Management API v4.0 endpoint used in release 1.0.0 (CAP-003 AC9).
+"""One function per Management API v4.0 endpoint used in release 1.0.0 (CAP-003 AC9; backups: CAP-056–CAP-059).
 
 Reference: https://docs.couchbase.com/cloud/management-api-reference/index.html
 `get_*` functions return (body, etag). Update functions accept `if_match`.
@@ -342,6 +342,142 @@ def delete_credential(c: CapellaClient, project_id: str, cluster_id: str, user_i
     c.delete(f"{_c(c, project_id, cluster_id)}/users/{user_id}")
 
 
+# ------------------------------------ Cloud snapshot backups (cluster backups, CAP-056, CAP-057)
+def _cs(c: CapellaClient, project_id: str, cluster_id: str) -> str:
+    return f"{_c(c, project_id, cluster_id)}/cloudsnapshotbackups"
+
+
+def get_snapshot_schedule(c: CapellaClient, project_id: str, cluster_id: str) -> Body | None:
+    """GET …/cloudsnapshotbackupschedule → 200, or 204 when there is none (None)  (#tag/Cloud-Snapshot-Backups-Schedule)"""
+    body = c.get(f"{_c(c, project_id, cluster_id)}/cloudsnapshotbackupschedule").body
+    return body or None
+
+
+def upsert_snapshot_schedule(c: CapellaClient, project_id: str, cluster_id: str, body: Body) -> None:
+    """PUT …/cloudsnapshotbackupschedule → 204 (creates or replaces)"""
+    c.put(f"{_c(c, project_id, cluster_id)}/cloudsnapshotbackupschedule", body)
+
+
+def delete_snapshot_schedule(c: CapellaClient, project_id: str, cluster_id: str) -> None:
+    """DELETE …/cloudsnapshotbackupschedule → 204"""
+    c.delete(f"{_c(c, project_id, cluster_id)}/cloudsnapshotbackupschedule")
+
+
+def get_snapshot_schedule_options(c: CapellaClient, project_id: str, cluster_id: str) -> Body:
+    """GET …/cloudsnapshotbackupschedule/options → {intervals, minimumRetention, maximumRetention} (hours)"""
+    return dict(c.get(f"{_c(c, project_id, cluster_id)}/cloudsnapshotbackupschedule/options").body or {})
+
+
+def list_snapshot_regions(c: CapellaClient, project_id: str, cluster_id: str) -> list[str]:
+    """GET …/cloudsnapshotbackups/regions → [region] (AWS and Azure only)"""
+    body = c.get(f"{_cs(c, project_id, cluster_id)}/regions").body
+    return [str(r) for r in body] if isinstance(body, list) else []
+
+
+def list_snapshots(c: CapellaClient, project_id: str, cluster_id: str) -> list[Body]:
+    """GET …/clusters/{clusterId}/cloudsnapshotbackups (paginated; queued backups are not listed)"""
+    return c.paginate(_cs(c, project_id, cluster_id))
+
+
+def list_project_snapshots(c: CapellaClient, project_id: str) -> list[Body]:
+    """GET …/projects/{projectId}/cloudsnapshotbackups → one summary per cluster (most recent, oldest)"""
+    return c.paginate(f"{_p(c, project_id)}/cloudsnapshotbackups")
+
+
+def create_snapshot(c: CapellaClient, project_id: str, cluster_id: str, body: Body) -> str:
+    """POST …/cloudsnapshotbackups → 202 {backupId}; optional retention (hours), regionsToCopy (at most two)"""
+    return str((c.post(_cs(c, project_id, cluster_id), body).body or {}).get("backupId", ""))
+
+
+def update_snapshot_retention(c: CapellaClient, project_id: str, cluster_id: str, backup_id: str, retention: int) -> None:
+    """PUT …/cloudsnapshotbackups/{backupId} → 204 {retention} (hours)"""
+    c.put(f"{_cs(c, project_id, cluster_id)}/{backup_id}", {"retention": retention})
+
+
+def delete_snapshot(c: CapellaClient, project_id: str, cluster_id: str, backup_id: str) -> None:
+    """DELETE …/cloudsnapshotbackups/{backupId} → 202"""
+    c.delete(f"{_cs(c, project_id, cluster_id)}/{backup_id}")
+
+
+def restore_snapshot(c: CapellaClient, project_id: str, cluster_id: str, backup_id: str, body: Body) -> str:
+    """POST …/cloudsnapshotbackups/{backupId}/restore → 202 {restoreId}; replaces all data of the cluster"""
+    return str((c.post(f"{_cs(c, project_id, cluster_id)}/{backup_id}/restore", body).body or {}).get("restoreId", ""))
+
+
+def list_snapshot_restores(c: CapellaClient, project_id: str, cluster_id: str) -> list[Body]:
+    """GET …/cloudsnapshotbackups/restores (paginated)"""
+    return c.paginate(f"{_cs(c, project_id, cluster_id)}/restores")
+
+
+# ---------------------------------------------- Bucket backups (CAP-058, CAP-059)
+def get_bucket_backup_schedule(c: CapellaClient, project_id: str, cluster_id: str, bucket_id: str) -> Body:
+    """GET …/buckets/{bucketId}/backup/schedules (404 when none)  (#tag/Backup-Schedule-(Bucket))"""
+    return dict(c.get(f"{_b(c, project_id, cluster_id, bucket_id)}/backup/schedules").body or {})
+
+
+def create_bucket_backup_schedule(c: CapellaClient, project_id: str, cluster_id: str, bucket_id: str, body: Body) -> None:
+    """POST …/backup/schedules → 202 {type: weekly, weeklySchedule}"""
+    c.post(f"{_b(c, project_id, cluster_id, bucket_id)}/backup/schedules", body)
+
+
+def update_bucket_backup_schedule(c: CapellaClient, project_id: str, cluster_id: str, bucket_id: str, body: Body) -> None:
+    """PUT …/backup/schedules → 204"""
+    c.put(f"{_b(c, project_id, cluster_id, bucket_id)}/backup/schedules", body)
+
+
+def delete_bucket_backup_schedule(c: CapellaClient, project_id: str, cluster_id: str, bucket_id: str) -> None:
+    """DELETE …/backup/schedules → 202"""
+    c.delete(f"{_b(c, project_id, cluster_id, bucket_id)}/backup/schedules")
+
+
+def list_backup_cycles(c: CapellaClient, project_id: str, cluster_id: str, bucket_id: str) -> list[Body]:
+    """GET …/backup/cycles → {data: [{cycleID, createdAt}]}"""
+    return list((c.get(f"{_b(c, project_id, cluster_id, bucket_id)}/backup/cycles").body or {}).get("data") or [])
+
+
+def list_cycle_backups(c: CapellaClient, project_id: str, cluster_id: str, bucket_id: str, cycle_id: str) -> list[Body]:
+    """GET …/backup/cycles/{cycleId} → {data: [backup]}"""
+    path = f"{_b(c, project_id, cluster_id, bucket_id)}/backup/cycles/{cycle_id}"
+    return list((c.get(path).body or {}).get("data") or [])
+
+
+def create_bucket_backup(c: CapellaClient, project_id: str, cluster_id: str, bucket_id: str) -> None:
+    """POST …/buckets/{bucketId}/backups → 202, no body: the new backup is found by listing  (#tag/Backups-and-Restore-(Bucket))"""
+    c.post(f"{_b(c, project_id, cluster_id, bucket_id)}/backups", {})
+
+
+def list_cluster_backups(c: CapellaClient, project_id: str, cluster_id: str) -> list[Body]:
+    """GET …/clusters/{clusterId}/backups → {data}: the latest backup of each bucket (queued ones are not listed)"""
+    return list((c.get(f"{_c(c, project_id, cluster_id)}/backups").body or {}).get("data") or [])
+
+
+def get_backup(c: CapellaClient, project_id: str, cluster_id: str, backup_id: str) -> Body:
+    """GET …/clusters/{clusterId}/backups/{backupId}"""
+    return dict(c.get(f"{_c(c, project_id, cluster_id)}/backups/{backup_id}").body or {})
+
+
+def delete_backup(c: CapellaClient, project_id: str, cluster_id: str, backup_id: str) -> None:
+    """DELETE …/backups/{backupId} → 202: deletes every backup of the backup's cycle"""
+    c.delete(f"{_c(c, project_id, cluster_id)}/backups/{backup_id}")
+
+
+def restore_backup(c: CapellaClient, project_id: str, cluster_id: str, backup_id: str, body: Body) -> None:
+    """POST …/backups/{backupId}/restore → 202; targetClusterID, sourceClusterID, backupID and services required"""
+    c.post(f"{_c(c, project_id, cluster_id)}/backups/{backup_id}/restore", body)
+
+
+def export_backup(c: CapellaClient, project_id: str, cluster_id: str, bucket_id: str, backup_id: str) -> str:
+    """POST …/buckets/{bucketId}/backups/{backupId}/export → 202 {exportId}; 409 when the cycle has one already"""
+    path = f"{_b(c, project_id, cluster_id, bucket_id)}/backups/{backup_id}/export"
+    return str((c.post(path, {}).body or {}).get("exportId", ""))
+
+
+def get_backup_export(c: CapellaClient, project_id: str, cluster_id: str, bucket_id: str, backup_id: str,
+                      export_id: str) -> Body:
+    """GET …/backups/{backupId}/exports/{exportId} → status; backupDownloadURL once complete (valid 1 hour)"""
+    return dict(c.get(f"{_b(c, project_id, cluster_id, bucket_id)}/backups/{backup_id}/exports/{export_id}").body or {})
+
+
 # ------------------------------------------------------- Endpoint inventory
 # (method, path template) for every endpoint above. Used by tests and the fake harness (CAP-004 AC1).
 _ORG = "/v4/organizations/{organizationId}"
@@ -375,6 +511,17 @@ INVENTORY: list[tuple[str, str]] = [
     ("DELETE", _BKT + "/scopes/{scopeName}/collections/{collectionName}"),
     ("GET", _CLU + "/users"), ("POST", _CLU + "/users"), ("GET", _CLU + "/users/{userId}"), ("PUT", _CLU + "/users/{userId}"),
     ("DELETE", _CLU + "/users/{userId}"),
+    ("GET", _CLU + "/cloudsnapshotbackupschedule"), ("PUT", _CLU + "/cloudsnapshotbackupschedule"),
+    ("DELETE", _CLU + "/cloudsnapshotbackupschedule"), ("GET", _CLU + "/cloudsnapshotbackupschedule/options"),
+    ("GET", _CLU + "/cloudsnapshotbackups/regions"), ("GET", _CLU + "/cloudsnapshotbackups"),
+    ("GET", _PRJ + "/cloudsnapshotbackups"), ("POST", _CLU + "/cloudsnapshotbackups"),
+    ("PUT", _CLU + "/cloudsnapshotbackups/{backupId}"), ("DELETE", _CLU + "/cloudsnapshotbackups/{backupId}"),
+    ("POST", _CLU + "/cloudsnapshotbackups/{backupId}/restore"), ("GET", _CLU + "/cloudsnapshotbackups/restores"),
+    ("GET", _BKT + "/backup/schedules"), ("POST", _BKT + "/backup/schedules"), ("PUT", _BKT + "/backup/schedules"),
+    ("DELETE", _BKT + "/backup/schedules"), ("GET", _BKT + "/backup/cycles"), ("GET", _BKT + "/backup/cycles/{cycleId}"),
+    ("POST", _BKT + "/backups"), ("GET", _CLU + "/backups"), ("GET", _CLU + "/backups/{backupId}"),
+    ("DELETE", _CLU + "/backups/{backupId}"), ("POST", _CLU + "/backups/{backupId}/restore"),
+    ("POST", _BKT + "/backups/{backupId}/export"), ("GET", _BKT + "/backups/{backupId}/exports/{exportId}"),
 ]
 
 # Roles needed per endpoint, from the API reference, for 403 messages (CAP-003 AC2).
@@ -383,6 +530,10 @@ _ROLES: list[tuple[str, str, str]] = [
     ("PUT", r"^/v4/organizations/[^/]+/projects/[^/]+$", "Organization Owner or Project Owner"),
     ("DELETE", r"^/v4/organizations/[^/]+/projects/[^/]+$", "Organization Owner or Project Owner"),
     ("GET", r"^/v4/organizations(/[^/]+)?(/projects)?$", "any organization role (Organization Member or above)"),
+    # Backups (spec): bucket backup schedules and snapshot schedule options also allow Project Manager; the rest not
+    ("*", r"/(buckets/[^/]+/backup/schedules|cloudsnapshotbackupschedule/options)$",
+     "Organization Owner, Project Owner or Project Manager"),
+    ("*", r"/(cloudsnapshotbackups?|cloudsnapshotbackupschedule|backups?)(/|$)", "Organization Owner or Project Owner"),
     ("*", r"/clusters", "Organization Owner, Project Owner or Project Manager"),
 ]
 

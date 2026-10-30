@@ -22,3 +22,14 @@ def test_configure_ac7_cleans_pasted_key(raw, fixes):
     assert key == KEY
     assert fixed == fixes
     assert all(KEY not in f for f in fixed)
+
+
+@pytest.mark.story("CAP-055", "AC4")
+@pytest.mark.parametrize("raw,fixes", [
+    (f"{KEY}\r\n", []),
+    (f"﻿{KEY}\r\n", ["removed a byte-order mark"]),
+])
+def test_windows_docs_ac4_api_key_stdin_crlf_bom(raw, fixes):
+    key, fixed = clean_api_key(raw)
+    assert key == KEY
+    assert fixed == fixes

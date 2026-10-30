@@ -20,6 +20,7 @@ TOPICS: dict[str, str] = {
     "idempotency": "plan symbols, how resources are matched, what is compared",
     "scaling": "scale out, in and up; limits; scale-in checks; --step",
     "hibernation": "power off/on, weekly on/off schedule, pause/resume",
+    "backup": "cluster backups and bucket backups: schedules, back up now, restore, export",
     "credentials": "database credentials, generated passwords, rotation",
     "safety": "deletion protection, prune, cascade, confirmations",
     "exit-codes": "what each exit code means",

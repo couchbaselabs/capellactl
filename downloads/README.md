@@ -41,5 +41,15 @@ The executables are not code-signed, so check the SHA-256 first (above), then al
   when SmartScreen warns. Company policy (AppLocker, WDAC) may need IT to allow the file's hash.
 - **Linux**: nothing more than `chmod +x`.
 
+To type `capellactl` from any folder on Windows, install it for your user (no administrator rights needed), then
+open a new PowerShell window:
+
+```powershell
+mkdir $env:LOCALAPPDATA\Programs\capellactl -Force
+Move-Item .\capellactl-*-windows-x86_64.exe $env:LOCALAPPDATA\Programs\capellactl\capellactl.exe
+$userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+[Environment]::SetEnvironmentVariable('Path', "$userPath;$env:LOCALAPPDATA\Programs\capellactl", 'User')
+```
+
 Each executable carries `LICENSE`, `NOTICE`, `THIRD_PARTY_NOTICES.md` and `BINARY_NOTICES.md`; the same files are
 attached to the release next to it.

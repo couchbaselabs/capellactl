@@ -200,8 +200,13 @@ Resources
   cluster    group list | add | remove NAME   (service groups, CAP-052)
   cluster    power NAME --on [--with-app-service] | --off
   cluster    schedule show|apply|pause|resume|delete NAME
+  cluster    disk-types [--provider P]   (CAP-060)
+  cluster    backup list|create|retain|delete|restore|restores|regions   (cloud snapshots, CAP-057)
+  cluster    backup schedule show|options|set|delete NAME   (CAP-056)
   cidr       list | create | delete
   bucket     list | get | create | update | delete
+  bucket     backup list|get|create|delete|restore|export   (CAP-059)
+  bucket     backup schedule show|set|delete · backup cycle list|get   (CAP-058)
   scope      list | create | delete
   collection list | create | update | delete
   credential list | get | create | update [--rotate-password] | delete
@@ -458,6 +463,6 @@ Every exporter in `importer/` is covered by the **round-trip AC** (CAP-036 AC2):
 
 ## 14. Release scope
 
-**In 1.0.0:** `help` with topics and per-field config help; shell completion; profiles with keychain-stored API keys; `init` wizard; `import` of existing projects and clusters; projects; provisioned clusters (create, edit, protect, delete); scale out, in and vertically; power off/on; hibernation (on/off) schedules with pause/resume; cluster allowed CIDRs; buckets, scopes, collections; basic database credentials; full-environment apply/destroy; drift.
+**In 1.0.0:** `help` with topics and per-field config help; shell completion; profiles with keychain-stored API keys; `init` wizard; `import` of existing projects and clusters; projects; provisioned clusters (create, edit, protect, delete); scale out, in and vertically; power off/on; free-tier clusters; disk type choice; hibernation (on/off) schedules with pause/resume; cluster and bucket backup schedules, backups and restore; cluster allowed CIDRs; buckets, scopes, collections; basic database credentials; full-environment apply/destroy; drift.
 
-**Not in 1.0.0 (candidates for 1.1):** free-tier clusters; advanced credentials (`userRoles`) and custom database roles; App Services and App Endpoints; private endpoints and network peering; backup schedules; audit logging; CMEK key management; organization users and API keys; server version upgrades; sample buckets.
+**Not in 1.0.0 (candidates for 1.1):** advanced credentials (`userRoles`) and custom database roles; App Services and App Endpoints; private endpoints and network peering; cloning a cluster from a backup; Operational Insights clusters; audit logging; CMEK key management; organization users and API keys; server version upgrades; sample buckets.

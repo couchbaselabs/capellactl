@@ -8,19 +8,19 @@ Architecture, domain model, conventions, NFRs and the global Definition of Done:
 
 | Metric | Stories | Story points |
 |---|---|---|
-| **Total** | **54** | **223** |
-| ✅ Implemented | 53 | 218 |
-| 🚧 In progress | 1 | 5 |
+| **Total** | **61** | **257** |
+| ✅ Implemented | 59 | 249 |
+| 🚧 In progress | 2 | 8 |
 | ⬜ Not started | 0 | 0 |
-| Not yet implemented (in progress + not started) | 1 | 5 |
-| **Completion** | 98% | 98% |
+| Not yet implemented (in progress + not started) | 2 | 8 |
+| **Completion** | 97% | 97% |
 
 ### By priority
 
 | Priority | Meaning | Stories | Points | Implemented (stories / points) |
 |---|---|---|---|---|
-| P0 | Must have — release blocker | 44 | 184 | 43 / 179 |
-| P1 | Should have — ships in 1.0 unless explicitly descoped | 10 | 39 | 10 / 39 |
+| P0 | Must have — release blocker | 45 | 187 | 43 / 179 |
+| P1 | Should have — ships in 1.0 unless explicitly descoped | 16 | 70 | 16 / 70 |
 
 ### By epic
 
@@ -28,17 +28,18 @@ Architecture, domain model, conventions, NFRs and the global Definition of Done:
 |---|---|---|---|
 | E1 Foundation | 11 | 46 | 11 / 46 |
 | E2 Projects | 5 | 20 | 5 / 20 |
-| E3 Clusters | 9 | 48 | 9 / 48 |
+| E3 Clusters | 10 | 53 | 10 / 53 |
 | E4 Scaling | 5 | 21 | 5 / 21 |
 | E5 Hibernation | 3 | 10 | 3 / 10 |
 | E6 Network access | 1 | 3 | 1 / 3 |
 | E7 Data model | 4 | 14 | 4 / 14 |
 | E8 Database credentials | 4 | 12 | 4 / 12 |
-| E9 Lifecycle & release | 12 | 49 | 11 / 44 |
+| E9 Lifecycle & release | 13 | 52 | 11 / 44 |
+| E10 Backup & restore | 5 | 26 | 5 / 26 |
 
 ## Stories by priority
 
-### P0 — Must have — release blocker (44 stories, 184 points)
+### P0 — Must have — release blocker (45 stories, 187 points)
 
 | # | ID | Story | Epic | Points | Status |
 |---|---|---|---|---|---|
@@ -86,8 +87,9 @@ Architecture, domain model, conventions, NFRs and the global Definition of Done:
 | 42 | ~~[CAP-048](CAP-048-track-resources-by-id.md)~~ | ~~Track projects and clusters by id so renames in the Capella UI are not mistaken for new resources~~ | ~~E9 Lifecycle & release~~ | ~~5~~ | ✅ Implemented |
 | 43 | ~~[CAP-050](CAP-050-protect-main-branch.md)~~ | ~~Protect `main`: changes only through a reviewed pull request~~ | ~~E9 Lifecycle & release~~ | ~~3~~ | ✅ Implemented |
 | 44 | ~~[CAP-051](CAP-051-multi-dimensional-cluster-create.md)~~ | ~~Create multi-dimensional (MDS) clusters from the CLI~~ | ~~E3 Clusters~~ | ~~13~~ | ✅ Implemented |
+| 45 | [CAP-055](CAP-055-windows-install-steps.md) | Install and run capellactl on Windows: step-by-step PowerShell table in the README | E9 Lifecycle & release | 3 | 🚧 In progress |
 
-### P1 — Should have — ships in 1.0 unless explicitly descoped (10 stories, 39 points)
+### P1 — Should have — ships in 1.0 unless explicitly descoped (16 stories, 70 points)
 
 | # | ID | Story | Epic | Points | Status |
 |---|---|---|---|---|---|
@@ -101,6 +103,12 @@ Architecture, domain model, conventions, NFRs and the global Definition of Done:
 | 8 | ~~[CAP-052](CAP-052-service-group-commands.md)~~ | ~~Service group commands: list, add and remove groups on an existing cluster~~ | ~~E4 Scaling~~ | ~~5~~ | ✅ Implemented |
 | 9 | ~~[CAP-053](CAP-053-advanced-cluster-create-options.md)~~ | ~~Advanced cluster create options: server version, single node, zone, CMEK, private DNS, disk auto-expansion~~ | ~~E3 Clusters~~ | ~~5~~ | ✅ Implemented |
 | 10 | ~~[CAP-054](CAP-054-one-sync-command.md)~~ | ~~One command to bring capella.yaml in line with Capella: `sync` covers the whole organization~~ | ~~E9 Lifecycle & release~~ | ~~5~~ | ✅ Implemented |
+| 11 | ~~[CAP-056](CAP-056-cluster-backup-schedule.md)~~ | ~~Cluster backup schedule (cloud snapshots) as code~~ | ~~E10 Backup & restore~~ | ~~5~~ | ✅ Implemented |
+| 12 | ~~[CAP-057](CAP-057-cluster-backup-and-restore.md)~~ | ~~Cluster backups: list, back up now, keep longer, delete and restore~~ | ~~E10 Backup & restore~~ | ~~5~~ | ✅ Implemented |
+| 13 | ~~[CAP-058](CAP-058-bucket-backup-schedule.md)~~ | ~~Bucket backup schedule as code, and backup cycles~~ | ~~E10 Backup & restore~~ | ~~5~~ | ✅ Implemented |
+| 14 | ~~[CAP-059](CAP-059-bucket-backup-and-restore.md)~~ | ~~Bucket backups: list, back up now, delete, restore and export~~ | ~~E10 Backup & restore~~ | ~~8~~ | ✅ Implemented |
+| 15 | ~~[CAP-060](CAP-060-choose-disk-type.md)~~ | ~~Choose the disk type, and see what each type means~~ | ~~E3 Clusters~~ | ~~5~~ | ✅ Implemented |
+| 16 | ~~[CAP-061](CAP-061-backup-and-disk-guides.md)~~ | ~~Guides: backup and restore, and choosing a disk type, as steps CI runs~~ | ~~E10 Backup & restore~~ | ~~3~~ | ✅ Implemented |
 
 ## Delivery phases
 
@@ -112,8 +120,9 @@ Stories are delivered in phases; each phase ends with something an operator can 
 | Phase 1 — Project & cluster | ~~CAP-009~~, ~~CAP-039~~, ~~CAP-040~~, ~~CAP-010~~, ~~CAP-011~~, ~~CAP-035~~, ~~CAP-012~~, ~~CAP-038~~, ~~CAP-041~~, ~~CAP-049~~, ~~CAP-013~~, ~~CAP-014~~, ~~CAP-022~~ | 53 | 13/13 (53 pts) | ✅ Done | Answer the init wizard, then create, edit, protect and delete a project and cluster with its IP allowlist, idempotently |
 | Phase 2 — Scale & hibernate | ~~CAP-015~~, ~~CAP-016~~, ~~CAP-017~~, ~~CAP-018~~, ~~CAP-019~~, ~~CAP-020~~, ~~CAP-021~~ | 26 | 7/7 (26 pts) | ✅ Done | Scale clusters out, in and up safely; power them off and on; run a weekly hibernation schedule |
 | Phase 3 — Data model & access | ~~CAP-023~~, ~~CAP-024~~, ~~CAP-025~~, ~~CAP-026~~, ~~CAP-027~~, ~~CAP-046~~, ~~CAP-028~~, ~~CAP-029~~ | 26 | 8/8 (26 pts) | ✅ Done | Buckets, scopes, collections and least-privilege database credentials, ready for applications |
-| Phase 4 — Adopt, harden & ship | ~~CAP-030~~, ~~CAP-036~~, ~~CAP-047~~, ~~CAP-048~~, ~~CAP-031~~, ~~CAP-042~~, CAP-032, ~~CAP-044~~, ~~CAP-043~~, ~~CAP-045~~, ~~CAP-033~~, ~~CAP-050~~, ~~CAP-054~~ | 52 | 12/13 (47 pts) | 🚧 Current | Import existing clusters with a no-change round trip, one-command build and teardown, drift reporting, nightly integration gate and customer docs |
-| Phase 5 — Custom cluster layouts | ~~CAP-051~~, ~~CAP-052~~, ~~CAP-053~~ | 23 | 3/3 (23 pts) | ✅ Done | Create a cluster with any size, multi-dimensional service layout and create option, and add or remove service groups later, from commands alone |
+| Phase 4 — Adopt, harden & ship | ~~CAP-030~~, ~~CAP-036~~, ~~CAP-047~~, ~~CAP-048~~, ~~CAP-031~~, ~~CAP-042~~, CAP-032, ~~CAP-044~~, ~~CAP-043~~, ~~CAP-045~~, ~~CAP-033~~, ~~CAP-050~~, ~~CAP-054~~, CAP-055 | 55 | 12/14 (47 pts) | 🚧 Current | Import existing clusters with a no-change round trip, one-command build and teardown, drift reporting, nightly integration gate and customer docs |
+| Phase 5 — Custom cluster layouts | ~~CAP-051~~, ~~CAP-052~~, ~~CAP-053~~, ~~CAP-060~~ | 28 | 4/4 (28 pts) | ✅ Done | Create a cluster with any size, disk type, multi-dimensional service layout and create option, and add or remove service groups later, from commands alone |
+| Phase 6 — Backup & restore | ~~CAP-056~~, ~~CAP-057~~, ~~CAP-058~~, ~~CAP-059~~, ~~CAP-061~~ | 26 | 5/5 (26 pts) | ✅ Done | Schedule cluster and bucket backups as code, list them, back up now and restore a cluster or a bucket, from commands alone |
 
 ## Stories by phase
 
@@ -185,7 +194,7 @@ _Buckets, scopes, collections and least-privilege database credentials, ready fo
 | 7 | [CAP-028](CAP-028-password-rotation.md) | Password rotation | P0 | E8 Database credentials | 3 | CAP-027, CAP-008 | ✅ Implemented |
 | 8 | [CAP-029](CAP-029-delete-database-credential.md) | Delete database credential | P0 | E8 Database credentials | 1 | CAP-027 | ✅ Implemented |
 
-### Phase 4 — Adopt, harden & ship — 🚧 Current (12/13 stories, 47/52 points)
+### Phase 4 — Adopt, harden & ship — 🚧 Current (12/14 stories, 47/55 points)
 
 _Import existing clusters with a no-change round trip, one-command build and teardown, drift reporting, nightly integration gate and customer docs._
 
@@ -204,16 +213,30 @@ _Import existing clusters with a no-change round trip, one-command build and tea
 | 11 | [CAP-033](CAP-033-docs-examples-runbook.md) | Examples, runbook & customer documentation | P0 | E9 Lifecycle & release | 3 | CAP-030 | ✅ Implemented |
 | 12 | [CAP-050](CAP-050-protect-main-branch.md) | Protect `main`: changes only through a reviewed pull request | P0 | E9 Lifecycle & release | 3 | CAP-001, CAP-043 | ✅ Implemented |
 | 13 | [CAP-054](CAP-054-one-sync-command.md) | One command to bring capella.yaml in line with Capella: `sync` covers the whole organization | P1 | E9 Lifecycle & release | 5 | CAP-036, CAP-038, CAP-040 | ✅ Implemented |
+| 14 | [CAP-055](CAP-055-windows-install-steps.md) | Install and run capellactl on Windows: step-by-step PowerShell table in the README | P0 | E9 Lifecycle & release | 3 | CAP-033, CAP-045 | 🚧 In progress |
 
-### Phase 5 — Custom cluster layouts — ✅ Done (3/3 stories, 23/23 points)
+### Phase 5 — Custom cluster layouts — ✅ Done (4/4 stories, 28/28 points)
 
-_Create a cluster with any size, multi-dimensional service layout and create option, and add or remove service groups later, from commands alone._
+_Create a cluster with any size, disk type, multi-dimensional service layout and create option, and add or remove service groups later, from commands alone._
 
 | # | ID | Story | Priority | Epic | Points | Depends on | Status |
 |---|---|---|---|---|---|---|---|
 | 1 | [CAP-051](CAP-051-multi-dimensional-cluster-create.md) | Create multi-dimensional (MDS) clusters from the CLI | P0 | E3 Clusters | 13 | CAP-011, CAP-015, CAP-038, CAP-049 | ✅ Implemented |
 | 2 | [CAP-052](CAP-052-service-group-commands.md) | Service group commands: list, add and remove groups on an existing cluster | P1 | E4 Scaling | 5 | CAP-015, CAP-016, CAP-038, CAP-051 | ✅ Implemented |
 | 3 | [CAP-053](CAP-053-advanced-cluster-create-options.md) | Advanced cluster create options: server version, single node, zone, CMEK, private DNS, disk auto-expansion | P1 | E3 Clusters | 5 | CAP-011, CAP-038, CAP-051 | ✅ Implemented |
+| 4 | [CAP-060](CAP-060-choose-disk-type.md) | Choose the disk type, and see what each type means | P1 | E3 Clusters | 5 | CAP-017, CAP-041, CAP-051, CAP-052 | ✅ Implemented |
+
+### Phase 6 — Backup & restore — ✅ Done (5/5 stories, 26/26 points)
+
+_Schedule cluster and bucket backups as code, list them, back up now and restore a cluster or a bucket, from commands alone._
+
+| # | ID | Story | Priority | Epic | Points | Depends on | Status |
+|---|---|---|---|---|---|---|---|
+| 1 | [CAP-056](CAP-056-cluster-backup-schedule.md) | Cluster backup schedule (cloud snapshots) as code | P1 | E10 Backup & restore | 5 | CAP-011, CAP-020, CAP-038 | ✅ Implemented |
+| 2 | [CAP-057](CAP-057-cluster-backup-and-restore.md) | Cluster backups: list, back up now, keep longer, delete and restore | P1 | E10 Backup & restore | 5 | CAP-007, CAP-056 | ✅ Implemented |
+| 3 | [CAP-058](CAP-058-bucket-backup-schedule.md) | Bucket backup schedule as code, and backup cycles | P1 | E10 Backup & restore | 5 | CAP-023, CAP-056 | ✅ Implemented |
+| 4 | [CAP-059](CAP-059-bucket-backup-and-restore.md) | Bucket backups: list, back up now, delete, restore and export | P1 | E10 Backup & restore | 8 | CAP-007, CAP-058 | ✅ Implemented |
+| 5 | [CAP-061](CAP-061-backup-and-disk-guides.md) | Guides: backup and restore, and choosing a disk type, as steps CI runs | P1 | E10 Backup & restore | 3 | CAP-056, CAP-057, CAP-058, CAP-059, CAP-060 | ✅ Implemented |
 
 ## Release checklist
 
@@ -224,5 +247,7 @@ _Create a cluster with any size, multi-dimensional service layout and create opt
 - [ ] Every open question in the story files is answered or explicitly deferred to 1.1
 - [ ] Import round trip (CAP-036 AC2) shows no changes against at least one real customer-like environment in the sandbox
 - [ ] Time-to-first-environment check done by an engineer new to the tool against a real organization: under 60 minutes (release check; CAP-033 AC5 runs the same guide path against the fake in CI)
+- [ ] The same time-to-first-environment check done once on a Windows laptop in Windows PowerShell, following the README's Windows install table (CAP-055)
 - [ ] Source archive, wheel and SHA256SUMS built with `make dist` and attached to the GitHub Release (CAP-043); container image published; standalone executables for macOS, Linux and Windows in `downloads/` and listed in the README Download section (CAP-045); README, runbook and examples validated (CAP-033)
+- [ ] A cluster backup and a bucket backup restored in the sandbox organization, and the restored data checked (CAP-057, CAP-059)
 - [ ] `main` and `v*` tag rulesets active and `make rulesets-check` green before the repository is made public (CAP-050)

@@ -52,7 +52,8 @@ else, use the Capella UI or the Management API directly.
 ## Install
 
 capellactl has not had its first release yet, so install it from source. It takes a few minutes and needs
-[Git](https://git-scm.com/) and Python 3.10–3.13.
+[Git](https://git-scm.com/) and Python 3.10–3.13. The steps below are for macOS and Linux; on Windows, follow
+[On Windows (PowerShell)](#on-windows-powershell).
 
 **1. Check your Python version.** On many Macs, `python3` is older than 3.10:
 
@@ -78,9 +79,30 @@ capellactl 1.0.0.devN+g… (Management API v4.0)
 Licensed under Apache-2.0 · Copyright 2026 Couchbase, Inc.
 ```
 
-On Windows, activate with `.venv\Scripts\activate` instead. To update later, run `git pull` in the `capellactl`
-folder; the environment picks up the new code. Then continue with [Quick start](#quick-start), or the step-by-step
-[getting started guide](docs/getting-started.md).
+To update later, run `git pull` in the `capellactl` folder; the environment picks up the new code. Then continue
+with [Quick start](#quick-start), or the step-by-step [getting started guide](docs/getting-started.md).
+
+### On Windows (PowerShell)
+
+Open **Windows PowerShell** (Start menu → type *PowerShell*) and run each command on its own, in order:
+
+<!-- windows-install:start -->
+| Step | Run in PowerShell | You should see / if it fails |
+|---|---|---|
+| 1. Install Git and Python 3.12 | `winget install --id Git.Git -e`<br>`winget install --id Python.Python.3.12 -e` | Then **close PowerShell and open it again**. No `winget`: install Git from [git-scm.com](https://git-scm.com/download/win) and Python **3.12** from [python.org](https://www.python.org/downloads/windows/), not the newest version (capellactl needs 3.10–3.13), and tick *Add python.exe to PATH* |
+| 2. Check Python | `py -3.12 --version` | `Python 3.12.x`. If `python` opens the Microsoft Store, ignore it: use `py` as shown here |
+| 3. Download capellactl | `git clone https://github.com/couchbaselabs/capellactl.git`<br>`cd capellactl` | Two separate commands: Windows PowerShell does not accept `&&` |
+| 4. Create its environment | `py -3.12 -m venv .venv` | A new `.venv` folder |
+| 5. Install it | `.venv\Scripts\python -m pip install -e .` | `Successfully installed … capellactl-…`. `requires a different Python`: step 4 used a Python newer than 3.13; install 3.12 (step 1), delete `.venv` and repeat step 4 |
+| 6. Allow activation (once per user) | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` | Answer `Y`. If your company blocks this, skip steps 6 and 7, and type `.venv\Scripts\capellactl.exe` wherever the docs say `capellactl` |
+| 7. Activate (in each new window) | `.venv\Scripts\Activate.ps1` | The prompt starts with `(.venv)`. Without it you get `capellactl is not recognized`. In cmd.exe: `.venv\Scripts\activate.bat` |
+| 8. Check capellactl | `capellactl --version` | `capellactl 1.0.0.devN+g… (Management API v4.0)` |
+| 9. Make a folder for your environment | `mkdir ~\capella-env`<br>`cd ~\capella-env` | capellactl writes `capella.yaml` in the folder you run it from |
+<!-- windows-install:end -->
+
+`configure` keeps the API Key Token in **Windows Credential Manager** (entry `capellactl`) and profiles in
+`%APPDATA%\capellactl`. The docs show macOS/Linux commands; [Using the commands in PowerShell](docs/getting-started.md#using-the-commands-in-powershell)
+lists the few that are typed differently (passwords in `$env:`, long commands, pasting the token).
 
 ### After the first release (1.0.0)
 
@@ -147,7 +169,8 @@ Passwords are never written to `capella.yaml` or printed: give them as `--passwo
 | Document | For |
 |---|---|
 | [Getting started](docs/getting-started.md) | Step-by-step walkthrough with example output, from install to deleting a cluster, and troubleshooting |
-| [Custom clusters and service groups](docs/custom-clusters.md) | Any size and service layout: several service groups (MDS) with `--group`, adding and removing groups, single-node and advanced options |
+| [Custom clusters and service groups](docs/custom-clusters.md) | Any size and service layout: several service groups (MDS) with `--group`, adding and removing groups, disk types, single-node and advanced options |
+| [Backup and restore](docs/backup-restore.md) | Cluster and bucket backup schedules, listing backups, backing up before a change, restoring a cluster or a bucket, downloading a bucket backup |
 | [Runbook](docs/runbook.md) | Day-2 tasks with the exact command and expected output, a copy-paste reference of every command, and a 20-minute demo script |
 | [capella.yaml reference](docs/reference.md) | Every field: type, default, whether it can change, API mapping (generated from the schema) |
 | [Examples](docs/release-1.0.0/examples/) | [Annotated reference](docs/release-1.0.0/examples/capella.yaml), [single-node dev](docs/release-1.0.0/examples/single-node-dev.yaml), [GCP production](docs/release-1.0.0/examples/gcp-prod.yaml), [Azure production](docs/release-1.0.0/examples/azure-prod.yaml), [minimal](docs/release-1.0.0/examples/minimal-cluster.yaml) |

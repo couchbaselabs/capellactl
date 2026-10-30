@@ -52,6 +52,12 @@ jobs:
         if: github.ref == 'refs/heads/main'
 ```
 
+On a Windows runner (`runs-on: windows-latest`), steps run in PowerShell, so the gate is written differently:
+
+```yaml
+      - run: capellactl plan --detailed-exitcode; if ($LASTEXITCODE -notin 0, 2) { exit $LASTEXITCODE }; exit 0
+```
+
 ## GitLab CI
 
 ```yaml

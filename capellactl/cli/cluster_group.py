@@ -15,6 +15,7 @@ import click
 from capellactl.cli import console
 from capellactl.cli.cluster_ops import (
     FREE_FIXED,
+    _ask_disk,
     change_and_apply,
     locate,
     make_disk,
@@ -93,7 +94,7 @@ def group_list(state: AppState, name: str, project: str | None) -> None:
 @click.option("--nodes", type=int, help="Nodes in the group (asked; default 2, the minimum for an extra group).")
 @click.option("--cpu", type=int, help="vCPUs per node (default: as the data group).")
 @click.option("--ram", type=int, help="RAM GB per node (default: as the data group).")
-@click.option("--disk-type", help="Disk type (default: as the data group).")
+@click.option("--disk-type", help="Disk type (default: as the data group; see 'capellactl cluster disk-types').")
 @click.option("--disk-size", type=int, help="Disk GB per node (default: as the data group).")
 @click.option("--disk-iops", type=int, help="Disk IOPS (AWS; default: as the data group).")
 @click.option("--disk-auto-expansion/--no-disk-auto-expansion", default=None,
@@ -135,10 +136,17 @@ def group_add(state: AppState, name: str, services: str | None, nodes: int | Non
     provider = str((cl.get("cloudProvider") or {}).get("type", "aws"))
     base_node = _plain(base["node"]) if base is not None else {"compute": {"cpu": 4, "ram": 16},
                                                                "disk": make_disk(provider)}
-    disk = make_disk(provider, disk_type) if disk_type else copy.deepcopy(base_node["disk"])
-    for k, v in (("storage", disk_size), ("iops", disk_iops), ("autoExpansion", disk_auto_expansion)):
-        if v is not None:
-            disk[k] = v
+    if disk_type:
+        disk = make_disk(provider, disk_type, disk_size, disk_iops)
+    elif disk_size is None and disk_iops is None and console.is_interactive():
+        disk = _ask_disk(provider, copy.deepcopy(base_node["disk"]))  # CAP-060 AC2: default is the data group's
+    else:
+        disk = copy.deepcopy(base_node["disk"])
+        for k, v in (("storage", disk_size), ("iops", disk_iops)):
+            if v is not None:
+                disk[k] = v
+    if disk_auto_expansion is not None:
+        disk["autoExpansion"] = disk_auto_expansion
     new = {"node": {"compute": {"cpu": cpu or base_node["compute"]["cpu"], "ram": ram or base_node["compute"]["ram"]},
                     "disk": disk},
            "numOfNodes": nodes, "services": names}

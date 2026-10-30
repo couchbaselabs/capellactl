@@ -23,7 +23,7 @@ from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.state import AppState
 from capellactl.config.editor import ConfigEditor, put
 from capellactl.config.loader import Config, ConfigError, load_config
-from capellactl.config.presets import is_single_node, load_compute_sizes, load_presets
+from capellactl.config.presets import is_single_node, load_compute_sizes, load_disk_types, load_presets
 from capellactl.engine.planner import build_plan
 from capellactl.output.render import render_plan_text
 from capellactl.resources.base import Plan, PlanError
@@ -270,18 +270,24 @@ def parse_services(text: str, where: str) -> list[str]:
 
 def make_disk(provider: str, disk_type: str | None = None, size: int | None = None, iops: int | None = None,
               auto_expansion: bool | None = None) -> dict[str, Any]:
-    """A group's disk: the provider default, with the given values on top."""
+    """A group's disk: the provider default, with the given values on top. Without IOPS, gp3, io2 and Ultra disks get
+    Capella's recommended IOPS for their size (CAP-060 AC3)."""
+    from capellactl.config.presets import default_iops, disk_facts
+
     disk = dict(DISK_DEFAULT[provider])
     if disk_type:
         disk = {"type": disk_type}
         if not fixed_size_disk(provider, disk_type):
-            disk["storage"] = 50
-            if provider == "aws":
-                disk["iops"] = 3000  # the lowest IOPS Capella allows for gp3 and io2
+            facts = disk_facts(provider, disk_type) or {}
+            disk["storage"] = int((facts.get("sizes") or facts.get("size") or [50])[0])  # the smallest size allowed
     if size is not None:
         disk["storage"] = size
     if iops is not None:
         disk["iops"] = iops
+    elif "storage" in disk:
+        recommended = default_iops(provider, str(disk["type"]), int(disk["storage"]))
+        if recommended is not None:
+            disk["iops"] = recommended
     if auto_expansion is not None:
         disk["autoExpansion"] = auto_expansion
     return disk
@@ -359,6 +365,59 @@ def _ask_node_size(provider: str, default: tuple[int, int]) -> tuple[int, int]:
     return int(_ask("  vCPUs per node", default[0], kind=int)), int(_ask("  RAM GB per node", default[1], kind=int))
 
 
+def disk_rows(provider: str | None = None) -> list[tuple[str, ...]]:
+    """`cluster disk-types` rows: PROVIDER, TYPE, SIZE (GB), IOPS, FOR (CAP-060 AC1)."""
+    from capellactl.config.presets import disk_iops_text, disk_size_text, load_disk_types
+
+    rows: list[tuple[str, ...]] = [("PROVIDER", "TYPE", "SIZE (GB)", "IOPS", "FOR")]
+    for prov, types in load_disk_types().items():
+        if provider in (None, prov):
+            rows += [(prov, t, disk_size_text(f), disk_iops_text(f), str(f.get("for", ""))) for t, f in types.items()]
+    return rows
+
+
+def _ask_disk(provider: str, current: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Choose a group's disk (CAP-060 AC2): the provider's types with what they mean, then only what the type lets
+    you set: size (with its range) and IOPS (default: Capella's recommendation for the size)."""
+    from capellactl.cli.resource_cmds import _list_table
+    from capellactl.config.presets import default_iops, disk_facts, iops_range, load_disk_types
+
+    types = list(load_disk_types().get(provider, {}))
+    if not types:
+        return make_disk(provider)
+    current = current or make_disk(provider)
+    out("  Disk type:")
+    for line in _list_table(disk_rows(provider)).splitlines():
+        out("    " + line)
+    default = types.index(current["type"]) + 1 if current.get("type") in types else 1
+    disk_type = types[int(_ask("  Choose", default, kind=click.IntRange(1, len(types)))) - 1]
+    facts = disk_facts(provider, disk_type) or {}
+    if "fixedSize" in facts:
+        out(f"    {disk_type}: {facts['fixedSize']} GB, {facts['fixedIops']} IOPS (set by the type)")
+        return make_disk(provider, disk_type)
+    first = make_disk(provider, disk_type)
+    same = current.get("type") == disk_type
+    start = int(current.get("storage", first["storage"])) if same else int(first["storage"])
+    if "sizes" in facts:
+        sizes = [int(s) for s in facts["sizes"]]
+        size = int(console.ask(f"  Disk GB per node ({', '.join(map(str, sizes[:5]))}, … {sizes[-1]})", start,
+                               type=click.Choice([str(s) for s in sizes]), show_choices=False))
+    else:
+        lo, *hi = facts.get("size") or [50]
+        size = int(_ask(f"  Disk GB per node ({lo}–{hi[0]})" if hi else f"  Disk GB per node (at least {lo})", start,
+                        kind=click.IntRange(lo, hi[0] if hi else None)))
+    if "perGb" in facts:
+        per = int(facts["perGb"]) // 2
+        out(f"    {disk_type} {size} GB: up to {per * size} read and {per * size} write IOPS")
+        return make_disk(provider, disk_type, size)
+    rng = iops_range(provider, disk_type, size)
+    recommended = default_iops(provider, disk_type, size) or (rng[0] if rng else 3000)
+    keep = int(current["iops"]) if same and current.get("iops") and int(current["iops"]) >= recommended else None
+    label = f"  IOPS ({rng[0]}–{rng[1]}; recommended {recommended} for {size} GB)" if rng else "  IOPS"
+    iops = int(_ask(label, keep or recommended, kind=click.IntRange(*rng) if rng else int))
+    return make_disk(provider, disk_type, size, iops)
+
+
 def _ask_groups(provider: str, disk_defaults: dict[str, Any]) -> list[dict[str, Any]]:
     """Interactive multi-group create (CAP-051 AC6): each answer is checked as it is given."""
     groups: list[dict[str, Any]] = []
@@ -391,11 +450,13 @@ def _ask_groups(provider: str, disk_defaults: dict[str, Any]) -> list[dict[str, 
                 break
         cpu, ram = _ask_node_size(provider, (4, 16))
         disk = dict(disk_defaults)
-        if "storage" in make_disk(provider, disk.get("type")) and disk.get("size") is None:
-            disk["size"] = _ask("  Disk GB per node", make_disk(provider, disk.get("type")).get("storage", 50), kind=int)
-        groups.append({"node": {"compute": {"cpu": cpu, "ram": ram},
-                                "disk": make_disk(provider, disk.get("type"), disk.get("size"), disk.get("iops"),
-                                                  disk.get("auto-expansion"))},
+        if disk.get("type") is None and disk.get("size") is None and disk.get("iops") is None:
+            chosen = _ask_disk(provider)
+        else:  # disk flags were given: they apply to every group, nothing to ask
+            chosen = make_disk(provider, disk.get("type"), disk.get("size"), disk.get("iops"))
+        if disk.get("auto-expansion") is not None:
+            chosen["autoExpansion"] = disk["auto-expansion"]
+        groups.append({"node": {"compute": {"cpu": cpu, "ram": ram}, "disk": chosen},
                        "numOfNodes": nodes, "services": services})
         if sum(g["numOfNodes"] for g in groups) > 25 or not console.ask_yes_no("Add another service group?", False):
             return groups
@@ -450,9 +511,10 @@ def _groups_line(groups: list[dict[str, Any]]) -> str:
 @click.option("--group", "groups", multiple=True, metavar="SPEC",
               help=f"A service group as {GROUP_SPEC}, e.g. data:3x8/32 (repeatable; replaces --nodes, --cpu, --ram, "
                    "--services and --size).")
-@click.option("--disk-type", help="Disk type (default per provider).")
+@click.option("--disk-type", help="Disk type (default per provider; see 'capellactl cluster disk-types').")
 @click.option("--disk-size", type=int, help="Disk GB per node.")
-@click.option("--disk-iops", type=int, help="Disk IOPS (AWS).")
+@click.option("--disk-iops", type=int, help="Disk IOPS (AWS gp3/io2, Azure Ultra; default: Capella's recommendation "
+                                            "for the size).")
 @click.option("--services", default=None, help="Comma-separated services (default data,index,query).")
 @click.option("--availability", type=click.Choice(["single", "multi"]), help="Availability zones (default multi).")
 @click.option("--support-plan", type=click.Choice(SUPPORT_PLANS), help="Support plan (asked; default developer pro).")
@@ -517,6 +579,7 @@ def cluster_create(state: AppState, name: str, project: str | None, free_tier: b
         provider_ = provider or (_ask("Cloud provider", answers.get("provider", "aws"), PROVIDERS)
                                  if interactive else "aws")
         layout: list[dict[str, Any]] | None = None
+        asked_disk: dict[str, Any] | None = None
         if groups:
             layout = data_first([parse_group_spec(g, provider_, disk_defaults) for g in groups])
             size_ = "custom"
@@ -537,6 +600,8 @@ def cluster_create(state: AppState, name: str, project: str | None, free_tier: b
                 preset["nodes"] = nodes or _ask("Nodes", answers.get("nodes", 3), kind=int)
                 preset["cpu"] = cpu or _ask("vCPUs per node", answers.get("cpu", 4), kind=int)
                 preset["ram"] = ram or _ask("RAM GB per node", answers.get("ram", 16), kind=int)
+                if disk_type is None and disk_size is None and disk_iops is None:
+                    asked_disk = answers.get("disk") or _ask_disk(provider_)
         region_ = region or (_ask("Region", answers.get("region", REGION_DEFAULT[provider_]))
                              if interactive else REGION_DEFAULT[provider_])
         cidr_ = cidr or (_ask("Network CIDR (must not overlap other clusters)", answers.get("cidr", suggest_cidr(used)))
@@ -544,14 +609,16 @@ def cluster_create(state: AppState, name: str, project: str | None, free_tier: b
         plan_ = support_plan or (_ask("Support plan", answers.get("support_plan", "developer pro"), SUPPORT_PLANS)
                                  if interactive else "developer pro")
         answers = {"provider": provider_, "size": size_, "region": region_, "cidr": cidr_, "support_plan": plan_,
-                   **{k: preset[k] for k in ("nodes", "cpu", "ram")}}
+                   **{k: preset[k] for k in ("nodes", "cpu", "ram")}, **({"disk": asked_disk} if asked_disk else {})}
         if layout is not None and not groups:
             answers["groups"] = layout
         single = bool(preset.get("single"))
         if layout is None:
+            disk_ = dict(asked_disk) if asked_disk else make_disk(provider_, disk_type, disk_size, disk_iops)
+            if disk_auto_expansion is not None:
+                disk_["autoExpansion"] = disk_auto_expansion
             layout = [{
-                "node": {"compute": {"cpu": cpu or preset["cpu"], "ram": ram or preset["ram"]},
-                         "disk": make_disk(provider_, disk_type, disk_size, disk_iops, disk_auto_expansion)},
+                "node": {"compute": {"cpu": cpu or preset["cpu"], "ram": ram or preset["ram"]}, "disk": disk_},
                 "numOfNodes": nodes or preset["nodes"],
                 "services": sorted(s.strip() for s in (services or "data,index,query").split(",") if s.strip()),
             }]
@@ -598,7 +665,7 @@ def cluster_create(state: AppState, name: str, project: str | None, free_tier: b
                 raise
             err(exc.message)
             err("Please try again.")
-            for k in bad:
+            for k in bad | ({"disk"} if "provider" in bad else set()):  # a disk belongs to its provider
                 answers.pop(k, None)
 
     sg = cluster["serviceGroups"]
@@ -731,15 +798,18 @@ def _record_server_version(ed: ConfigEditor, name: str, project_name: str, plan:
 @click.command("update", epilog="\b\nExamples:\n  capellactl cluster update nova-dev-01 --support-plan enterprise\n"
                                 "  capellactl cluster update nova-dev-01 --cpu 8 --ram 32\n"
                                 "  capellactl cluster update nova-dev-01            (asks what to change)\n"
-                                "  capellactl cluster update nova-az-01 --disk-auto-expansion  (azure)")
+                                "  capellactl cluster update nova-dev-01 --group data --disk-type io2 --disk-iops 20000\n"
+                                "  capellactl cluster update nova-az-01 --disk-auto-expansion  (azure)\n"
+                                "Disk types and what they mean: capellactl cluster disk-types")
 @click.argument("name")
 @click.option("--description", help="New description.")
 @click.option("--support-plan", type=click.Choice(SUPPORT_PLANS))
 @click.option("--support-timezone", type=click.Choice(TIMEZONES))
 @click.option("--cpu", type=int, help="vCPUs per node for the group.")
 @click.option("--ram", type=int, help="RAM GB per node for the group.")
+@click.option("--disk-type", help="Disk type for the group (see 'capellactl cluster disk-types').")
 @click.option("--disk-size", type=int, help="Disk GB per node for the group (cannot shrink).")
-@click.option("--disk-iops", type=int, help="Disk IOPS for the group (AWS).")
+@click.option("--disk-iops", type=int, help="Disk IOPS for the group (AWS gp3/io2, Azure Ultra).")
 @click.option("--disk-auto-expansion/--no-disk-auto-expansion", default=None,
               help="Azure: let the group's disk storage expand automatically.")
 @click.option("--group", metavar="SERVICES", help="Service group to change (default: the group running data).")
@@ -747,13 +817,14 @@ def _record_server_version(ed: ConfigEditor, name: str, project_name: str, plan:
 @click.option("--no-apply", is_flag=True, help="Only update capella.yaml; apply later.")
 @click.pass_obj
 def cluster_update(state: AppState, name: str, project: str | None, description: str | None, support_plan: str | None,
-                   support_timezone: str | None, cpu: int | None, ram: int | None, disk_size: int | None,
-                   disk_iops: int | None, disk_auto_expansion: bool | None, group: str | None, no_apply: bool) -> None:
+                   support_timezone: str | None, cpu: int | None, ram: int | None, disk_type: str | None,
+                   disk_size: int | None, disk_iops: int | None, disk_auto_expansion: bool | None, group: str | None,
+                   no_apply: bool) -> None:
     """Change a cluster's description, support plan, CPU/RAM or disk; records it in capella.yaml and applies."""
     ed = open_editor(state)
     proj_node, cl = locate(ed, name, project)
     if cl.get("tier") == "free":
-        if any(v is not None for v in (support_plan, support_timezone, cpu, ram, disk_size, disk_iops,
+        if any(v is not None for v in (support_plan, support_timezone, cpu, ram, disk_type, disk_size, disk_iops,
                                        disk_auto_expansion)):
             raise CliExit(ExitCode.BLOCKED, FREE_FIXED)
         if description is None:
@@ -771,15 +842,23 @@ def cluster_update(state: AppState, name: str, project: str | None, description:
         raise CliExit(ExitCode.CONFIG_INVALID, str(exc), topic="scaling") from None
     comp, disk = g["node"]["compute"], g["node"]["disk"]
     support = cl.get("support") or {}
-    fixed = fixed_size_disk((cl.get("cloudProvider") or {}).get("type"), disk.get("type"))
+    provider = str((cl.get("cloudProvider") or {}).get("type"))
+    after_plan: list[str] = []
+    if disk_type is not None and disk_type != disk.get("type"):
+        after_plan = _change_disk_type(provider, disk, disk_type, disk_size, disk_iops)
+    fixed = fixed_size_disk(provider, disk.get("type"))
     if fixed and (disk_size is not None or disk_iops is not None):
         raise CliExit(ExitCode.CONFIG_INVALID, f"{name} uses Azure disk type {disk.get('type')}, whose size and IOPS "
                                                "are set by the type; --disk-size and --disk-iops apply to Ultra disks "
                                                "only", topic="scaling")
-    if disk_auto_expansion is not None and (cl.get("cloudProvider") or {}).get("type") != "azure":
+    if disk_auto_expansion is not None and provider != "azure":
         raise CliExit(ExitCode.CONFIG_INVALID, "auto-expansion is for azure disks only", topic="scaling")
-    if not any(v is not None for v in (description, support_plan, support_timezone, cpu, ram, disk_size, disk_iops,
-                                       disk_auto_expansion)):
+    if disk_iops is not None and provider == "gcp":
+        raise CliExit(ExitCode.CONFIG_INVALID, "Google Cloud pd-ssd disks get their IOPS from their size (60 per GB); "
+                                               "use --disk-size to make the disk faster (capellactl cluster disk-types)",
+                      topic="scaling")
+    if not any(v is not None for v in (description, support_plan, support_timezone, cpu, ram, disk_type, disk_size,
+                                       disk_iops, disk_auto_expansion)):
         if not console.is_interactive():
             raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change; pass for example --support-plan, --cpu, "
                                                    "--ram or --disk-size")
@@ -808,7 +887,34 @@ def cluster_update(state: AppState, name: str, project: str | None, description:
     if disk_auto_expansion is not None:
         disk["autoExpansion"] = disk_auto_expansion
     change_and_apply(state, ed, f"cluster/{proj_node.get('name')}/{name}",
-                     f"Record these changes in capella.yaml and apply them to {name}?", no_apply)
+                     f"Record these changes in capella.yaml and apply them to {name}?", no_apply,
+                     after_plan=after_plan)
+
+
+def _change_disk_type(provider: str, disk: Any, new_type: str, size: int | None, iops: int | None) -> list[str]:
+    """Give a group's disk a new type in place (CAP-060 AC5): the size is kept where the new type allows it, IOPS
+    become the recommendation for the size unless given. Returns the plan lines that say what the type means."""
+    from capellactl.config.presets import disk_facts, disk_iops_text
+
+    facts = disk_facts(provider, new_type)
+    if facts is None:  # validation names the allowed types
+        disk["type"] = new_type
+        return []
+    keep = None if fixed_size_disk(provider, new_type) else (size if size is not None else disk.get("storage"))
+    allowed = facts.get("sizes")
+    if keep is not None and allowed and int(keep) not in allowed:
+        keep = None
+    fresh = make_disk(provider, new_type, int(keep) if keep is not None else None, iops)
+    for k in ("storage", "iops"):
+        disk.pop(k, None)
+    disk.update(fresh)
+    lines = [f"  disk type {new_type}: {facts.get('for')} (IOPS {disk_iops_text(facts)})"]
+    if provider == "aws":
+        lines.append("  AWS changes a disk in place at most once every 6 hours; otherwise Capella replaces and "
+                     "rebalances the nodes")
+    else:
+        lines.append("  Capella replaces and rebalances the group's nodes to change its disk type")
+    return lines
 
 
 # ------------------------------------------------------------------- scale
@@ -849,6 +955,7 @@ def cluster_options(state: AppState) -> None:
     versions_in_use = sorted({str((c.get("couchbaseServer") or {}).get("version")) for _, c in clusters
                               if (c.get("couchbaseServer") or {}).get("version")})
     known = {prov: [f"{cpu}/{ram}" for cpu, ram in kinds.get("sizes", [])] for prov, kinds in load_compute_sizes().items()}
+    disks = {prov: list(types) for prov, types in load_disk_types().items()}
     if state.json:
         out(dumps({
             "freeTier": {"available": in_use is None, "usedBy": in_use, "regions": FREE_TIER_REGIONS,
@@ -856,7 +963,7 @@ def cluster_options(state: AppState) -> None:
             "provisioned": {"providers": PROVIDERS, "sizes": PRESETS, "supportPlans": SUPPORT_PLANS,
                             "supportTimezones": TIMEZONES, "regionsInUse": regions_in_use,
                             "regionDefaults": REGION_DEFAULT, "services": SERVICES, "groupLimits": GROUP_LIMITS,
-                            "nodeSizes": known, "serverVersionsInUse": versions_in_use},
+                            "nodeSizes": known, "diskTypes": disks, "serverVersionsInUse": versions_in_use},
         }))
         return
     out(f"Cluster options for organization {client.org_id}")
@@ -880,6 +987,8 @@ def cluster_options(state: AppState) -> None:
     out("  node sizes       vCPU/RAM GB (from Capella's documentation; config/compute.yaml)")
     for prov, sizes_ in known.items():
         out(f"    {prov:<6} {', '.join(sizes_)}")
+    out("  disk types       " + " · ".join(f"{prov} {', '.join(types)}" for prov, types in disks.items()))
+    out("                   (size, speed and use of each: capellactl cluster disk-types)")
     if versions_in_use:
         out(f"  server versions  in use by your clusters: {', '.join(versions_in_use)}")
     out("  regions          any region of the provider" + (f"; in use by your clusters: {', '.join(regions_in_use)}"
@@ -888,6 +997,26 @@ def cluster_options(state: AppState) -> None:
     out("                    is rejected with Capella's message)")
     out("  deploy: capellactl cluster create NAME [--provider … --size …]")
     out("          capellactl cluster create NAME --group data:3x8/32 --group index,query:2x8/32 …  (several groups)")
+
+
+@click.command("disk-types", epilog="\b\nExamples:\n  capellactl cluster disk-types\n"
+                                    "  capellactl cluster disk-types --provider aws\n"
+                                    "  capellactl -o json cluster disk-types --provider azure")
+@click.option("--provider", type=click.Choice(PROVIDERS), help="Only this cloud provider's disk types.")
+@click.pass_obj
+def cluster_disk_types(state: AppState, provider: str | None) -> None:
+    """List the disk types you can choose per service group: size range, speed (IOPS) and what each is for."""
+    from capellactl.cli.resource_cmds import _list_table
+    from capellactl.output.render import dumps
+
+    if state.json:
+        out(dumps({p: types for p, types in load_disk_types().items() if provider in (None, p)}))
+        return
+    out(_list_table(disk_rows(provider)))
+    out("Without --disk-iops, gp3, io2 and Ultra disks get Capella's recommended IOPS for their size; a higher value "
+        "is allowed.")
+    out("Changing a running cluster's disk: AWS changes it in place at most once every 6 hours; otherwise, and on "
+        "Azure, Capella replaces and rebalances the nodes.")
 
 
 # -------------------------------------------------------------- step scale

@@ -410,7 +410,8 @@ def _remove_from_file(state: AppState, name: str) -> None:
                     "  capellactl cluster scale nova-dev-01 --nodes 5\n  capellactl cluster list\n"
                     "  capellactl cluster get nova-dev-01")
 def cluster() -> None:
-    """Clusters: options, list, get, create, clone, update, scale, delete, protect, power, schedule."""
+    """Clusters: options, disk-types, list, get, create, clone, update, scale, delete, protect, power, schedule, group,
+    backup."""
 
 
 def _cluster_rows(items: list[dict[str, Any]], project: bool = False) -> list[tuple[str, ...]]:
@@ -525,11 +526,12 @@ def cluster_scale(state: AppState, name: str, nodes: int | None, group: str | No
 
 def _register_cluster_ops() -> None:
     from capellactl.cli.cluster_lifecycle import cluster_delete, cluster_protect
-    from capellactl.cli.cluster_ops import cluster_create, cluster_options, cluster_update
+    from capellactl.cli.cluster_ops import cluster_create, cluster_disk_types, cluster_options, cluster_update
 
     cluster.add_command(cluster_create)
     cluster.add_command(cluster_update)
     cluster.add_command(cluster_options)
+    cluster.add_command(cluster_disk_types)
     cluster.add_command(cluster_delete)
     cluster.add_command(cluster_protect)
     from capellactl.cli.cluster_clone import cluster_clone
@@ -543,6 +545,9 @@ def _register_cluster_ops() -> None:
     from capellactl.cli.cluster_group import group
 
     cluster.add_command(group)
+    from capellactl.cli.cluster_backup import backup
+
+    cluster.add_command(backup)
 
 
 _register_cluster_ops()
@@ -567,8 +572,10 @@ credential = _credential_group()
 
 
 def _bucket_group() -> click.Group:
+    from capellactl.cli.bucket_backup import backup as bucket_backup
     from capellactl.cli.bucket_cmds import bucket
 
+    bucket.add_command(bucket_backup)
     return bucket
 
 

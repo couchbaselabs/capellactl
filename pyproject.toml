@@ -65,6 +65,7 @@ packages = ["capellactl"]
 "capellactl/config/schema.json" = "capellactl/config/schema.json"
 "capellactl/config/presets.yaml" = "capellactl/config/presets.yaml"
 "capellactl/config/compute.yaml" = "capellactl/config/compute.yaml"
+"capellactl/config/disks.yaml" = "capellactl/config/disks.yaml"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

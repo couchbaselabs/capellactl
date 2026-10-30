@@ -67,7 +67,8 @@ def _carry_over_project(prev: dict[str, Any] | None, res: Any) -> list[str]:
 
 
 UNREAD_LABELS = {"allowedCidrs": "allowed CIDRs", "buckets": "buckets, scopes and collections",
-                 "databaseCredentials": "database credentials", "hibernation": "hibernation schedule"}
+                 "databaseCredentials": "database credentials", "hibernation": "hibernation schedule",
+                 "backupSchedule": "backup schedule"}
 
 
 def _keep_unread(prev: dict[str, Any] | None, res: Any, file_name: str) -> None:
@@ -90,17 +91,24 @@ def _keep_unread(prev: dict[str, Any] | None, res: Any, file_name: str) -> None:
         moved: dict[str, Any] = {}
         unkept = False
         for f in info["fields"]:
-            if f.startswith("scopes:"):
-                bucket = f.split(":", 1)[1]
+            if f.startswith(("scopes:", "bucketBackup:")):
+                part, bucket = f.split(":", 1)
+                field_ = "scopes" if part == "scopes" else "backupSchedule"
                 ob = next((b for b in old.get("buckets") or [] if isinstance(b, dict) and b.get("name") == bucket), None)
                 nb = next((b for b in cl.get("buckets") or [] if b.get("name") == bucket), None)
-                if ob and ob.get("scopes") and nb is not None:
-                    nb["scopes"] = ob["scopes"]
-                    kept.append(f"scopes of bucket {bucket}")
+                if ob and ob.get(field_) and nb is not None:
+                    if field_ == "backupSchedule":  # before the scopes
+                        scopes_ = nb.pop("scopes", None)
+                        nb[field_] = ob[field_]
+                        if scopes_ is not None:
+                            nb["scopes"] = scopes_
+                    else:
+                        nb[field_] = ob[field_]
+                    kept.append(f"{'scopes' if part == 'scopes' else 'backup schedule'} of bucket {bucket}")
             elif old.get(f):
                 moved[f] = old[f]
                 kept.append(UNREAD_LABELS[f])
-            else:
+            elif f != "backupSchedule":  # no schedule in the file: nothing to keep, nothing lost
                 unkept = True
         if not kept:
             continue
