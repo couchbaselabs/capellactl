@@ -50,7 +50,7 @@ def test_sync_ac9_keeps_access_capella_lost(fake, run, airline):
     user["access"] = []
     r = run("sync", extra_env=PW)
     assert r.exit_code == 0, r.output
-    assert "credential nova-dev-01/airline_app has no access in Capella; kept its access" in r.output
+    assert "[WARNING]: credential nova-dev-01/airline_app has no access in Capella; capella.yaml keeps the access it had\n[ACTION]: Run 'capellactl apply'" in r.output
     cred = next(u for u in yaml.safe_load(cfg.read_text(encoding="utf-8"))["projects"][0]["clusters"][0]["databaseCredentials"]
                 if u["name"] == "airline_app")
     assert cred["password"] == "${AIRLINE_PW}" and cred["access"][0]["resources"]["buckets"][0]["name"] == "demo"

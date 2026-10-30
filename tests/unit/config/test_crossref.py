@@ -40,8 +40,8 @@ def _err(tmp_path, text) -> str:
 @pytest.mark.story("CAP-002", "AC4")
 def test_crossref_ac4_unknown_bucket(tmp_path):
     msg = _err(tmp_path, MINIMAL + DATA.format(bucket="ordrs", extra=""))
-    assert ("clusters[0].databaseCredentials[0].access[0].resources.buckets[0].name: bucket 'ordrs' is not "
-            "defined in cluster 'nova-dev-01'") in msg
+    assert "credential app › access[0].resources.buckets[0].name" in msg
+    assert "bucket 'ordrs', which capella.yaml does not list for cluster 'nova-dev-01'" in msg
 
 
 @pytest.mark.story("CAP-002", "AC4")

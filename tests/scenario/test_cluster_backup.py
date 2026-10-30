@@ -50,6 +50,24 @@ def test_cluster_backup_ac1_list_project(fake, run, three):
     assert fake.calls("GET", "*/projects/*/cloudsnapshotbackups")
 
 
+@pytest.mark.story("CAP-057", "AC1")
+def test_cluster_backup_ac1_list_every_project(fake, run, three):
+    """Without NAME or --project, a capella.yaml with several projects lists every project's clusters."""
+    pid = fake.seed_project("non-prod")
+    other = fake.seed_cluster(pid, "web-01")
+    fake.seed_snapshot(other, created_at="2026-10-29T02:00:00Z")
+    assert run("sync").exit_code == 0
+    r = run("cluster", "backup", "list")
+    assert r.exit_code == 0, r.output
+    lines = r.output.splitlines()
+    assert lines[0].split() == ["S.NO", "CLUSTER", "PROJECT", "REGION", "NEWEST", "OLDEST", "CLUSTER", "ID"]
+    assert [line.split()[1:3] for line in lines[1:]] == [["nova-dev-01", "nova-dev"], ["web-01", "non-prod"]]
+    r = run("cluster", "backup", "list", "--project", "non-prod")
+    assert r.exit_code == 0 and "PROJECT" not in r.output and "nova-dev-01" not in r.output, r.output
+    data = json.loads(run("-o", "json", "cluster", "backup", "list").output)
+    assert {c["projectName"] for c in data} == {"nova-dev", "non-prod"}
+
+
 @pytest.mark.story("CAP-057", "AC2")
 def test_cluster_backup_ac2_create_waits(fake, run, imported):
     r = run("--auto-approve", "cluster", "backup", "create", "nova-dev-01", "--retain", "7d", "--copy-to", "us-west-2")
@@ -144,7 +162,7 @@ def test_cluster_backup_ac5_restore_turned_off(fake, run, three):
     cid, ids = three
     fake.set_transition(cid, ["turnedOff"])
     r = run("--auto-approve", "cluster", "backup", "restore", "nova-dev-01", ids[1])
-    assert r.exit_code == 4 and "turned off; power it on before restoring" in r.output
+    assert r.exit_code == 4 and "turned off\n[ACTION]: Turn it on with 'capellactl cluster power" in r.output
     assert fake.writes() == []
 
 

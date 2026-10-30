@@ -43,6 +43,9 @@ class WaitFailed(Exception):
     def __init__(self, name: str, state: str) -> None:
         super().__init__(f"cluster {name} entered {state}; check the Capella UI activity log")
         self.state = state
+        self.what = f"cluster {name} entered {state}"
+        self.action = ("Open the cluster's activity log in the Capella UI to see why, fix the cause, then run the "
+                       "command again.")
 
 
 class WaitTimeout(Exception):
@@ -52,6 +55,9 @@ class WaitTimeout(Exception):
             "the operation continues in Capella; re-run to resume waiting"
         )
         self.state = state
+        self.what = (f"cluster {name} is still {state} after {format_duration(timeout.total_seconds())}; the operation "
+                     "continues in Capella")
+        self.action = "Run the command again to wait for it to finish, or pass a longer --timeout (for example 90m)."
 
 
 def poll_intervals() -> list[float]:
@@ -107,21 +113,29 @@ def wait_for_cluster(
         if elapsed >= timeout.total_seconds():
             raise WaitTimeout(label, state, timeout)
         sleep_for = min(interval, MAX_POLL, max(0.0, timeout.total_seconds() - elapsed) or interval)
-        wake = elapsed + sleep_for
-        while on_tick and next_tick <= wake:  # sleep in slices so a tick lands every TICK seconds
-            clock.sleep(next_tick - (clock.monotonic() - start))
-            on_tick()
-            next_tick += TICK
-        rest = wake - (clock.monotonic() - start)
-        if rest > 0:
-            clock.sleep(rest)
+        next_tick = _sleep(clock, start, elapsed + sleep_for, next_tick, on_tick)
         interval = min(interval * POLL_FACTOR, MAX_POLL)
+
+
+def _sleep(clock: Clock, start: float, wake: float, next_tick: float, on_tick: Callable[[], None] | None) -> float:
+    """Sleep until `wake` seconds after `start`, in slices so `on_tick` lands every TICK seconds; returns the next
+    tick."""
+    while on_tick and next_tick <= wake:
+        clock.sleep(next_tick - (clock.monotonic() - start))
+        on_tick()
+        next_tick += TICK
+    rest = wake - (clock.monotonic() - start)
+    if rest > 0:
+        clock.sleep(rest)
+    return next_tick
 
 
 class StatusFailed(Exception):
     def __init__(self, label: str, state: str) -> None:
         super().__init__(f"{label} ended {state}; check the Capella UI activity log")
         self.state = state
+        self.what = f"{label} ended {state}"
+        self.action = "Open the activity log in the Capella UI to see why, fix the cause, then run the command again."
 
 
 class StatusTimeout(Exception):
@@ -129,6 +143,8 @@ class StatusTimeout(Exception):
         super().__init__(f"{label} still {state} after {format_duration(timeout.total_seconds())}; it continues in "
                          "Capella")
         self.state = state
+        self.what = f"{label} is still {state} after {format_duration(timeout.total_seconds())}; it continues in Capella"
+        self.action = "Check on it later in the Capella UI, or pass a longer --timeout (for example 90m) next time."
 
 
 def wait_for_status(
@@ -139,10 +155,13 @@ def wait_for_status(
     clock: Clock,
     label: str,
     on_state: Callable[[str, float], None] | None = None,
+    on_tick: Callable[[], None] | None = None,
 ) -> str:
     """Poll `read()` (a backup's, export's or restore's status; None while Capella does not list it yet) with the
-    cluster waiter's intervals until a `done` or `failed` status, or the timeout (CAP-057, CAP-059)."""
+    cluster waiter's intervals until a `done` or `failed` status, or the timeout (CAP-057, CAP-059). `on_tick` as
+    for wait_for_cluster."""
     start = clock.monotonic()
+    next_tick = TICK
     interval = FIRST_POLL
     last: str | None = None
     while True:
@@ -158,5 +177,5 @@ def wait_for_status(
             raise StatusFailed(label, state)
         if elapsed >= timeout.total_seconds():
             raise StatusTimeout(label, state, timeout)
-        clock.sleep(min(interval, MAX_POLL))
+        next_tick = _sleep(clock, start, elapsed + min(interval, MAX_POLL), next_tick, on_tick)
         interval = min(interval * POLL_FACTOR, MAX_POLL)

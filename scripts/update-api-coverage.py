@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """Generate the Management API coverage reports.
 
-  docs/release-1.0.0/API-COVERAGE.md                operational database (release 1.0.0 and its backlog)
+  docs/release-1.0.0/API-COVERAGE.md                operational database (release 1.0.0)
+  docs/release-1.5.0/API-COVERAGE.md                the rest of the operational database (release 1.5.0)
   docs/release-2.0.0/API-COVERAGE-APP-SERVICES.md   App Services and App Endpoints (release 2.0.0)
 
 Inputs: the operation list of the Management API spec (docs/api/management-api-v4.0-operations.json, an offline
-snapshot so CI needs no network), the command dictionary below, and the **Status** of each story file. A
-command's status is derived from its stories (all Implemented: done; some: partial; none: not built), and
-an operation's status from its commands. Marking a story Implemented and re-running this script is enough to
-update the reports; never edit them by hand.
+snapshot so CI needs no network), the command dictionary below, and the **Status** of each story file
+(docs/release-*/CAP-*.md; a story's release is its directory). A command's status is derived from its stories
+(all Implemented: done; some: partial; none: not built), and an operation's status from its commands. In a
+release's report, stories of a later release don't count: their operations show as not in that release. Marking a
+story Implemented and re-running this script is enough to update the reports; never edit them by hand.
 
 Usage:
-  python3 scripts/update-api-coverage.py            write both reports
+  python3 scripts/update-api-coverage.py            write the reports
   python3 scripts/update-api-coverage.py --check    exit 1 when a report is stale (CI)
   python3 scripts/update-api-coverage.py --refresh-spec [URL]
                                                     re-download the spec into the snapshot (needs network and
@@ -31,8 +33,10 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SNAPSHOT = ROOT / "docs" / "api" / "management-api-v4.0-operations.json"
-STORIES = ROOT / "docs" / "release-1.0.0"
-OUT_DB = STORIES / "API-COVERAGE.md"
+REL10, REL15 = "1.0.0", "1.5.0"
+STORY_DIRS = [ROOT / "docs" / f"release-{r}" for r in (REL10, REL15)]
+OUT_DB = ROOT / "docs" / "release-1.0.0" / "API-COVERAGE.md"
+OUT_15 = ROOT / "docs" / "release-1.5.0" / "API-COVERAGE.md"
 OUT_AS = ROOT / "docs" / "release-2.0.0" / "API-COVERAGE-APP-SERVICES.md"
 SPEC_URL = "https://docs.couchbase.com/cloud/management-api-reference/_attachments/openapi.external.generated.yaml"
 REF = "https://docs.couchbase.com/cloud/management-api-reference/index.html#tag/"
@@ -49,7 +53,7 @@ ORDER = [DONE, PART, TODO, NONE, LATER]
 NO_STORY = "none"  # requirement with no story yet (a gap): never counts as implemented
 
 # ======================================================================== command dictionary
-# name: (stories, what's left while not done). No stories: outside 1.0.0 (a proposed name).
+# name: (stories, what's left while not done). No stories: in no release yet (a proposed name).
 COMMANDS: dict[str, tuple[tuple[str, ...], str]] = {}
 
 
@@ -114,35 +118,49 @@ for n in ("list", "get"):
 for n in ("list", "get", "create", "delete", "restore", "export"):
     cmd(f"bucket backup {n}", "CAP-059", "Bucket backups; `delete` removes the whole cycle.")
 
-PROPOSED = """
-org update
-apikey list|apikey get|apikey create|apikey delete|apikey rotate
-user list|user get|user create|user update|user delete
-cmek accounts|cmek azure-app|cmek create|cmek list|cmek get|cmek history|cmek rotate|cmek delete|cmek enable-provider|cmek associate|cmek unassociate
-audit-log get|audit-log update|audit-log events|audit-log export create|audit-log export list|audit-log export get
-cluster migrate-buckets|cluster certificate
-db-role privileges|db-role list|db-role get|db-role create|db-role update|db-role delete
-bucket flush
-sample-bucket load|sample-bucket list|sample-bucket get|sample-bucket delete
-cluster backup clone
-peer create|peer list|peer get|peer delete|peer azure-command
-private-endpoint show|private-endpoint enable|private-endpoint update|private-endpoint disable|private-endpoint list|private-endpoint command|private-endpoint accept|private-endpoint reject
-alert create|alert list|alert channels|alert get|alert update|alert delete|alert test
-event list|event get
-index manage|index list|index get|index status
-replication list|replication get|replication create|replication update|replication delete|replication pause|replication resume|replication job
-data-api show|data-api update|data-api endpoint-command|data-api endpoint list|data-api endpoint accept|data-api endpoint reject
-billing get|billing prepaid|billing payg|billing download
-eventing list|eventing get|eventing create|eventing update|eventing delete|eventing code get|eventing code set|eventing state|eventing logs
-insights list|insights get|insights create|insights update|insights delete|insights power on|insights power off
-insights schedule show|insights schedule set|insights schedule delete|insights cidr list|insights cidr get|insights cidr create|insights cidr delete
-insights backup list|insights backup create|insights backup retain|insights backup delete|insights backup restore|insights backup restores
-insights backup schedule show|insights backup schedule set|insights backup schedule delete
-insights private-endpoint show|insights private-endpoint enable|insights private-endpoint disable|insights private-endpoint command|insights private-endpoint list|insights private-endpoint accept|insights private-endpoint reject
-"""
-for _line in PROPOSED.strip().splitlines():
-    for _n in _line.split("|"):
-        cmd(_n.strip())
+# Release 1.5.0: the rest of the operational database. (group, verbs, stories, what's left).
+RELEASE_15 = [
+    ("db-role", "privileges|list|get|create|update|delete", "CAP-064",
+     "Custom roles in capella.yaml; `credential create/update --role` sends `userRoles`."),
+    ("sample-bucket", "load|list|get|delete", "CAP-065", "Imperative; samples are not drift."),
+    ("bucket", "flush", "CAP-066", "Typed confirmation; needs `flush: true` on the bucket."),
+    ("index", "create|drop|build|list|get|status", "CAP-067",
+     "`indexes` under a collection; changed keys are a replace; deferred create + one build."),
+    ("eventing", "list|get|create|update|delete|code get|code set|state|logs", "CAP-068",
+     "`eventingFunctions` with code from files; pause/resume around changes."),
+    ("data-api", "show|update|endpoint-command|endpoint list|endpoint accept|endpoint reject", "CAP-069",
+     "`dataApi` block; private endpoints accepted from the CLI."),
+    ("replication", "list|get|create|update|delete|pause|resume|job", "CAP-070",
+     "`replications` under the source cluster; deleted before their buckets."),
+    ("cluster backup", "clone", "CAP-071", "New cluster from a snapshot backup."),
+    ("cluster", "migrate-buckets", "CAP-072", "Couchstore ↔ Magma."),
+    ("cluster", "certificate", "CAP-073", "Prints or saves the CA certificate."),
+    ("peer", "create|list|get|delete|azure-command", "CAP-074", "`networkPeers`; a change is a replace."),
+    ("private-endpoint", "show|enable|update|disable|list|command|accept|reject", "CAP-075",
+     "`privateEndpointService` with routes and accepted endpoints."),
+    ("audit-log", "get|update|events|export create|export list|export get", "CAP-076",
+     "`auditLog` by event, name or module; exports downloaded."),
+    ("cmek", "accounts|azure-app|create|list|get|history|rotate|delete|enable-provider|associate|unassociate", "CAP-077",
+     "Organization and Azure project keys; rotation, never pruned."),
+    ("org", "update", "CAP-078", "Subdomain, with `If-Match`."),
+    ("user", "list|get|create|update|delete", "CAP-079", "Organization and project roles; imperative."),
+    ("apikey", "list|get|create|delete|rotate", "CAP-080", "Token stored in a profile, a file or shown once."),
+    ("alert", "create|list|channels|get|update|delete|test", "CAP-081",
+     "`alertIntegrations` per project; secrets only as `${env:…}`."),
+    ("event", "list|get", "CAP-082", "Filters, pagination and `--follow`."),
+    ("billing", "get|prepaid|payg|download", "CAP-083", "Categorized and itemized reports."),
+    ("insights", "list|get|create|update|delete|power on|power off", "CAP-084",
+     "`insightsClusters` per project."),
+    ("insights schedule", "show|set|delete", "CAP-085", "Same model as `cluster schedule` (CAP-020)."),
+    ("insights cidr", "list|get|create|delete", "CAP-086", "Same model as `cidr` (CAP-022)."),
+    ("insights backup", "list|create|retain|delete|restore|restores|schedule show|schedule set|schedule delete",
+     "CAP-087", "Same model as `cluster backup` (CAP-056, CAP-057)."),
+    ("insights private-endpoint", "show|enable|disable|command|list|accept|reject", "CAP-088",
+     "Same model as `private-endpoint` (CAP-075)."),
+]
+for _group, _verbs, _stories, _left in RELEASE_15:
+    for _v in _verbs.split("|"):
+        cmd(f"{_group} {_v}", _stories, _left)
 
 # Workflow commands: not one-to-one with an API operation. (name, stories, note)
 WORKFLOW = [
@@ -245,7 +263,7 @@ op("GET", BKT, "bucket get")
 op("PUT", BKT, "bucket update", "Immutable fields (type, storage backend, vbuckets, conflict resolution, eviction) are "
    "blocked.")
 op("DELETE", BKT, "bucket delete")
-op("PUT", BKT + "/flush", "bucket flush", "Deliberately not exposed in 1.0.0 (CAP-024).")
+op("PUT", BKT + "/flush", "bucket flush", "Not exposed in 1.0.0 (CAP-024); 1.5.0 adds it behind a typed confirmation.")
 op("GET", BKT + "/scopes", "scope list", "Also read by `plan`, `import` and `collection delete`.")
 op("POST", BKT + "/scopes", "scope create", "Also `collection create` for a new scope, and `apply`.")
 op("GET", BKT + "/scopes/{scopeName}", "scope delete", "Lists the collections the confirmation shows.")
@@ -277,7 +295,7 @@ op("GET", CLU + "/sampleBuckets", "sample-bucket list")
 op("GET", CLU + "/sampleBuckets/{bucketId}", "sample-bucket get")
 op("DELETE", CLU + "/sampleBuckets/{bucketId}", "sample-bucket delete")
 # Query indexes
-op("POST", CLU + "/queryService/indexes", "index manage")
+op("POST", CLU + "/queryService/indexes", "index create / index drop / index build", "One `CREATE`, `DROP` or `BUILD INDEX` statement per call.")
 op("GET", CLU + "/queryService/indexes", "index list")
 op("GET", CLU + "/queryService/indexes/{indexName}", "index get")
 op("GET", CLU + "/queryService/indexBuildStatus/{indexName}", "index status")
@@ -336,8 +354,8 @@ op("GET", CS + "/regions", "cluster backup regions / cluster backup schedule opt
 op("PUT", CS + "/{backupId}", "cluster backup retain", "Changes retention.")
 op("DELETE", CS + "/{backupId}", "cluster backup delete")
 op("POST", CS + "/{backupId}/restore", "cluster backup restore")
-op("POST", PRJ + "/cloudsnapshotbackups/{backupId}/clone", "cluster backup clone", "Creates a cluster; out of "
-   "scope of CAP-057.")
+op("POST", PRJ + "/cloudsnapshotbackups/{backupId}/clone", "cluster backup clone", "Creates a new cluster from the "
+   "backup.")
 op("GET", CLU + "/cloudsnapshotbackupschedule", "cluster backup schedule show", "Also read by plan, sync and drift.")
 op("PUT", CLU + "/cloudsnapshotbackupschedule", "cluster backup schedule set")
 op("DELETE", CLU + "/cloudsnapshotbackupschedule", "cluster backup schedule delete")
@@ -361,7 +379,7 @@ op("POST", PE + "/endpointCommand", "private-endpoint command")
 op("POST", PE + "/endpoints/{endpointId}/associate", "private-endpoint accept")
 op("POST", PE + "/endpoints/{endpointId}/unassociate", "private-endpoint reject")
 # Certificates
-op("GET", CLU + "/certificates", "cluster certificate", "Useful for TLS client setup; a cheap candidate for 1.1.")
+op("GET", CLU + "/certificates", "cluster certificate", "Useful for TLS client setup.")
 # Audit logs
 op("GET", CLU + "/auditLog", "audit-log get")
 op("PUT", CLU + "/auditLog", "audit-log update")
@@ -615,34 +633,59 @@ def pct(a: int, b: int) -> str:
 
 
 def load_stories() -> dict[str, dict[str, str]]:
-    """{id: {status, title, file}} from each story's header table."""
+    """{id: {status, title, file, release}} from each story's header table."""
     out = {}
-    for f in sorted(STORIES.glob("CAP-*.md")):
-        lines = f.read_text(encoding="utf-8").splitlines()
-        m = re.match(r"^# (CAP-\d+) — (.+)$", lines[0])
-        row = next((ln for ln in lines[1:8] if ln.startswith("|") and not ln.startswith("|---")
-                    and "Status" not in ln), None)
-        if not m or row is None:
-            sys.exit(f"{f.name}: cannot read the story header")
-        out[m.group(1)] = {"status": [c.strip() for c in row.strip("|").split("|")][-1], "title": m.group(2),
-                           "file": f.name}
+    for d in STORY_DIRS:
+        for f in sorted(d.glob("CAP-*.md")):
+            lines = f.read_text(encoding="utf-8").splitlines()
+            m = re.match(r"^# (CAP-\d+) — (.+)$", lines[0])
+            row = next((ln for ln in lines[1:8] if ln.startswith("|") and not ln.startswith("|---")
+                        and "Status" not in ln), None)
+            if not m or row is None:
+                sys.exit(f"{f.name}: cannot read the story header")
+            out[m.group(1)] = {"status": [c.strip() for c in row.strip("|").split("|")][-1], "title": m.group(2),
+                               "file": f.name, "release": d.name.removeprefix("release-")}
     return out
 
 
-def status_of(stories: tuple[str, ...], known: dict[str, dict[str, str]]) -> str:
+def ver(release: str) -> tuple[int, ...]:
+    return tuple(int(x) for x in release.split("."))
+
+
+def in_release(stories: tuple[str, ...], known: dict[str, dict[str, str]], release: str) -> tuple[str, ...]:
+    """The stories delivered by `release` or an earlier one (a gap counts in every release)."""
+    return tuple(s for s in stories if s == NO_STORY or ver(known[s]["release"]) <= ver(release))
+
+
+def release_of(stories: tuple[str, ...], known: dict[str, dict[str, str]]) -> str:
+    """The release that completes these stories: the latest of theirs ("" when none has a story)."""
+    rels = [known[s]["release"] for s in stories if s != NO_STORY]
+    return max(rels, key=ver) if rels else ""
+
+
+def story_link(s: str, known: dict[str, dict[str, str]], here: str) -> str:
+    """Link to a story file from the report of release `here`."""
+    k = known[s]
+    return k["file"] if k["release"] == here else f"../release-{k['release']}/{k['file']}"
+
+
+def status_of(stories: tuple[str, ...], known: dict[str, dict[str, str]], release: str) -> str:
+    stories = in_release(stories, known, release)
     if not stories:
         return LATER
     done = [s != NO_STORY and known[s]["status"] in ("Implemented", "Descoped") for s in stories]
     return DONE if all(done) else PART if any(done) else TODO
 
 
-def open_stories(stories: tuple[str, ...], known: dict[str, dict[str, str]]) -> list[str]:
-    return [s for s in stories if s == NO_STORY or known[s]["status"] not in ("Implemented", "Descoped")]
+def open_stories(stories: tuple[str, ...], known: dict[str, dict[str, str]], release: str) -> list[str]:
+    return [s for s in in_release(stories, known, release)
+            if s == NO_STORY or known[s]["status"] not in ("Implemented", "Descoped")]
 
 
-# ======================================================================== operational-database report
-def build_db(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> str:  # noqa: C901 - one report, top to bottom
-    all_ops = snapshot["operations"]
+def collect_ops(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> tuple[list[dict[str, Any]],
+                                                                                    collections.Counter[str]]:
+    """Every operational-database operation with its commands and stories, after checking the maps."""
+    excl: collections.Counter[str] = collections.Counter()
     for stories, _ in COMMANDS.values():
         for s in stories:
             if s != NO_STORY and s not in known:
@@ -651,10 +694,8 @@ def build_db(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> str:
         for s in (x.strip() for x in stories.split(",")):
             if s not in known:
                 sys.exit(f"workflow command names unknown story {s}")
-    cmd_status = {n: status_of(st, known) for n, (st, _) in COMMANDS.items()}
-
-    ops, excl = [], collections.Counter()
-    for o in all_ops:
+    ops = []
+    for o in snapshot["operations"]:
         tag, m, p = o["tag"], o["method"], o["path"]
         if is_app_services(tag, p):
             excl["as"] += 1
@@ -673,20 +714,64 @@ def build_db(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> str:
             if s != NO_STORY and s not in known:
                 sys.exit(f"{m} {p}: unknown story {s}")
         base = spec["stories"] or tuple(dict.fromkeys(s for n in names for s in COMMANDS[n][0]))
-        stories = base + spec["requires"]
-        if spec["status"]:
-            st = spec["status"]
-        else:
-            st = status_of(stories, known)
-            if st == TODO and spec["partial_use"]:
-                st = PART
-        ops.append({"tag": tag, "method": m, "path": p, "summary": o["summary"], "status": st, "names": names,
-                    "stories": stories, **{k: spec[k] for k in ("commands", "note", "left", "requires")}})
+        ops.append({"tag": tag, "method": m, "path": p, "summary": o["summary"], "names": names,
+                    "stories": base + spec["requires"], "fixed": spec["status"],
+                    **{k: spec[k] for k in ("commands", "note", "left", "requires", "partial_use")}})
     extra = set(OPS) - {(o["method"], o["path"]) for o in ops}
     if extra:
         sys.exit(f"OPS maps operations that are not in the spec snapshot: {sorted(extra)}")
     if {o["tag"] for o in ops} != {a[0] for a in AREAS}:
         sys.exit(f"spec tags changed: {sorted({o['tag'] for o in ops} ^ {a[0] for a in AREAS})}")
+    return ops, excl
+
+
+def op_status(o: dict[str, Any], known: dict[str, dict[str, str]], release: str) -> str:
+    if o["fixed"]:
+        return str(o["fixed"])
+    st = status_of(o["stories"], known, release)
+    return PART if st == TODO and o["partial_use"] else st
+
+
+def breakdown(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> list[str]:
+    """The same table in every report: where each operation in the spec is tracked."""
+    ops, excl = collect_ops(snapshot, known)
+    rows: dict[str, list[int]] = collections.defaultdict(lambda: [0, 0])  # group: [operations, done]
+    for o in ops:
+        if o["fixed"] == NONE:
+            group = "none"
+        else:
+            group = release_of(o["stories"], known) or (REL10 if o["fixed"] else "")
+        rows[group][0] += 1
+        rows[group][1] += op_status(o, known, group or REL15) == DONE
+    r10, r15, r20 = ("../release-1.0.0/API-COVERAGE.md", "../release-1.5.0/API-COVERAGE.md",
+                     "../release-2.0.0/API-COVERAGE-APP-SERVICES.md")
+    # (group, operations, done or None when the group is never built, tracked in)
+    table: list[tuple[str, int, int | None, str]] = [
+        ("Operational database, release 1.0.0", *rows[REL10], f"[1.0.0 report]({r10})"),
+        ("Operational database, not needed (another operation gives the same data)", rows["none"][0], None,
+         f"[1.0.0 report]({r10})"),
+        ("Operational database, release 1.5.0", *rows[REL15], f"[1.5.0 report]({r15})")]
+    if rows[""][0]:
+        table.append(("Operational database, no release yet", *rows[""], "—"))
+    table += [("App Services / App Endpoints, release 2.0.0", excl["as"], 0, f"[2.0.0 report]({r20})"),
+              ("AI (AI Data Plane, AI Workflows, Models, AI Agent Memory, MCP servers and tools)", excl["ai"], None,
+               "Not planned")]
+    total = sum(n for _, n, _, _ in table)
+    if total != len(snapshot["operations"]):
+        sys.exit(f"operation breakdown adds up to {total}, the spec has {len(snapshot['operations'])}")
+    out = ["**Where the spec's operations go**\n", "| Group | Operations | ✅ Done | Tracked in |", "|---|---|---|---|"]
+    out += [f"| {g} | {n} | {'—' if d is None else d} | {where} |" for g, n, d, where in table]
+    out += [f"| **Total in the spec** | **{total}** | **{sum(d or 0 for _, _, d, _ in table)}** | |", ""]
+    return out
+
+
+# ======================================================================== operational-database report
+def build_db(snapshot: dict[str, Any], known: dict[str, dict[str, str]], table: list[str]) -> str:  # noqa: C901 - one report, top to bottom
+    all_ops = snapshot["operations"]
+    ops, excl = collect_ops(snapshot, known)
+    for o in ops:
+        o["status"] = op_status(o, known, REL10)
+    cmd_status = {n: status_of(st, known, REL10) for n, (st, _) in COMMANDS.items()}
 
     cmd_ops: dict[str, list[str]] = collections.defaultdict(list)
     for o in ops:
@@ -702,7 +787,7 @@ def build_db(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> str:
     oc, o10 = count(ops), count(ops10)
     cc = collections.Counter(cmd_status.values())
     c10 = collections.Counter(cmds10.values())
-    wf = [(n, status_of(tuple(x.strip() for x in st.split(",")), known), st, note) for n, st, note in WORKFLOW]
+    wf = [(n, status_of(tuple(x.strip() for x in st.split(",")), known, REL10), st, note) for n, st, note in WORKFLOW]
     wc = collections.Counter(s for _, s, _, _ in wf)
     by: dict[str, list[dict[str, Any]]] = collections.defaultdict(list)
     for o in ops:
@@ -723,6 +808,7 @@ def build_db(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> str:
     w(f"- **{excl['as']} App Services / App Endpoints operations**, including the 4 free-tier App Service operations. "
       "They are tracked in [release 2.0.0: App Services API coverage](../release-2.0.0/API-COVERAGE-APP-SERVICES.md).")
     w(f"- **{excl['ai']} AI operations** (AI Data Plane, AI Workflows, Models, AI Agent Memory, MCP servers and tools). Not planned for now.\n")
+    out += table
     w("**Status legend**\n")
     w("| Status | Meaning |\n|---|---|")
     w(f"| {DONE} | capellactl calls this operation, from a command, from `plan`/`apply`, or internally, and every story "
@@ -732,8 +818,8 @@ def build_db(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> str:
     w(f"| {TODO} | Planned for 1.0.0 in a story that is not Implemented yet. Its command may exist as a stub that "
       "prints \"not available in this build\". |")
     w(f"| {NONE} | Not needed: another operation already provides the same data. |")
-    w(f"| {LATER} | Outside the 1.0.0 scope (see [00-architecture.md §14](00-architecture.md)). Command names for "
-      "these rows are proposals. |")
+    w(f"| {LATER} | Outside the 1.0.0 scope (see [00-architecture.md §14](00-architecture.md)). Planned for "
+      "[release 1.5.0](../release-1.5.0/API-COVERAGE.md), which tracks their stories. |")
     w("")
     w("## Summary\n")
     w("### API operations\n")
@@ -745,13 +831,13 @@ def build_db(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> str:
       f"{pct(oc[0], len(ops))} |")
     w("")
     w("### Commands\n")
-    w("| | Commands | ✅ Done | 🟡 Partial | ⬜ Not built (stub) | ⏭️ Not in 1.0 (proposed) | Coverage (done / total) |")
+    w("| | Commands | ✅ Done | 🟡 Partial | ⬜ Not built (stub) | ⏭️ Not in 1.0 | Coverage (done / total) |")
     w("|---|---|---|---|---|---|---|")
     w(f"| **Resource commands planned for 1.0.0** | **{len(cmds10)}** | {c10[DONE]} | {c10[PART]} | {c10[TODO]} | — | "
       f"**{pct(c10[DONE], len(cmds10))}** |")
     w(f"| Workflow commands (`plan`, `apply`, …) | {len(wf)} | {wc[DONE]} | {wc[PART]} | {wc[TODO]} | — | "
       f"{pct(wc[DONE], len(wf))} |")
-    w(f"| All resource commands, including proposed ones | {len(COMMANDS)} | {cc[DONE]} | {cc[PART]} | {cc[TODO]} | "
+    w(f"| All resource commands, including later releases | {len(COMMANDS)} | {cc[DONE]} | {cc[PART]} | {cc[TODO]} | "
       f"{cc[LATER]} | {pct(cc[DONE], len(COMMANDS))} |")
     w("")
     w("*Each verb counts as one command (for example `cluster schedule pause`). Each command maps to one or more API "
@@ -769,14 +855,14 @@ def build_db(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> str:
     w("## What is left for 1.0.0\n")
     left = [o for o in ops10 if o["status"] in (PART, TODO)]
     per_story: dict[str, dict[str, list[str]]] = collections.OrderedDict()
-    for o in sorted(left, key=lambda x: open_stories(x["stories"], known)):
-        for s in open_stories(o["stories"], known):
+    for o in sorted(left, key=lambda x: open_stories(x["stories"], known, REL10)):
+        for s in open_stories(o["stories"], known, REL10):
             entry = per_story.setdefault(s, {"ops": [], "cmds": []})
             entry["ops"].append(f"`{o['method']} {short(o['path'])}`")
             entry["cmds"] += [f"`{n}`" for n in o["names"] if s in COMMANDS[n][0] or s in o["requires"]]
     for n, st, stories, _ in wf:
         if st != DONE:
-            for s in open_stories(tuple(x.strip() for x in stories.split(",")), known):
+            for s in open_stories(tuple(x.strip() for x in stories.split(",")), known, REL10):
                 per_story.setdefault(s, {"ops": [], "cmds": []})["cmds"].append(f"`{n}`")
     w(f"{len(left)} operations are partial or not built, across {len(per_story)} stories:\n")
     w("| Story | Status | Operations | Commands |")
@@ -795,7 +881,8 @@ def build_db(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> str:
     w("")
 
     w("## Command dictionary\n")
-    w("Every resource command: built, stubbed, or proposed, with the API operations it calls. A command's status "
+    w("Every resource command: built, stubbed, or planned for a later release, with the API operations it calls. A "
+      "command's status "
       "comes from its stories.\n")
     w("### Planned for 1.0.0\n")
     w("| Command | Status | Stories | API operations | What's left |")
@@ -811,13 +898,16 @@ def build_db(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> str:
     for n, st, stories, note in wf:
         w(f"| `capellactl {n}` | {st} | {stories} | {note} |")
     w("")
-    w("### Proposed commands outside 1.0.0\n")
-    w(f"<details><summary>{cc[LATER]} proposed commands</summary>\n")
-    w("| Command | API operations |")
-    w("|---|---|")
+    w("### Commands outside 1.0.0\n")
+    w(f"<details><summary>{cc[LATER]} commands planned for a later release</summary>\n")
+    w("| Command | Release | Stories | API operations |")
+    w("|---|---|---|---|")
     for n, st in cmd_status.items():
         if st == LATER:
-            w(f"| `capellactl {n}` | {'<br>'.join(f'`{x}`' for x in dict.fromkeys(cmd_ops.get(n, [])))} |")
+            stories = COMMANDS[n][0]
+            links = ", ".join(f"[{s}]({story_link(s, known, REL10)})" for s in stories if s != NO_STORY)
+            w(f"| `capellactl {n}` | {release_of(stories, known) or '—'} | {links or '—'} | "
+              f"{'<br>'.join(f'`{x}`' for x in dict.fromkeys(cmd_ops.get(n, [])))} |")
     w("\n</details>\n")
 
     w("## Operation-by-operation table\n")
@@ -839,8 +929,147 @@ def build_db(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> str:
     return "\n".join(out)
 
 
+# ======================================================================== release 1.5.0 report
+def build_15(snapshot: dict[str, Any], known: dict[str, dict[str, str]], table: list[str]) -> str:  # noqa: C901 - one report, top to bottom
+    ops, excl = collect_ops(snapshot, known)
+    for o in ops:
+        o["status"] = op_status(o, known, REL15)
+    unplanned = [f"{o['method']} {o['path']}" for o in ops if o["status"] == LATER]
+    if unplanned:
+        sys.exit(f"operations planned for no release (give their commands a story): {unplanned}")
+
+    def planned_15(stories: tuple[str, ...]) -> bool:
+        return release_of(stories, known) == REL15
+
+    ops15 = [o for o in ops if planned_15(o["stories"])]
+    earlier = [o for o in ops if not planned_15(o["stories"])]
+    cmds15 = {n: status_of(st, known, REL15) for n, (st, _) in COMMANDS.items() if planned_15(st)}
+    cmd_ops: dict[str, list[str]] = collections.defaultdict(list)
+    for o in ops15:
+        for n in o["names"]:
+            cmd_ops[n].append(f"{o['method']} {short(o['path'])}")
+    order = [DONE, PART, TODO]
+
+    def count(rows: list[dict[str, Any]]) -> list[int]:
+        c = collections.Counter(r["status"] for r in rows)
+        return [c.get(s, 0) for s in order]
+
+    c15, cc = count(ops15), collections.Counter(cmds15.values())
+    done_before = sum(o["status"] == DONE for o in earlier)
+    not_needed = sum(o["status"] == NONE for o in ops)
+    by: dict[str, list[dict[str, Any]]] = collections.defaultdict(list)
+    for o in ops15:
+        by[o["tag"]].append(o)
+    before_by = collections.Counter(o["tag"] for o in earlier)
+
+    out: list[str] = []
+    w = out.append
+    w("# Management API coverage — release 1.5.0\n")
+    w(f"> Generated by `scripts/update-api-coverage.py` from the Capella Management API {snapshot['apiVersion']} spec "
+      f"([source]({snapshot['source']}), snapshot of {snapshot['retrieved']} in "
+      "[docs/api](../api/management-api-v4.0-operations.json)), the command dictionary in that script and the "
+      "**Status** of each story. Don't edit by hand: change a story's status and run `make coverage`. CI fails when "
+      "this file is stale. Story progress: [README.md](README.md).\n")
+    w("## Scope\n")
+    w(f"The spec has **{len(snapshot['operations'])} operations**, of which **{len(ops)} are operational-database "
+      f"operations**. [Release 1.0.0](../release-1.0.0/API-COVERAGE.md) covers {len(earlier)} of them. **Release 1.5.0 "
+      f"plans the other {len(ops15)}**, so that after 1.5.0 capellactl calls every operational-database operation it "
+      "needs. Two groups stay out:\n")
+    w(f"- **{excl['as']} App Services / App Endpoints operations**: release 2.0.0 "
+      "([API coverage](../release-2.0.0/API-COVERAGE-APP-SERVICES.md)).")
+    w(f"- **{excl['ai']} AI operations** (AI Data Plane, AI Workflows, Models, AI Agent Memory, MCP servers and tools). "
+      "Not planned for now.\n")
+    out += table
+    w("**Status legend**\n")
+    w("| Status | Meaning |\n|---|---|")
+    w(f"| {DONE} | capellactl calls this operation and every story it depends on is Implemented. |")
+    w(f"| {PART} | Some of its stories are Implemented; the row says what is left. |")
+    w(f"| {TODO} | Planned for 1.5.0 in a story that is not Implemented yet. |")
+    w("")
+    w("## Summary\n")
+    w("| | Count | ✅ Done | 🟡 Partial | ⬜ Not built | Coverage (done / total) |")
+    w("|---|---|---|---|---|---|")
+    w(f"| **API operations planned for 1.5.0** | **{len(ops15)}** | {c15[0]} | {c15[1]} | {c15[2]} | "
+      f"**{pct(c15[0], len(ops15))}** |")
+    w(f"| **Resource commands planned for 1.5.0** | **{len(cmds15)}** | {cc[DONE]} | {cc[PART]} | {cc[TODO]} | "
+      f"**{pct(cc[DONE], len(cmds15))}** |")
+    w(f"| Operational database after 1.5.0 (1.0.0 + 1.5.0) | {len(ops) - not_needed} | {done_before + c15[0]} | "
+      f"{c15[1]} | {c15[2] + len(earlier) - not_needed - done_before} | "
+      f"{pct(done_before + c15[0], len(ops) - not_needed)} |")
+    w("")
+    w(f"*The last row leaves out the {not_needed} operation{'s' if not_needed != 1 else ''} marked ➖ Not needed in the "
+      "1.0.0 report. Each verb counts as one command; a command can call more than one operation.*\n")
+    w("### By area\n")
+    w("| Area | In 1.0.0 | 1.5.0 ops | ✅ | 🟡 | ⬜ | Stories |")
+    w("|---|---|---|---|---|---|---|")
+    for tag, label, _ in AREAS:
+        rows = by.get(tag)
+        if not rows:
+            continue
+        c = count(rows)
+        stories = sorted({s for o in rows for s in o["stories"] if s != NO_STORY and known[s]["release"] == REL15})
+        w(f"| [{label}]({anchor(tag)}) | {before_by[tag] or ''} | {len(rows)} | "
+          + " | ".join(str(x or "") for x in c) + " | "
+          + ", ".join(f"[{s}]({story_link(s, known, REL15)})" for s in stories) + " |")
+    w(f"| **Total** | | **{len(ops15)}** | **{c15[0]}** | **{c15[1]}** | **{c15[2]}** | |")
+    w("")
+
+    w("## What is left for 1.5.0\n")
+    left = [o for o in ops15 if o["status"] in (PART, TODO)]
+    per_story: dict[str, dict[str, list[str]]] = collections.OrderedDict()
+    for o in left:
+        for s in open_stories(o["stories"], known, REL15):
+            entry = per_story.setdefault(s, {"ops": [], "cmds": []})
+            entry["ops"].append(f"`{o['method']} {short(o['path'])}`")
+            entry["cmds"] += [f"`{n}`" for n in o["names"] if s in COMMANDS[n][0] or s in o["requires"]]
+    w(f"{len(left)} operations are partial or not built, across {len(per_story)} stories:\n")
+    w("| Story | Status | Operations | Commands |")
+    w("|---|---|---|---|")
+    for s in sorted(per_story, key=lambda x: (x == NO_STORY, x)):
+        e = per_story[s]
+        story = ("**No story yet** (gap)" if s == NO_STORY
+                 else f"[{s}]({story_link(s, known, REL15)}) {known[s]['title']}")
+        status = "—" if s == NO_STORY else known[s]["status"]
+        w(f"| {story} | {status} | {', '.join(dict.fromkeys(e['ops']))} | {', '.join(dict.fromkeys(e['cmds']))} |")
+    w("")
+
+    w("## Command dictionary\n")
+    w("Every resource command planned for 1.5.0, with the API operations it calls. A command's status comes from its "
+      "stories. Workflow commands (`plan`, `apply`, `sync`, `drift`, `destroy`) gain the new resources through the "
+      "stories' acceptance criteria.\n")
+    w("| Command | Status | Stories | API operations | What's left |")
+    w("|---|---|---|---|---|")
+    for n, st in cmds15.items():
+        stories, lft = COMMANDS[n]
+        links = ", ".join(f"[{s}]({story_link(s, known, REL15)})" for s in stories if s != NO_STORY)
+        ops_txt = "<br>".join(f"`{x}`" for x in dict.fromkeys(cmd_ops.get(n, [])))
+        w(f"| `capellactl {n}` | {st} | {links} | {ops_txt} | {'' if st == DONE else lft} |")
+    w("")
+
+    w("## Operation-by-operation table\n")
+    w("Paths are abbreviated: `{org}` = `/v4/organizations/{organizationId}`, `{p}` = projectId, `{c}` = clusterId, "
+      "`{b}` = bucketId.\n")
+    for tag, label, _ in AREAS:
+        rows = by.get(tag)
+        if not rows:
+            continue
+        c = count(rows)
+        sumtxt = ", ".join(f"{c[i]} {order[i].split(' ', 1)[0]}" for i in range(len(order)) if c[i])
+        w(f"### {label} — {len(rows)} ops ({sumtxt})\n")
+        extra = (f" · {before_by[tag]} more in [1.0.0](../release-1.0.0/API-COVERAGE.md)" if before_by[tag] else "")
+        w(f"[API reference]({anchor(tag)}){extra}\n")
+        w("| Operation | Method | Path | capellactl command | Status | Notes / what's left |")
+        w("|---|---|---|---|---|---|")
+        for o in rows:
+            cmdtxt = " / ".join(f"`{x}`" for x in o["names"]) or o["commands"]
+            notes = " ".join(x for x in (o["note"], "" if o["status"] == DONE else o["left"]) if x)
+            w(f"| {o['summary']} | `{o['method']}` | `{short(o['path'])}` | {cmdtxt} | {o['status']} | {notes} |")
+        w("")
+    return "\n".join(out)
+
+
 # ======================================================================== App Services report
-def build_as(snapshot: dict[str, Any]) -> str:
+def build_as(snapshot: dict[str, Any], table: list[str]) -> str:
     all_ops = snapshot["operations"]
     ops = []
     for o in all_ops:
@@ -867,13 +1096,14 @@ def build_as(snapshot: dict[str, Any]) -> str:
     w("# Management API coverage — App Services (release 2.0.0)\n")
     w(f"> Generated by `scripts/update-api-coverage.py` from the Capella Management API {snapshot['apiVersion']} spec "
       f"([source]({snapshot['source']}), snapshot of {snapshot['retrieved']}). Every App Services operation in the spec "
-      "appears exactly once. Operational-database coverage for 1.0.0 is in "
-      "[release-1.0.0/API-COVERAGE.md](../release-1.0.0/API-COVERAGE.md). Don't edit by hand.\n")
+      "appears exactly once. Operational-database coverage is in "
+      "[release-1.0.0/API-COVERAGE.md](../release-1.0.0/API-COVERAGE.md) and "
+      "[release-1.5.0/API-COVERAGE.md](../release-1.5.0/API-COVERAGE.md). Don't edit by hand.\n")
     w("## Scope\n")
     w(f"The spec has **{len(all_ops)} operations**. This document tracks the **{len(ops)} App Services and App Endpoints "
-      "operations**, including the 4 free-tier App Service operations that the spec tags *Free Tier*. Release 1.0.0 "
-      "covers the operational database. The AI operations (AI Data Plane, AI Workflows, Models) are not planned "
-      "for now.\n")
+      "operations**, including the 4 free-tier App Service operations that the spec tags *Free Tier*. Releases 1.0.0 "
+      "and 1.5.0 cover the operational database. The AI operations are not planned for now.\n")
+    out += table
     w("No stories are written for 2.0.0 yet. Every row is ⏭️ **Not started**, and every command name is a proposal "
       "that follows the 1.0.0 conventions: noun-verb, declarative through `plan`/`apply`, and idempotent.\n")
     w("## Summary\n")
@@ -949,7 +1179,9 @@ def main() -> None:
         refresh(args.refresh_spec)
     snapshot = json.loads(SNAPSHOT.read_text(encoding="utf-8"))
     known = load_stories()
-    reports = {OUT_DB: build_db(snapshot, known) + "\n", OUT_AS: build_as(snapshot) + "\n"}
+    table = breakdown(snapshot, known)
+    reports = {OUT_DB: build_db(snapshot, known, table) + "\n", OUT_15: build_15(snapshot, known, table) + "\n",
+               OUT_AS: build_as(snapshot, table) + "\n"}
     stale = [p for p, text in reports.items() if not p.exists() or p.read_text(encoding="utf-8") != text]
     if args.check:
         if stale:

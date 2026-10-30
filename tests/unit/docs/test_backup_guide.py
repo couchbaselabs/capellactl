@@ -26,7 +26,7 @@ def test_backup_guide_ac3_no_planned_notes():
         text = doc.read_text(encoding="utf-8")
         assert not re.search(r"(?i)planned for (release )?1\.0\.0|disk type \(planned\)|CAP-061\)? turns them",
                              text), doc.name
-    disk = _section(CUSTOM, "## 10. Choose the disk type")
+    disk = _section(CUSTOM, "## 4. Choose each group's disk")
     for text in (BACKUP, disk):
         blocks = re.findall(r"```(\w*)\n(.*?)```", text, flags=re.S)
         commands = [lang for lang, body in blocks if body.lstrip().startswith("capellactl ")]
@@ -40,7 +40,7 @@ def test_backup_guide_ac4_linked():
     runbook = (ROOT / "docs" / "runbook.md").read_text(encoding="utf-8")
     assert "[Backup and restore](docs/backup-restore.md)" in readme
     assert "[Backup and restore](backup-restore.md)" in _section(guide, "### Manage a provisioned cluster")
-    assert "custom-clusters.md#10-choose-the-disk-type" in guide
+    assert "custom-clusters.md#4-choose-each-groups-disk" in guide
     assert "docs/backup-restore.md" in (ROOT / "capellactl" / "help" / "backup.md").read_text(encoding="utf-8")
     assert "capellactl cluster disk-types" in (ROOT / "capellactl" / "help" / "scaling.md").read_text(encoding="utf-8")
     for heading in ("## Change a disk type", "## Set a cluster backup schedule", "## Set a bucket backup schedule",

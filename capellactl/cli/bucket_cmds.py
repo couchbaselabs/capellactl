@@ -30,7 +30,7 @@ from capellactl.config.editor import put, to_commented
 from capellactl.output.render import dumps
 from capellactl.resources.bucket import delete_details
 from capellactl.resources.cluster import is_free
-from capellactl.resources.guards import deletion_protected, protection_message
+from capellactl.resources.guards import deletion_protected
 
 TYPES = ["couchbase", "ephemeral"]
 BACKENDS = ["couchstore", "magma"]
@@ -113,7 +113,8 @@ def bucket_get(state: AppState, cluster: str, name: str, project: str | None) ->
     client, pid, cl = live_cluster(state, cluster, project)
     found = _find_bucket(client, pid, cl, name)
     if found is None:
-        raise CliExit(ExitCode.ERROR, f"bucket {cluster}/{name} not found")
+        raise CliExit(ExitCode.ERROR, f"bucket {cluster}/{name} not found",
+                                      action=f"Check the name with 'capellactl bucket list {cluster}'.")
     body = _get_bucket(client, pid, cl, str(found["id"]))
     if state.json:
         out(dumps(body))
@@ -135,9 +136,10 @@ def _refuse_on_free_tier(proj: Any, cl: CommentedMap, cluster: str, flags: dict[
     if cl.get("tier") != "free" or not given:
         return
     raise CliExit(ExitCode.CONFIG_INVALID,
-                  f"{cluster} (project {proj.get('name')}) is a free-tier cluster: Capella chooses its bucket settings, "
-                  f"so {', '.join(given)} cannot be set. Only {allowed} can be set.\nTry: {retry}\n"
-                  "For the other settings, use a provisioned cluster (capellactl cluster list shows the PLAN column).")
+                  f"{cluster} (project {proj.get('name')}) is a free-tier cluster: Capella chooses its bucket "
+                  f"settings, so {', '.join(given)} cannot be set. Only {allowed} can be set",
+                  action=f"Run: {retry}. For the other settings, use a provisioned cluster ('capellactl cluster "
+                         f"list' shows the PLAN column).")
 
 
 def _bucket_in_capella(state: AppState, cluster: str, project: str | None, name: str) -> bool:
@@ -189,8 +191,8 @@ def bucket_create(state: AppState, cluster: str, name: str, memory: int | None, 
     }, "--memory", f"capellactl bucket create {cluster} {name}" + (f" --memory {memory}" if memory else " --memory MB"))
     recorded = _bucket_node(cl, name)
     if recorded is not None and _bucket_in_capella(state, cluster, project, name):
-        raise CliExit(ExitCode.BLOCKED, f"bucket {name} is already in capella.yaml for {cluster}; change it with "
-                                        f"'capellactl bucket update {cluster} {name}'", topic="idempotency")
+        raise CliExit(ExitCode.BLOCKED, f"bucket {name} is already in capella.yaml for {cluster}", topic="idempotency",
+                                        action=f"Change it with 'capellactl bucket update {cluster} {name}'.")
     if recorded is not None:  # recorded by an earlier run that did not finish: complete it instead of refusing
         out(f"bucket {name} is in capella.yaml but not in Capella yet (an earlier run did not finish); creating it now")
     if memory is None and recorded is None and console.is_interactive():
@@ -246,16 +248,18 @@ def bucket_update(state: AppState, cluster: str, name: str, memory: int | None, 
     }, "--memory and --cross-cluster-versioning", f"capellactl bucket update {cluster} {name} --memory MB")
     node = _bucket_node(cl, name)
     if node is None:
-        raise CliExit(ExitCode.CONFIG_INVALID, f"bucket {name} is not in capella.yaml for {cluster}; add it with "
-                                               f"'capellactl bucket create {cluster} {name}' (an existing bucket is "
-                                               "adopted, not re-created)")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"bucket {name} is not in capella.yaml for {cluster}",
+                                               action=f"Add it with 'capellactl bucket create {cluster} {name}' (a "
+                                                      f"bucket that exists in Capella is adopted, not created "
+                                                      f"again), then run the command again.")
     values = {"memoryAllocationInMb": memory, "replicas": replicas, "durabilityLevel": durability,
               "timeToLiveInSeconds": ttl, "flushEnabled": flush, "priority": priority,
               "enableCrossClusterVersioning": versioning}
     if all(v is None for v in values.values()):
         if not console.is_interactive():
-            raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change; pass for example --memory, --replicas, "
-                                                   "--durability or --ttl")
+            raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change: no option was given",
+                                                   action="Add what to change, for example --memory, --replicas, "
+                                                          "--durability or --ttl.")
         out(f"Press Enter to keep the current value of {name}.")
         values["memoryAllocationInMb"] = _ask("Memory (MB)", node.get("memoryAllocationInMb", 1024), kind=int)
         if not free:  # Capella chooses the rest on the free tier
@@ -278,7 +282,7 @@ def bucket_update(state: AppState, cluster: str, name: str, memory: int | None, 
 @PROJECT_OPT
 @pass_state
 def bucket_delete(state: AppState, cluster: str, name: str, project: str | None) -> None:
-    """Delete a bucket and all its data from Capella, and remove it from capella.yaml (CAP-024)."""
+    """Delete a bucket and all its data from Capella, and remove it from capella.yaml."""
     client, pid, cl = live_cluster(state, cluster, project)
     cid = str(cl["id"])
     found = _find_bucket(client, pid, cl, name)
@@ -287,7 +291,9 @@ def bucket_delete(state: AppState, cluster: str, name: str, project: str | None)
         _remove_from_file(state, cluster, name, project)
         return
     if deletion_protected(cl):
-        raise CliExit(ExitCode.BLOCKED, protection_message(cluster), topic="safety")
+        raise CliExit(ExitCode.BLOCKED, f"deletion protection is on for {cluster}", topic="safety",
+                                        action=f"Run 'capellactl cluster protect {cluster} --off' if you really mean "
+                                               f"to delete it, then run the command again.")
     body = _get_bucket(client, pid, cl, str(found["id"]))
     out(f"  - bucket {cluster}/{name}")
     for line in delete_details(client, pid, cid, body):

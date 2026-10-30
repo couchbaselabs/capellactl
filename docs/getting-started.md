@@ -176,8 +176,18 @@ connectionString (try-01): couchbases://cb.xxxx.cloud.couchbase.com
 Apply complete in 3m05s.
 ```
 
-Press Enter to accept a default; anything invalid is explained and asked again. While a cluster deploys, a spinner
-(`| / - \`) turns at the end of the line and a dot is added every 30 seconds, so a long wait never looks stuck. Now that it exists, look at it:
+Press Enter to accept a default; anything invalid is explained and asked again. What each question means:
+
+| Question | Option | Meaning |
+|---|---|---|
+| Cluster type | `--free-tier` | `free` or `provisioned` (billed; step 11). Only asked while your organization has no free-tier cluster |
+| Cloud provider | `--provider` | `aws`, `gcp` or `azure`: the cloud the cluster runs in |
+| Region | `--region` | Where in that cloud. A free-tier cluster can use only the regions `cluster options` lists |
+| Network CIDR | `--cidr` | The private address range of the cluster's own network in the cloud. It must not overlap the ranges of the project's other clusters, so they can be connected later; capellactl checks this against Capella before creating anything. It does **not** decide who may connect; that is step 8 |
+
+The table's options answer the question on the command line instead, so it is not asked. While a cluster deploys, a
+spinner (`| / - \`) turns at the end of the line and a dot is added every 30 seconds, so a long wait never looks
+stuck. Now that it exists, look at it:
 
 ```bash
 capellactl cluster list
@@ -241,8 +251,17 @@ S.NO  CIDR             COMMENT    EXPIRES  STATUS  IN FILE
 ```
 
 Your range shows your machine's public IP instead of the example `203.0.113.10`. `IN FILE: yes` shows that the range
-was also recorded in `capella.yaml`. `0.0.0.0/0` (anyone) is refused unless you
-add `--allow-any-ip`.
+was also recorded in `capella.yaml`.
+
+A range is an address followed by `/` and the number of leading bits that must match: `/32` is exactly one address,
+`/24` is 256 addresses (`203.0.113.0` – `203.0.113.255`). Each range belongs to one cluster. The options of
+`cidr create`:
+
+| Option | Meaning |
+|---|---|
+| `--comment` | A note for people, such as who uses the range |
+| `--expires-at` | When Capella stops allowing it, for example `2026-12-31T23:59:59Z`. Default: never |
+| `--allow-any-ip` | Needed to allow `0.0.0.0/0`, which is every address on the internet. It records `allowAnyIp: true` on the cluster, so the open range is a visible, deliberate choice |
 
 **9. Give an application a login**
 
@@ -269,8 +288,20 @@ S.NO  NAME        TYPE   ACCESS               IN FILE
 1     orders_app  basic  read+write · orders  yes
 ```
 
-The password is read from the environment variable and never written to a file or printed. Leave out
-`--password-env` and Capella generates one, saved once to `.capellactl/credentials/` (only you can read it).
+The options decide what the login may do, and where:
+
+| Option | Meaning |
+|---|---|
+| `--privileges` | `read`, `write` or `read+write` |
+| `--bucket orders` | The access applies to the whole bucket: every scope and collection in it |
+| `--scope NAME` | With `--bucket`: only that scope of the bucket |
+| `--collection NAME` | With `--scope`: only that collection; repeat it for several |
+| `--all-buckets` | Instead of `--bucket`: every bucket of the cluster |
+| `--password-env VAR` | Your own password, read from environment variable `VAR`; `--password-file PATH` reads it from a file |
+
+Each option narrows the one before it, so give the least access the application needs. The password is never written
+to a file or printed. Leave out `--password-env` and Capella generates one, saved once to `.capellactl/credentials/`
+(only you can read it).
 
 **10. See what was recorded**
 
@@ -389,20 +420,25 @@ connectionString (dev-01): couchbases://cb.xxxx.cloud.couchbase.com
 Apply complete in 9m41s.
 ```
 
-Sizes: `dev` (1 node, AWS only), `small` (3 × 4 vCPU/16 GB), `medium` (3 × 8/32), `large` (5 × 16/64) or `custom`.
+Provider, region and network CIDR mean the same as in step 5. The two new questions:
+
+| Question | Option | Meaning |
+|---|---|---|
+| Size | `--size` | `dev` (1 node, AWS only), `small` (3 × 4 vCPU/16 GB), `medium` (3 × 8/32), `large` (5 × 16/64), or `custom` to choose the nodes yourself. `3 × 4 vCPU/16 GB` means 3 nodes, each with 4 vCPUs and 16 GB of RAM |
+| Support plan | `--support-plan` | `basic`, `developer pro` or `enterprise`: Capella's support level, which affects the price |
+
 Capella's API does not list the regions your organization can use: one it does not offer is rejected with Capella's
-own message. Once you know the questions, you can answer them as options instead (`capellactl cluster create --help`);
-this deploys the same cluster and asks only for the final `[y/N]`:
+own message. With every question answered as an option, the command deploys the same cluster and asks only for the
+final `[y/N]`:
 
 ```bash
 capellactl cluster create dev-01 --project sandbox --provider azure --region eastus --cidr 10.0.0.0/24 \
   --size small --support-plan "developer pro"
 ```
 
-On AWS use `--provider aws --region us-east-1`, on Google Cloud `--provider gcp --region us-east1`; capellactl picks
-each provider's default disk type for you (Azure: Premium SSD P6). To choose another one, `capellactl cluster
-disk-types` lists each type with its size range and speed; pass it with `--disk-type` (see
-[Choose the disk type](custom-clusters.md#10-choose-the-disk-type)).
+On AWS use `--provider aws --region us-east-1`, on Google Cloud `--provider gcp --region us-east1`. Each node gets
+the provider's default disk (AWS `gp3` 50 GB, Google Cloud `pd-ssd` 50 GB, Azure `P6`); to choose another, see
+[Choose each group's disk](custom-clusters.md#4-choose-each-groups-disk).
 
 For a production layout with separate groups of nodes per service (multi-dimensional scaling), for example data on
 3 × 8 vCPU/32 GB and index and query on 2 × 8/32, see [Custom clusters and service groups](custom-clusters.md).
@@ -431,6 +467,11 @@ capellactl cluster update dev-01 --support-plan enterprise     # or --descriptio
 capellactl cluster update dev-01                               # no options: asks what to change
 ```
 
+`--nodes`, `--cpu` and `--ram` change one **service group**, a set of identical nodes. `dev-01` has a single group,
+so they change every node. A cluster with several groups needs `--group SERVICES` to say which one; without it, the
+group that runs `data` changes ([Custom clusters](custom-clusters.md#8-change-the-layout-later)). `--support-plan` and
+`--description` belong to the whole cluster.
+
 Each command shows the change, asks once, records it in `capella.yaml` and waits until the cluster is healthy again.
 Even a description or support-plan change starts a short cluster job in Capella, so the command says so and waits.
 Scaling in (fewer nodes or less RAM) is checked first: the buckets must still fit, and replicas need enough data
@@ -451,15 +492,28 @@ S.NO  NAME    TYPE       STORAGE  MEMORY MB  REPLICAS  DURABILITY  TTL  ITEMS  I
 1     orders  couchbase  magma    1024       1         none        0    0      yes
 ```
 
-Give the bucket more memory. `bucket update` can also change replicas (extra copies of each document on other nodes),
-durability, the bucket's document expiry (TTL) and whether it can be flushed (emptied):
+The bucket options, and whether `bucket update` can change them later:
+
+| Option | Meaning | Default | Can change later |
+|---|---|---|---|
+| `--memory` | Memory the bucket may use, in MB | asked (1024) | yes |
+| `--type` | `couchbase` (stored on disk) or `ephemeral` (memory only) | `couchbase` | no |
+| `--storage-backend` | `couchstore`, or `magma` for large data sets that do not fit in memory | Capella's | no |
+| `--replicas` | Extra copies of each document, on other nodes (0–3) | 1 | yes |
+| `--durability` | When a write counts as done: `none` (in memory on one node), `majority`, `majorityAndPersistActive`, `persistToMajority` | `none` | yes |
+| `--ttl` | Seconds until documents expire; `0`: never | 0 | yes |
+| `--flush` | Allow emptying the bucket with one call | off | yes |
+
+`capellactl bucket create --help` lists the rest. A setting that cannot change is refused before anything is sent.
+Give the bucket more memory:
 
 ```bash
 capellactl bucket update dev-01 orders --memory 2048
 ```
 
-Add a scope and a collection whose documents expire on their own. `--max-ttl` is the expiry in seconds: 2592000 is
-30 days, `-1` never expires, and `0` uses the bucket's setting. Then change your mind and turn expiry off:
+Add a scope and a collection whose documents expire on their own. A collection's `--max-ttl` overrides the bucket's
+`--ttl` for the documents in that collection: a number of seconds (2592000 is 30 days), `-1` for never, or `0` to use
+the bucket's setting. Then change your mind and turn expiry off:
 
 ```bash
 capellactl scope create dev-01 orders billing
@@ -476,7 +530,6 @@ capellactl bucket delete dev-01 events                         # asks you to typ
 ```
 
 Deletes show what goes (item count, collections, the credentials that lose access) and ask you to type the name.
-Settings Capella cannot change after creation (bucket type, storage backend, …) are refused before anything changes.
 
 **14. Rotate and remove app logins**
 
@@ -536,6 +589,10 @@ capellactl cluster schedule set dev-01 --timezone US/Pacific --weekdays 08:00-18
 capellactl cluster schedule show dev-01
 ```
 
+Each day takes `on`, `off` or an on-window such as `08:00-18:00` (minutes `00` or `30`), in `--timezone`.
+`--weekdays` sets Monday to Friday and `--weekend` Saturday and Sunday; a single day, such as `--friday 08:00-14:30`,
+overrides them for that day.
+
 For a late demo or an incident, **pause** the schedule so the cluster stays on, then **resume** it:
 
 ```bash
@@ -544,7 +601,9 @@ capellactl cluster schedule resume dev-01
 ```
 
 **Step scaling** adds or removes one node at a time within limits you set, which suits a script or a scheduled job
-that follows the load. At the limit it does nothing and still succeeds; removing a node is capacity-checked first:
+that follows the load. Like `--nodes`, it changes the group that runs `data` unless you give `--group`; `--all-groups`
+steps every group. `--max` and `--min` are the limits. At a limit it does nothing and still succeeds; removing a node
+is capacity-checked first:
 
 ```bash
 capellactl cluster scale dev-01 --step +1 --max 6
@@ -686,8 +745,7 @@ capellactl apply
 Plan: 3 to add, 0 to change, 0 to delete, 0 blocked.
 ```
 
-Run `apply` again and it reports `No changes`; if it stops halfway, fix the cause and run it again (finished steps are
-not repeated). From here on, change the environment with the commands from steps 3–18, which keep this file up to date.
+Run `apply` again and it reports `No changes`. From here on, change the environment with the commands from steps 3–18, which keep this file up to date.
 
 **21. The same without questions (scripts and CI)**
 
@@ -740,8 +798,8 @@ capellactl destroy
 capellactl apply
 ```
 
-`destroy` refuses while a cluster has deletion protection, asks you to type the project name, keeps snapshot backups
-unless `--discard-snapshots`, and keeps `capella.yaml`, so `apply` can build the environment again.
+`destroy` refuses while a cluster has deletion protection, asks you to type the project name, and keeps snapshot
+backups unless you add `--discard-snapshots`.
 
 ## What is refused, and why
 
@@ -771,6 +829,19 @@ Disks never shrink, and failed or degraded clusters are not changed. A turned-of
 
 ## When something goes wrong
 
+- Every error starts with `[ERROR]:` and every warning with `[WARNING]:`, saying what happened; the next line,
+  `[ACTION]:`, says what to do, and ends with the `capellactl help` page to read when there is one:
+  ```
+  [ERROR]: cluster nova-dev-01 is turningOff
+  [ACTION]: Wait until it is healthy or turned off ('capellactl cluster get nova-dev-01' shows its state), then run the command again.
+  ```
+- Problems in `capella.yaml` are listed under `[ERROR]:`, each with where it is, by name and line
+  (`project non-prod › cluster web-01 › allowed IP range 0.0.0.0/0 (line 34)`), what is wrong, and an `action:`
+  line when a command fixes it. The heading says whether your command caused it (`This change is not valid`) or it
+  was already in the file (`already had 1 problem before this command`); in both cases nothing was changed.
+- Settings that are valid but may not be intended (an IP range open to everyone, an expired range, a credential for
+  all buckets) are listed by `capellactl validate`. `plan` and `apply` only count them in one line; other commands
+  don't mention them.
 - `configure` says "API Key Token rejected": the most common cause is the API key's **IP allowlist** (Capella UI →
   Organization settings → API Keys → your key) not including this machine's public IP
   (`curl -s https://checkip.amazonaws.com`). Also check that you copied the **API Key Token**, not the API Key ID. The

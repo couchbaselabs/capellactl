@@ -77,7 +77,8 @@ def _live_bucket(state: AppState, cluster: str, name: str, project: str | None) 
     refuse_free(cl)
     b = _find_bucket(client, pid, cl, name)
     if b is None:
-        raise CliExit(ExitCode.ERROR, f"bucket {name} not found in cluster {cluster}")
+        raise CliExit(ExitCode.ERROR, f"bucket {name} not found in cluster {cluster}",
+                                      action=f"Check the name with 'capellactl bucket list {cluster}'.")
     return client, pid, cl, str(b["id"])
 
 
@@ -109,7 +110,7 @@ def _backup_rows(items: list[dict[str, Any]], bucket: bool = True) -> list[tuple
 @PROJECT_OPT
 @pass_state
 def schedule_show(state: AppState, cluster: str, bucket: str, project: str | None) -> None:
-    """Show a bucket's backup schedule (CAP-058 AC4)."""
+    """Show a bucket's backup schedule."""
     client, pid, cl, bid = _live_bucket(state, cluster, bucket, project)
     try:
         body: dict[str, Any] | None = ep.get_bucket_backup_schedule(client, pid, str(cl["id"]), bid)
@@ -146,16 +147,18 @@ def schedule_show(state: AppState, cluster: str, bucket: str, project: str | Non
 def schedule_set(state: AppState, cluster: str, bucket: str, day: str | None, start_at: int | None,
                  incremental_every: int | None, retention: str | None, cost_optimized: bool | None,
                  project: str | None, no_apply: bool) -> None:
-    """Create or change a bucket's backup schedule: records it in capella.yaml and applies it (CAP-058 AC1)."""
+    """Create or change a bucket's backup schedule: records it in capella.yaml and applies it."""
     ed = open_editor(state)
     proj, cl = locate(ed, cluster, project_of_cluster(state, cluster, project))
     if cl.get("tier") == "free":
-        raise CliExit(ExitCode.BLOCKED, "free-tier clusters have no backups; create a provisioned cluster for data "
-                                        "that needs them", topic="backup")
+        raise CliExit(ExitCode.BLOCKED, "free-tier clusters have no backups", topic="backup",
+                                        action="Create a provisioned cluster for data that needs backups "
+                                               "('capellactl cluster create NAME').")
     node = _bucket_node(cl, bucket)
     if node is None:
-        raise CliExit(ExitCode.ERROR, f"bucket {bucket} is not in capella.yaml for {cluster}; create it with "
-                                      f"'capellactl bucket create {cluster} {bucket}' or run 'capellactl sync'")
+        raise CliExit(ExitCode.ERROR, f"bucket {bucket} is not in capella.yaml for {cluster}",
+                                      action=f"Create it with 'capellactl bucket create {cluster} {bucket}', or run "
+                                             f"'capellactl sync' if it exists in Capella.")
     current = node.get("backupSchedule")
     new = not isinstance(current, CommentedMap) or current.get("ensure") == "absent"
     given = {"dayOfWeek": day, "startAt": start_at, "incrementalEvery": incremental_every,
@@ -188,7 +191,7 @@ def schedule_set(state: AppState, cluster: str, bucket: str, day: str | None, st
 @PROJECT_OPT
 @pass_state
 def schedule_delete(state: AppState, cluster: str, bucket: str, project: str | None) -> None:
-    """Delete a bucket's backup schedule and remove it from capella.yaml; existing backups are kept (CAP-058 AC4)."""
+    """Delete a bucket's backup schedule and remove it from capella.yaml; existing backups are kept."""
     owner = project_of_cluster(state, cluster, project)
     client, pid, cl, bid = _live_bucket(state, cluster, bucket, project)
     try:
@@ -227,7 +230,7 @@ def schedule_delete(state: AppState, cluster: str, bucket: str, project: str | N
 @PROJECT_OPT
 @pass_state
 def cycle_list(state: AppState, cluster: str, bucket: str, project: str | None) -> None:
-    """List a bucket's backup cycles, newest first (CAP-058 AC5)."""
+    """List a bucket's backup cycles, newest first."""
     client, pid, cl, bid = _live_bucket(state, cluster, bucket, project)
     cycles = ep.list_backup_cycles(client, pid, str(cl["id"]), bid)
     if state.json:
@@ -248,13 +251,14 @@ def cycle_list(state: AppState, cluster: str, bucket: str, project: str | None) 
 @PROJECT_OPT
 @pass_state
 def cycle_get(state: AppState, cluster: str, bucket: str, cycle_id: str, project: str | None) -> None:
-    """List the backups of one cycle: full and incremental, scheduled and on-demand (CAP-058 AC5)."""
+    """List the backups of one cycle: full and incremental, scheduled and on-demand."""
     client, pid, cl, bid = _live_bucket(state, cluster, bucket, project)
     try:
         items = ep.list_cycle_backups(client, pid, str(cl["id"]), bid, cycle_id)
     except NotFound:
-        raise CliExit(ExitCode.ERROR, f"cycle {cycle_id} of {bucket} not found; list them with 'capellactl bucket "
-                                      f"backup cycle list {cluster} {bucket}'") from None
+        raise CliExit(ExitCode.ERROR, f"cycle {cycle_id} of {bucket} not found",
+                                      action=f"List them with 'capellactl bucket backup cycle list {cluster} "
+                                             f"{bucket}'.") from None
     out(dumps(items) if state.json else _list_table(_backup_rows(items, bucket=False)))
 
 
@@ -273,7 +277,7 @@ def _bucket_backups(client: Any, pid: str, cid: str, bid: str) -> list[dict[str,
 @PROJECT_OPT
 @pass_state
 def backup_list(state: AppState, cluster: str, bucket: str | None, project: str | None) -> None:
-    """List bucket backups: the latest of each bucket, or every backup of BUCKET (CAP-059 AC1)."""
+    """List bucket backups: the latest of each bucket, or every backup of BUCKET."""
     if bucket is None:
         client, pid, cl = _live(state, cluster, project)
         items = ep.list_cluster_backups(client, pid, str(cl["id"]))
@@ -292,7 +296,7 @@ def backup_list(state: AppState, cluster: str, bucket: str | None, project: str 
 @PROJECT_OPT
 @pass_state
 def backup_get(state: AppState, cluster: str, backup_id: str, project: str | None) -> None:
-    """Show one backup with its statistics (CAP-059 AC1)."""
+    """Show one backup with its statistics."""
     client, pid, cl = _live(state, cluster, project)
     b = _get_backup(client, pid, str(cl["id"]), backup_id, cluster)
     if state.json:
@@ -309,8 +313,8 @@ def _get_backup(client: Any, pid: str, cid: str, backup_id: str, cluster: str) -
     try:
         return ep.get_backup(client, pid, cid, backup_id)
     except NotFound:
-        raise CliExit(ExitCode.ERROR, f"backup {backup_id} not found in cluster {cluster}; list them with "
-                                      f"'capellactl bucket backup list {cluster}'") from None
+        raise CliExit(ExitCode.ERROR, f"backup {backup_id} not found in cluster {cluster}",
+                                      action=f"List them with 'capellactl bucket backup list {cluster}'.") from None
 
 
 # ---------------------------------------------------------------------- create
@@ -321,7 +325,7 @@ def _get_backup(client: Any, pid: str, cid: str, backup_id: str, cluster: str) -
 @PROJECT_OPT
 @pass_state
 def backup_create(state: AppState, cluster: str, bucket: str, project: str | None) -> None:
-    """Back a bucket up now and wait until the backup is ready (CAP-059 AC2)."""
+    """Back a bucket up now and wait until the backup is ready."""
     client, pid, cl, bid = _live_bucket(state, cluster, bucket, project)
     cid = str(cl["id"])
 
@@ -346,11 +350,13 @@ def backup_create(state: AppState, cluster: str, bucket: str, project: str | Non
 
     try:
         wait_for_status(status, DONE, FAILED, state.timeout, get_clock(), f"backup of {bucket}",
-                        progress(f"backup of {bucket}"))
+                        **progress(f"backup of {bucket}"))
     except StatusFailed as exc:
-        raise CliExit(ExitCode.ERROR, f"Failed: {exc}", topic="backup") from None
+        raise CliExit(ExitCode.ERROR, f"Failed: {exc.what}", topic="backup",
+                                      action=exc.action) from None
     except StatusTimeout as exc:
-        raise CliExit(ExitCode.TIMEOUT, str(exc)) from None
+        raise CliExit(ExitCode.TIMEOUT, exc.what,
+                                        action=exc.action) from None
     out(f"backup {found.get('id')} of {bucket} is ready")
 
 
@@ -362,7 +368,7 @@ def backup_create(state: AppState, cluster: str, bucket: str, project: str | Non
 @PROJECT_OPT
 @pass_state
 def backup_delete(state: AppState, cluster: str, backup_id: str, project: str | None) -> None:
-    """Delete a backup and every other backup of its cycle (CAP-059 AC3)."""
+    """Delete a backup and every other backup of its cycle."""
     client, pid, cl = _live(state, cluster, project)
     cid = str(cl["id"])
     try:
@@ -412,14 +418,16 @@ def backup_restore(state: AppState, cluster: str, backup_id: str, to_cluster: st
                    include_data: str | None, exclude_data: str | None, map_data: str | None, filter_keys: str | None,
                    filter_values: str | None, replace_ttl: str | None, replace_ttl_with: str | None,
                    force_updates: bool, auto_remove_collections: bool, project: str | None) -> None:
-    """Restore a bucket backup into the same or another cluster, all of it or part of it (CAP-059 AC4, AC5)."""
+    """Restore a bucket backup into the same or another cluster, all of it or part of it."""
     names = sorted({s.strip() for s in services.split(",") if s.strip()})
     if not names or set(names) - {"data", "query"}:
         raise CliExit(ExitCode.CONFIG_INVALID, f"--services takes data, query or data,query (got '{services}')",
-                      topic="backup")
+                      topic="backup",
+                                               action="Give data, query or data,query.")
     if replace_ttl_with and replace_ttl not in ("all", "expired"):
-        raise CliExit(ExitCode.CONFIG_INVALID, "--replace-ttl-with needs --replace-ttl all or --replace-ttl expired",
-                      topic="backup")
+        raise CliExit(ExitCode.CONFIG_INVALID, "--replace-ttl-with was given without --replace-ttl",
+                      topic="backup",
+                                               action="Add --replace-ttl all or --replace-ttl expired.")
     client, pid, cl = _live(state, cluster, project)
     cid = str(cl["id"])
     b = _get_backup(client, pid, cid, backup_id, cluster)
@@ -429,8 +437,9 @@ def backup_restore(state: AppState, cluster: str, backup_id: str, to_cluster: st
         refuse_free(target)
     target_name = str(target.get("name"))
     if target.get("currentState") in ("turnedOff", "turningOff"):
-        raise CliExit(ExitCode.BLOCKED, f"cluster {target_name} is turned off; power it on before restoring "
-                                        f"('capellactl cluster power {target_name} --on')", topic="hibernation")
+        raise CliExit(ExitCode.BLOCKED, f"cluster {target_name} is turned off", topic="hibernation",
+                                        action=f"Turn it on with 'capellactl cluster power {target_name} --on', then "
+                                               f"run the command again.")
     body: dict[str, Any] = {"targetClusterID": str(target["id"]), "sourceClusterID": cid, "backupID": backup_id,
                             "services": names}
     for key, value in (("includeData", include_data), ("excludeData", exclude_data), ("mapData", map_data),
@@ -467,7 +476,7 @@ def backup_restore(state: AppState, cluster: str, backup_id: str, to_cluster: st
 @PROJECT_OPT
 @pass_state
 def backup_export(state: AppState, cluster: str, backup_id: str, export_id: str | None, project: str | None) -> None:
-    """Package a backup cycle as a zip and print its download link (CAP-059 AC6)."""
+    """Package a backup cycle as a zip and print its download link."""
     client, pid, cl = _live(state, cluster, project)
     cid = str(cl["id"])
     b = _get_backup(client, pid, cid, backup_id, cluster)
@@ -480,7 +489,10 @@ def backup_export(state: AppState, cluster: str, backup_id: str, export_id: str 
                 f"show it with --export-id ID (printed when it was started)")
             return
         except ValidationFailed as exc:
-            raise CliExit(ExitCode.BLOCKED, f"Capella cannot export this backup: {exc.message}", topic="backup") \
+            raise CliExit(ExitCode.BLOCKED, f"Capella cannot export this backup: {exc.message}", topic="backup",
+                                            action="Choose another backup ('capellactl bucket backup list "
+                                                   "CLUSTER'), or take a new one with 'capellactl bucket backup "
+                                                   "create'.") \
                 from None
         out(f"export {export_id} of {b.get('bucketName')} started")
     found: dict[str, Any] = {}
@@ -495,11 +507,13 @@ def backup_export(state: AppState, cluster: str, backup_id: str, export_id: str 
     else:
         try:
             wait_for_status(status, {"complete"}, {"failed", "expired"}, state.timeout, get_clock(),
-                            f"export {export_id}", progress(f"export of {b.get('bucketName')}"))
+                            f"export {export_id}", **progress(f"export of {b.get('bucketName')}"))
         except StatusFailed as exc:
-            raise CliExit(ExitCode.ERROR, f"Failed: {exc}", topic="backup") from None
+            raise CliExit(ExitCode.ERROR, f"Failed: {exc.what}", topic="backup",
+                                          action=exc.action) from None
         except StatusTimeout as exc:
-            raise CliExit(ExitCode.TIMEOUT, str(exc)) from None
+            raise CliExit(ExitCode.TIMEOUT, exc.what,
+                                            action=exc.action) from None
     if state.json:
         out(dumps(found))
         return

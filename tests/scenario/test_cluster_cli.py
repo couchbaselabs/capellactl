@@ -54,7 +54,7 @@ def test_cluster_create_ac2_flags_and_defaults(fake, run, imported):
 def test_cluster_create_ac2_non_interactive_needs_auto_approve(fake, run, imported):
     before = imported.read_text(encoding="utf-8")
     r = run("cluster", "create", "nova-qa-01")
-    assert r.exit_code == 1 and "refusing to change capella.yaml and Capella without approval; pass --auto-approve" in r.output
+    assert r.exit_code == 1 and "[ERROR]: refusing to change capella.yaml and Capella without approval: there is no terminal to ask" in r.output
     assert imported.read_text(encoding="utf-8") == before and fake.writes() == []
 
 
@@ -81,9 +81,25 @@ def test_cluster_create_ac4_interactive_reasks(fake, run, imported, monkeypatch)
     monkeypatch.setattr(console, "is_interactive", lambda: True)
     # first round: CIDR with host bits → re-asked; second round: defaults → deployed
     r = run("cluster", "create", "nova-dev-03", input="\n\n\n\n10.0.0.5/23\n\n\n\n\n\n\ny\n")
-    assert "is not a network address" in r.output and "Please try again." in r.output
+    assert "is not a network address" in r.output and "[ACTION]: Please try again" in r.output
     assert r.exit_code == 0, r.output
     assert "nova-dev-03" in _clusters(imported)
+
+
+@pytest.mark.story("CAP-038", "AC4")
+def test_cluster_create_ac4_existing_problems_stop_before_questions(fake, run, imported, monkeypatch):
+    monkeypatch.setattr(console, "is_interactive", lambda: True)
+    text = imported.read_text(encoding="utf-8")
+    at = text.index("serviceGroups:")
+    imported.write_text(text[:at] + "databaseCredentials:\n          - name: app\n            access:\n"
+                        "              - privileges: [read]\n                resources:\n                  buckets:\n"
+                        "                    - name: ordrs\n        " + text[at:], encoding="utf-8")
+    before = imported.read_text(encoding="utf-8")
+    r = run("cluster", "create", "bad-01", input="\n" * 20)
+    assert r.exit_code == 3 and "already had 1 problem before this command, so nothing was changed" in r.output, r.output
+    assert "cluster nova-dev-01 › credential app" in r.output
+    assert "Cloud provider" not in r.output and "Please try again" not in r.output
+    assert imported.read_text(encoding="utf-8") == before and fake.writes() == []
 
 
 @pytest.mark.story("CAP-038", "AC4")
@@ -94,14 +110,14 @@ def test_cluster_create_ac4_interactive_flag_conflict_not_reasked(fake, run, imp
     r = run("cluster", "create", "bad-01", "--provider", "azure", "--region", "eastus", "--size", "dev",
             "--availability", "multi", "--support-plan", "developer pro", input="\n")
     assert r.exit_code == 3 and "singleNode clusters must use availability: single" in r.output, r.output
-    assert "Please try again." not in r.output and "Cloud provider" not in r.output
+    assert "Please try again" not in r.output and "Cloud provider" not in r.output
     assert imported.read_text(encoding="utf-8") == before and fake.writes() == []
 
 
 @pytest.mark.story("CAP-038", "AC5")
 def test_cluster_create_ac5_existing_name(fake, run, imported):
     r = run("--auto-approve", "cluster", "create", "nova-dev-01")
-    assert r.exit_code == 4 and "cluster nova-dev-01 already exists; use 'capellactl cluster update'" in r.output
+    assert r.exit_code == 4 and "[ERROR]: cluster nova-dev-01 already exists\n[ACTION]: Change it with 'capellactl cluster update'" in r.output
     pid = next(iter(fake.projects))
     fake.seed_cluster(pid, "made-in-ui")
     r = run("--auto-approve", "cluster", "create", "made-in-ui")
@@ -186,7 +202,7 @@ def test_cluster_cli_ac11_create_then_in_sync(fake, run, imported):
 
 def test_cluster_create_needs_capella_yaml(fake, run):
     r = run("--auto-approve", "cluster", "create", "x")
-    assert r.exit_code == 3 and "run 'capellactl sync'" in r.output
+    assert r.exit_code == 3 and "[ACTION]: Run 'capellactl sync'" in r.output
 
 
 @pytest.mark.story("CAP-038", "AC8")
@@ -276,3 +292,50 @@ def test_cluster_cli_ac8_new_keys_in_import_order(fake, run, tmp_path, monkeypat
     assert keys.index("deletionProtection") < keys.index("buckets") < keys.index("databaseCredentials")
     r = run("sync", extra_env={"APP_PW": "S3cure-Passw0rd!"})
     assert "already in sync" in r.output, r.output
+
+
+@pytest.fixture
+def ui_made(fake, run, tmp_path):
+    """nova-dev-01 is in capella.yaml; ui-made (10.0.0.0/24) was created in the Capella UI after the import."""
+    pid, _ = seed_healthy(fake)
+    assert run("import").exit_code == 0
+    fake.seed_cluster(pid, "ui-made", cloudProvider={"type": "aws", "region": "us-east-1", "cidr": "10.0.0.0/24"})
+    fake.reset_calls()
+    return tmp_path / "capella.yaml"
+
+
+OVERLAP = ("[ERROR]: 10.0.0.0/24 overlaps the network of cluster ui-made (10.0.0.0/24), which is in this project in "
+           "Capella but not in capella.yaml\n[ACTION]: Use a range that overlaps no other cluster, for example "
+           "--cidr 10.0.1.0/24")
+
+
+@pytest.mark.story("CAP-038", "AC15")
+@pytest.mark.parametrize("extra", [[], ["--no-apply"], ["--free-tier"]], ids=["apply", "no-apply", "free-tier"])
+def test_cluster_create_ac15_overlap_with_capella_only_cluster_refused(fake, run, ui_made, extra):
+    before = ui_made.read_text(encoding="utf-8")
+    r = run("--auto-approve", "cluster", "create", "test-01", "--cidr", "10.0.0.0/24", *extra)
+    assert r.exit_code == 3 and OVERLAP in r.output, r.output
+    assert ui_made.read_text(encoding="utf-8") == before and fake.writes() == []
+
+
+@pytest.mark.story("CAP-038", "AC15")
+def test_cluster_create_ac15_overlap_typed_is_reasked(fake, run, ui_made, monkeypatch):
+    monkeypatch.setattr(console, "is_interactive", lambda: True)
+    # type, provider, size, region, then the overlapping range, then the suggested one, then plan, y
+    r = run("cluster", "create", "test-01", input="\n\n\n\n10.0.0.0/24\n\n\ny\n")
+    assert r.exit_code == 0, r.output
+    assert "[ERROR]: 10.0.0.0/24 overlaps the network of cluster ui-made" in r.output
+    assert "[ACTION]: Please try again with a range that overlaps no other cluster." in r.output
+    assert r.output.count("Network CIDR") == 2 and r.output.count("Cloud provider") == 1
+    assert _clusters(ui_made)["test-01"]["cloudProvider"]["cidr"] == "10.0.1.0/24"
+
+
+@pytest.mark.story("CAP-038", "AC15")
+def test_cluster_create_ac15_other_project_warns(fake, run, ui_made):
+    other = fake.seed_project("non-prod")
+    fake.seed_cluster(other, "np-01", cloudProvider={"type": "aws", "region": "us-east-1", "cidr": "10.20.0.0/24"})
+    r = run("--auto-approve", "cluster", "create", "test-01", "--cidr", "10.20.0.0/24")
+    assert r.exit_code == 0, r.output
+    assert ("[WARNING]: 10.20.0.0/24 overlaps the network of cluster np-01 (10.20.0.0/24) in project non-prod\n"
+            "[ACTION]: None needed unless you will connect the two networks") in r.output
+    assert _clusters(ui_made)["test-01"]["cloudProvider"]["cidr"] == "10.20.0.0/24"

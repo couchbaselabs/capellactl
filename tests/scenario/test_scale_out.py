@@ -107,7 +107,7 @@ def test_scale_cli_ac5_ambiguous_group(fake, run, write_config):
     seed_healthy(fake, serviceGroups=groups)
     run("import")
     r = run("--auto-approve", "cluster", "scale", "nova-dev-01", "--nodes", "4")
-    assert r.exit_code == 3 and "more than one group runs data; pass --group" in r.output
+    assert r.exit_code == 3 and "[ERROR]: more than one group runs data\n[ACTION]: Name the group by its services with --group SERVICES" in r.output
     r = run("--auto-approve", "cluster", "scale", "nova-dev-01", "--nodes", "4", "--group", "search,data")
     assert r.exit_code == 0, r.output
 

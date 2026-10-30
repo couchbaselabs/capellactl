@@ -265,7 +265,7 @@ class CredentialReconciler(Reconciler):
         ctx.progress(secrets_out.saved_message(path))
         warning = secrets_out.git_warning(directory)
         if warning:
-            ctx.progress(warning)
+            ctx.warn(*warning)
 
     def _update(self, ctx: RunContext, action: Action, pid: str, cid: str, uid: str, cluster: str) -> None:
         d, name = action.desired, str(action.desired["name"])

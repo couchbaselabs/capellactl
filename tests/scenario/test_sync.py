@@ -67,7 +67,7 @@ def test_sync_ac10_dry_run_exit_codes(fake, run, imported):
     before = imported.read_text(encoding="utf-8")
     fake.clusters[next(iter(fake.clusters))]["body"]["description"] = "changed"
     r = run("sync", "--dry-run")
-    assert r.exit_code == 2 and "out of sync with Capella (nothing written" in r.output
+    assert r.exit_code == 2 and "[WARNING]: capella.yaml is out of sync with Capella; nothing was written\n[ACTION]: Run 'capellactl sync'" in r.output
     assert imported.read_text(encoding="utf-8") == before
 
 

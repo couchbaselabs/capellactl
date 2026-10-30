@@ -40,9 +40,22 @@ def test_cluster_mds_ac8_guide_steps(fake, run, tmp_path):
     commands = _commands()
     assert any("--group data:3x8/32" in c for c in commands) and any(c.startswith("cluster group add") for c in commands)
     clusters = _run_guide(fake, run)
-    assert {"prod-01", "prod-02", "prod-03", "prod-01-weu", "prod-01-copy", "dev-03", "prod-04"} <= set(clusters)
+    assert {"prod-01", "prod-02", "prod-03", "prod-01-weu", "prod-01-copy", "dev-03", "prod-04", "prod-06"} \
+        <= set(clusters)
     assert [g["services"] for g in clusters["prod-01"]["serviceGroups"]] == \
         [["data"], ["index", "query"], ["search"], ["eventing"]]
+
+
+@pytest.mark.story("CAP-060", "AC3")
+def test_disk_guide_value_scope(fake, run, tmp_path):
+    """Step 4's tables: a group's own disk value wins, then --disk-*, then the default (per value)."""
+    clusters = _run_guide(fake, run)
+    disks = {name: {",".join(g["services"]): g["node"]["disk"] for g in clusters[name]["serviceGroups"]}
+             for name in ("prod-02", "prod-06")}
+    assert disks["prod-02"] == {"data,index,query": {"type": "gp3", "storage": 100, "iops": 4370},
+                                "analytics": {"type": "gp3", "storage": 200, "iops": 5000}}
+    assert disks["prod-06"]["data,index,query"]["type"] == "P10" and disks["prod-06"]["search"]["type"] == "P20"
+    assert disks["prod-06"]["analytics"] == {"type": "Ultra", "storage": 256, "iops": 20000}
 
 
 @pytest.mark.story("CAP-061", "AC2")

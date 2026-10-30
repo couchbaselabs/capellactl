@@ -167,7 +167,7 @@ def test_cluster_clone_ac5_missing_target_project(fake, run, demo):
     (None, ["nova-demo-01", "x-01", "--region", "westeurope", "--cidr", "10.0.0.128/25"], 3, "overlaps"),
     (None, ["nova-demo-01", "nova-demo-01", "--region", "westeurope"], 4, "already exists"),
     ("free", ["try-01", "x-01", "--region", "us-east-2"], 4, "free-tier clusters cannot be cloned"),
-    ("deploying", ["new-01", "x-01", "--region", "westeurope"], 4, "is deploying; clone it once it is healthy"),
+    ("deploying", ["new-01", "x-01", "--region", "westeurope"], 4, "is deploying\n[ACTION]: Wait until it is healthy"),
 ], ids=["region", "cidr", "name", "free", "deploying"])
 def test_cluster_clone_ac6_invalid_input_writes_nothing(fake, run, demo, setup, args, code, msg):
     if setup == "free":

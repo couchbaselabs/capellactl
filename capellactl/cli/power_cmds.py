@@ -37,9 +37,11 @@ def _wait(state: AppState, client: Any, pid: str, cid: str, name: str, op: Any, 
         wait_for_cluster(client, pid, cid, op, state.timeout, get_clock(), on_state, name=name, on_tick=on_tick,
                          getter=ep.get_free_cluster if free else None)
     except WaitFailed as exc:
-        raise CliExit(ExitCode.ERROR, f"Failed: {exc}") from None
+        raise CliExit(ExitCode.ERROR, f"Failed: {exc.what}",
+                                      action=exc.action) from None
     except WaitTimeout as exc:
-        raise CliExit(ExitCode.TIMEOUT, str(exc)) from None
+        raise CliExit(ExitCode.TIMEOUT, exc.what,
+                                        action=exc.action) from None
 
 
 def schedule_note(client: Any, pid: str, cid: str) -> str | None:
@@ -71,7 +73,9 @@ def power(state: AppState, client: Any, pid: str, cl: dict[str, Any], on: bool, 
         if current in ("turningOn", "turningOff"):  # in transition: let it finish first (AC4)
             going = "healthy" if current == "turningOn" else "turnedOff"
             if state.no_wait:
-                raise CliExit(ExitCode.BLOCKED, f"cluster {name} is {current}; try again later (or drop --no-wait)")
+                raise CliExit(ExitCode.BLOCKED, f"cluster {name} is {current}",
+                                                action=f"Wait until it is healthy or turned off ('capellactl cluster "
+                                                       f"get {name}' shows its state), then run the command again.")
             _wait(state, client, pid, cid, name, "power_on" if current == "turningOn" else "power_off", free)
             if going == target:
                 out(f"cluster {name} is {'on' if on else 'off'}")
@@ -80,7 +84,10 @@ def power(state: AppState, client: Any, pid: str, cl: dict[str, Any], on: bool, 
         if current not in ("healthy", "turnedOff"):
             raise CliExit(ExitCode.BLOCKED, f"cluster {name} is {current}; it can be turned "
                                             f"{'on' if on else 'off'} only when it is "
-                                            f"{'turned off' if on else 'healthy'}", topic="hibernation")
+                                            f"{'turned off' if on else 'healthy'}", topic="hibernation",
+                                            action=f"Wait until it is {'turned off' if on else 'healthy'} "
+                                                   f"('capellactl cluster get {name}' shows its state), then run the "
+                                                   f"command again.")
         if not on and confirm and attempt == 1 \
                 and not console.confirm(state, f"Turn off cluster {name}?", "turn off a cluster", notes=OFF_NOTES):
             out("Cancelled; the cluster is unchanged.")
@@ -94,7 +101,9 @@ def power(state: AppState, client: Any, pid: str, cl: dict[str, Any], on: bool, 
                 ep.turn_cluster_off(client, pid, cid)
         except Conflict as exc:  # someone else changed it: re-read once (AC5)
             if attempt == 2:
-                raise CliExit(ExitCode.ERROR, f"Capella refused: {exc}") from None
+                raise CliExit(ExitCode.ERROR, f"Capella refused: {exc}",
+                                              action="Someone else is changing the cluster: wait until that "
+                                                     "finishes, then run the command again.") from None
             current = _state(client, pid, cid, free)
             continue
         break
@@ -120,8 +129,9 @@ def power(state: AppState, client: Any, pid: str, cl: dict[str, Any], on: bool, 
 @click.option("--project", metavar="NAME", help="Project of the cluster (only needed when the name repeats).")
 @pass_state
 def cluster_power(state: AppState, name: str, on: bool | None, with_app_service: bool, project: str | None) -> None:
-    """Turn a cluster off (storage and data kept, compute stopped) or on again (CAP-019)."""
+    """Turn a cluster off (storage and data kept, compute stopped) or on again."""
     if on is None:
-        raise CliExit(ExitCode.CONFIG_INVALID, "pass --on or --off", topic="hibernation")
+        raise CliExit(ExitCode.CONFIG_INVALID, "nothing to do: neither --on nor --off was given", topic="hibernation",
+                                               action="Add --on to turn the cluster on, or --off to turn it off.")
     client, pid, cl = live_cluster(state, name, project)
     power(state, client, pid, cl, on, with_app_service)

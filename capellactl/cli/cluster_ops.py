@@ -18,11 +18,19 @@ import click
 from capellactl.api import endpoints as ep
 from capellactl.api.errors import TransportError
 from capellactl.cli import console
-from capellactl.cli.console import err, note, out
+from capellactl.cli.console import err, error, note, out, warning
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.state import AppState
 from capellactl.config.editor import ConfigEditor, put
-from capellactl.config.loader import Config, ConfigError, load_config
+from capellactl.config.loader import (
+    FIX_PROBLEMS,
+    Config,
+    ConfigError,
+    ConfigIssue,
+    count_problems,
+    load_config,
+    render_issues,
+)
 from capellactl.config.presets import is_single_node, load_compute_sizes, load_disk_types, load_presets
 from capellactl.engine.planner import build_plan
 from capellactl.output.render import render_plan_text
@@ -42,7 +50,6 @@ PRESETS: dict[str, dict[str, Any]] = {
     for k, v in load_presets().items()
 }
 SUPPORT_PLANS = ["basic", "developer pro", "enterprise"]
-FREE_FIXED = "free-tier clusters have 1 node and fixed size; create a provisioned cluster for that"
 FREE_TIER_NOTE = "1 node · data, index, query, search · no cost · one per organization"
 FREE_TIER_MISSING = "backups, private endpoints, network peering, audit logs, alert integrations, CMEK, on/off schedule"
 TIMEZONES = ["ET", "GMT", "IST", "PT"]
@@ -103,19 +110,22 @@ def choose_project(ed: ConfigEditor, project: str | None, interactive: bool) -> 
             except LookupError:
                 owner = None
             if owner is not None:
-                raise CliExit(ExitCode.CONFIG_INVALID, f"project {project} is not in capella.yaml\n{project} is a "
-                              f"cluster in project {owner[0].get('name')}, not a project. Did you mean: "
-                              f"--project {owner[0].get('name')}")
-            raise CliExit(ExitCode.CONFIG_INVALID, f"project {project} is not in capella.yaml; create it with "
-                          f"'capellactl project create {project}' or add it with 'capellactl sync --project {project}'")
+                raise CliExit(ExitCode.CONFIG_INVALID, f"project {project} is not in capella.yaml; {project} is a "
+                                                       f"cluster in project {owner[0].get('name')}, not a project",
+                                                       action=f"Did you mean: --project {owner[0].get('name')}")
+            raise CliExit(ExitCode.CONFIG_INVALID, f"project {project} is not in capella.yaml",
+                                                   action=f"Create it with 'capellactl project create {project}', or "
+                                                          f"add it with 'capellactl sync --project {project}' if it "
+                                                          f"exists in Capella.")
         return project
     if len(names) == 1:
         return names[0]
     if not names:
-        raise CliExit(ExitCode.CONFIG_INVALID, "capella.yaml has no project; run 'capellactl project create NAME'")
+        raise CliExit(ExitCode.CONFIG_INVALID, "capella.yaml has no project",
+                                               action="Create one with 'capellactl project create NAME'.")
     if not interactive:
-        raise CliExit(ExitCode.CONFIG_INVALID, f"capella.yaml has several projects ({', '.join(names)}); "
-                                               "pass --project NAME")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"capella.yaml has several projects ({', '.join(names)})",
+                                               action="Add --project NAME to choose one.")
     out("Projects in capella.yaml:")
     for i, n in enumerate(names, 1):
         out(f"  {i}. {n}")
@@ -127,11 +137,14 @@ def locate(ed: ConfigEditor, name: str, project: str | None) -> tuple[Any, Any]:
     try:
         found = ed.find_cluster(name, project)
     except LookupError as exc:
-        raise CliExit(ExitCode.CONFIG_INVALID, str(exc)) from None
+        raise CliExit(ExitCode.CONFIG_INVALID, str(exc),
+                                               action="Check the name with 'capellactl cluster list'; if it exists "
+                                                      "in Capella but not in capella.yaml, run 'capellactl sync' "
+                                                      "first.") from None
     if found is None:
         where = f" (project {project})" if project else ""
-        raise CliExit(ExitCode.CONFIG_INVALID, f"cluster {name}{where} is not in capella.yaml; run 'capellactl sync' "
-                                               "to add it")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"cluster {name}{where} is not in capella.yaml",
+                                               action="Run 'capellactl sync' to add it, then run the command again.")
     return found
 
 
@@ -156,23 +169,54 @@ def _ask(text: str, default: Any, choices: list[str] | None = None, kind: Any = 
 def open_editor(state: AppState) -> ConfigEditor:
     path = state.config_path()
     if not path.exists():
-        raise CliExit(ExitCode.CONFIG_INVALID, f"{path} not found; run 'capellactl sync' (or 'capellactl configure') "
-                                               "to create it from your Capella project", topic="getting-started")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"{path} not found", topic="getting-started",
+                                               action="Run 'capellactl sync' (or 'capellactl configure') to create "
+                                                      "it from your Capella project.")
     return ConfigEditor(path)
 
 
-def _validate_candidate(state: AppState, ed: ConfigEditor, text: str) -> Config:
+class ConfigInvalid(CliExit):
+    """The change leaves capella.yaml invalid; `issues` are the problems this change caused (CAP-062 AC3)."""
+
+    def __init__(self, message: str, issues: list[ConfigIssue], topic: str) -> None:
+        super().__init__(ExitCode.CONFIG_INVALID, message, topic=topic, action=FIX_PROBLEMS)
+        self.issues = issues
+
+
+def _load_text(state: AppState, ed: ConfigEditor, text: str) -> Config:
+    """Validate `text` as the editor's file would be, without writing that file."""
     tmp = ed.path.with_name(f".{ed.path.name}.candidate-{os.getpid()}")
     try:
         tmp.write_text(text, encoding="utf-8")
         cfg = load_config(tmp, env=state.env)
-    except ConfigError as exc:
-        topic = exc.issues[0].topic if exc.issues else "config"
-        raise CliExit(ExitCode.CONFIG_INVALID, str(exc).replace(tmp.name, ed.path.name), topic=topic) from None
     finally:
         tmp.unlink(missing_ok=True)
     cfg.path = ed.path
     return cfg
+
+
+def _validate_candidate(state: AppState, ed: ConfigEditor, text: str) -> Config:
+    """The new text as a Config, or ConfigInvalid saying which problems the command caused and which were already in
+    the file before it (CAP-062 AC3)."""
+    try:
+        return _load_text(state, ed, text)
+    except ConfigError as exc:
+        try:
+            _load_text(state, ed, ed.original)
+            before: set[tuple[str, str]] = set()
+        except ConfigError as old_exc:
+            before = {(i.where, i.message) for i in old_exc.issues}
+        new = [i for i in exc.issues if (i.where, i.message) not in before]
+        kept = [i for i in exc.issues if (i.where, i.message) in before]
+        name = ed.path.name
+        if new:
+            message = render_issues("This change is not valid, so nothing was changed:", new)
+            if kept:
+                message += "\n" + render_issues(f"Already in {name} before this command:", kept)
+        else:
+            message = render_issues(f"{name} already had {count_problems(len(kept))} before this command, so nothing "
+                                    "was changed:", kept)
+        raise ConfigInvalid(message, new, (new or kept)[0].topic) from None
 
 
 def change_and_apply(state: AppState, ed: ConfigEditor, target: str, question: str, no_apply: bool,
@@ -195,7 +239,8 @@ def change_and_apply(state: AppState, ed: ConfigEditor, target: str, question: s
     try:
         plan = build_plan(ctx, cfg, env_mod.TREE_FACTORY(), [target], descendants)
     except PlanError as exc:
-        raise CliExit(ExitCode.ERROR, str(exc)) from None
+        raise CliExit(ExitCode.ERROR, str(exc),
+                                      action="Fix the problem named above, then run the command again.") from None
     if not plan.has_changes and not plan.blocked:
         if text != ed.original:
             ed.save(text)
@@ -206,8 +251,11 @@ def change_and_apply(state: AppState, ed: ConfigEditor, target: str, question: s
         for line in after_plan or []:
             out(line)
     if plan.blocked:
-        raise CliExit(ExitCode.BLOCKED, "Nothing was written to capella.yaml or changed in Capella.",
-                      topic=plan.blocked[0].topic)
+        raise CliExit(ExitCode.BLOCKED, "Nothing was written to capella.yaml or changed in Capella: the plan above "
+                                        "has blocked changes (!)",
+                      topic=plan.blocked[0].topic,
+                                        action="Resolve each change marked ! (its note says how), then run the "
+                                               "command again.")
     if not console.confirm(state, question, "change capella.yaml and Capella"):
         out("Cancelled; capella.yaml and Capella are unchanged.")
         return None, None
@@ -235,6 +283,54 @@ def change_and_apply(state: AppState, ed: ConfigEditor, target: str, question: s
     return plan, ctx
 
 
+def _overlaps(cidr: str, clusters: list[dict[str, Any]]) -> list[tuple[str, str]]:
+    """(name, network) of each cluster whose network overlaps `cidr` (none when `cidr` is not a network)."""
+    try:
+        net = ipaddress.ip_network(cidr, strict=True)
+    except ValueError:
+        return []  # not a network address: validation reports it, with the address it should be
+    found = []
+    for c in clusters:
+        other = str((c.get("cloudProvider") or {}).get("cidr") or "")
+        with contextlib.suppress(ValueError):
+            if other and net.overlaps(ipaddress.ip_network(other, strict=False)):
+                found.append((str(c.get("name")), other))
+    return found
+
+
+def ask_cidr(cidr: str | None, default: str, live_only: list[dict[str, Any]], used: list[str],
+             interactive: bool) -> str:
+    """The cluster network: --cidr, the answer, or the default. Refused when it overlaps a cluster of the project that
+    is in Capella but not in capella.yaml (CAP-038 AC15); clusters in the file are checked by validation."""
+    while True:
+        value = cidr or (_ask("Network CIDR (must not overlap other clusters)", default) if interactive else default)
+        clash = _overlaps(value, live_only)
+        if not clash:
+            return value
+        what = (f"{value} overlaps the network of cluster {clash[0][0]} ({clash[0][1]}), which is in this project in "
+                "Capella but not in capella.yaml")
+        if cidr or not interactive:
+            raise CliExit(ExitCode.CONFIG_INVALID, what, topic="config",
+                          action=f"Use a range that overlaps no other cluster, for example --cidr {suggest_cidr(used)}, "
+                                 "or leave out --cidr to get one. 'capellactl sync' adds the other cluster to "
+                                 "capella.yaml.")
+        error(what, "Please try again with a range that overlaps no other cluster.")
+
+
+def warn_other_projects(state: AppState, ed: ConfigEditor, project: str, cidr: str) -> None:
+    """A [WARNING] for each cluster of another project whose network overlaps `cidr` (CAP-038 AC15): allowed, but
+    the two networks cannot be connected later."""
+    org = ed.doc.get("organizationId")
+    client = state.client(org if isinstance(org, str) and not org.startswith("${") else None)
+    for p in ep.list_projects(client):
+        if p.get("name") == project:
+            continue
+        for other, net in _overlaps(cidr, ep.list_clusters(client, str(p["id"]))):
+            warning(f"{cidr} overlaps the network of cluster {other} ({net}) in project {p.get('name')}",
+                    "None needed unless you will connect the two networks (VPC peering or private endpoints); then "
+                    "choose another range with --cidr.")
+
+
 def _capella_clusters(state: AppState, ed: ConfigEditor, project: str) -> list[dict[str, Any]]:
     """Clusters that exist in Capella for one project of the file (empty when the project is new)."""
     org = ed.doc.get("organizationId")
@@ -259,12 +355,16 @@ def parse_services(text: str, where: str) -> list[str]:
     """Sorted services of a group; an unknown name exits 3 with the closest match (CAP-051 AC2)."""
     names = [s.strip() for s in text.split(",") if s.strip()]
     if not names:
-        raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: no services (for example data,index,query)", topic="scaling")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: no services", topic="scaling",
+                                               action="List the services before the first colon, for example "
+                                                      "data,index,query:3x8/32.")
     for n in names:
         if n not in SERVICES:
             close = difflib.get_close_matches(n, SERVICES, n=1)
             hint = f"; did you mean {close[0]}?" if close else f"; use {', '.join(SERVICES)}"
-            raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: unknown service '{n}'{hint}", topic="scaling")
+            raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: unknown service '{n}'{hint}", topic="scaling",
+                                                   action="Use services from: data, index, query, search, "
+                                                          "analytics, eventing.")
     return sorted(set(names))
 
 
@@ -298,30 +398,39 @@ def parse_group_spec(text: str, provider: str, disk_defaults: dict[str, Any]) ->
     where = f"--group {text}"
     parts = text.split(":")
     if len(parts) not in (2, 3):
-        raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: expected {GROUP_SPEC}, e.g. data:3x8/32", topic="scaling")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: expected {GROUP_SPEC}, e.g. data:3x8/32", topic="scaling",
+                                               action="Write each --group as SERVICES:NODESxCPU/RAM[:DISK], for "
+                                                      "example data:3x8/32 or index,query:2x8/32:type=io2.")
     services = parse_services(parts[0], where)
     m = re.fullmatch(r"\s*(\d+)\s*x\s*(\d+)\s*/\s*(\d+)\s*", parts[1])
     if not m:
         raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: expected NODESxCPU/RAM, e.g. 3x8/32 (got '{parts[1]}')",
-                      topic="scaling")
+                      topic="scaling",
+                                               action="Write each --group as SERVICES:NODESxCPU/RAM[:DISK], for "
+                                                      "example data:3x8/32 or index,query:2x8/32:type=io2.")
     disk = dict(disk_defaults)
     for item in (parts[2].split(",") if len(parts) == 3 else []):
         key, sep, value = (x.strip() for x in item.partition("="))
         if not sep or key not in DISK_OPTIONS:
-            raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: unknown disk option '{key}'; use type, size, iops, "
-                                                   "auto-expansion", topic="scaling")
+            raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: unknown disk option '{key}'", topic="scaling",
+                                                   action="Use type=, size=, iops= or auto-expansion=, for example "
+                                                          "data:3x8/32:type=io2,size=200.")
         if key in ("size", "iops"):
             if not value.isdigit():
                 raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: {key} must be a whole number (got '{value}')",
-                              topic="scaling")
+                              topic="scaling",
+                                                       action="Give a whole number, for example size=200.")
             disk[key] = int(value)
         elif key == "auto-expansion":
             if value.lower() not in ("true", "false"):
                 raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: auto-expansion is true or false (got '{value}')",
-                              topic="scaling")
+                              topic="scaling",
+                                                       action="Give auto-expansion=true or auto-expansion=false.")
             disk[key] = value.lower() == "true"
         elif not value:
-            raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: type needs a value, e.g. type=io2", topic="scaling")
+            raise CliExit(ExitCode.CONFIG_INVALID, f"{where}: type= has no value", topic="scaling",
+                                                   action="Give a disk type, for example type=io2 ('capellactl "
+                                                          "cluster disk-types' lists them).")
         else:
             disk[key] = value
     return {"node": {"compute": {"cpu": int(m.group(2)), "ram": int(m.group(3))},
@@ -542,14 +651,19 @@ def cluster_create(state: AppState, name: str, project: str | None, free_tier: b
     """Deploy a new cluster: asks for what it needs, records it in capella.yaml, deploys and waits."""
     _check_create_options(groups, single_node, size, nodes, cpu, ram, services, availability, server_version, cmek_id)
     ed = open_editor(state)
+    _validate_candidate(state, ed, ed.text())  # before any question: answers cannot fix problems already in the file
     interactive = console.is_interactive()
     project = choose_project(ed, project, interactive)
     proj_node = ed.find_project(project)
     assert proj_node is not None
     existing = _capella_clusters(state, ed, project)
     if any(c.get("name") == name for c in existing):
-        raise CliExit(ExitCode.BLOCKED, _exists_msg(name))
+        raise CliExit(ExitCode.BLOCKED, f"cluster {name} already exists",
+                                        action="Change it with 'capellactl cluster update' or 'capellactl cluster "
+                                               "scale', or run 'capellactl sync' to bring it into capella.yaml.")
     keep = _take_undeployed(ed, proj_node, name, project)
+    in_file = {c.get("name") for c in proj_node.get("clusters") or [] if isinstance(c, dict)}
+    live_only = [c for c in existing if c.get("name") not in in_file]
     used = [str((c.get("cloudProvider") or {}).get("cidr", "")) for c in existing]
     used += [str((c.get("cloudProvider") or {}).get("cidr", "")) for c in proj_node.get("clusters") or []
              if isinstance(c, dict)]
@@ -559,18 +673,21 @@ def cluster_create(state: AppState, name: str, project: str | None, free_tier: b
     sized = bool(groups) or advanced or any(v is not None for v in (
         size, nodes, cpu, ram, disk_type, disk_size, disk_iops, services, availability, support_plan, support_timezone))
     if free_tier and sized:
-        raise CliExit(ExitCode.CONFIG_INVALID, "free-tier clusters have a fixed size and plan; remove the size, "
-                                               "disk, services, availability, support and advanced options")
+        raise CliExit(ExitCode.CONFIG_INVALID, "free-tier clusters have a fixed size and plan",
+                                               action="Remove the size, disk, services, availability, support and "
+                                                      "advanced options, or create a provisioned cluster without "
+                                                      "--free-tier.")
     if free_tier or (interactive and not sized):
         in_use = free_tier_in_use(_org_client(state, ed), ed)
         if free_tier and in_use:
-            raise CliExit(ExitCode.BLOCKED, f"the free tier is already used by {in_use} (one per organization); "
-                                            "create a provisioned cluster instead")
+            raise CliExit(ExitCode.BLOCKED, f"the free tier is already used by {in_use} (one per organization)",
+                                            action=f"Create a provisioned cluster instead (leave out --free-tier), "
+                                                   f"or delete {in_use} first.")
         if not free_tier and not in_use:
             out(f"Cluster types: free ({FREE_TIER_NOTE}) or provisioned (you choose size and support plan)")
             free_tier = _ask("Cluster type", "provisioned", ["free", "provisioned"]) == "free"
     if free_tier:
-        _create_free(state, ed, proj_node, project, name, provider, region, cidr, description, used, no_apply,
+        _create_free(state, ed, proj_node, project, name, provider, region, cidr, description, used, live_only, no_apply,
                      interactive, keep)
         return
     disk_defaults = {"type": disk_type, "size": disk_size, "iops": disk_iops, "auto-expansion": disk_auto_expansion}
@@ -604,8 +721,7 @@ def cluster_create(state: AppState, name: str, project: str | None, free_tier: b
                     asked_disk = answers.get("disk") or _ask_disk(provider_)
         region_ = region or (_ask("Region", answers.get("region", REGION_DEFAULT[provider_]))
                              if interactive else REGION_DEFAULT[provider_])
-        cidr_ = cidr or (_ask("Network CIDR (must not overlap other clusters)", answers.get("cidr", suggest_cidr(used)))
-                         if interactive else suggest_cidr(used))
+        cidr_ = ask_cidr(cidr, answers.get("cidr", suggest_cidr(used)), live_only, used, interactive)
         plan_ = support_plan or (_ask("Support plan", answers.get("support_plan", "developer pro"), SUPPORT_PLANS)
                                  if interactive else "developer pro")
         answers = {"provider": provider_, "size": size_, "region": region_, "cidr": cidr_, "support_plan": plan_,
@@ -646,25 +762,25 @@ def cluster_create(state: AppState, name: str, project: str | None, free_tier: b
             break
         except CliExit as exc:
             ed.remove_cluster(name, proj_node)
-            if not interactive or exc.code is not ExitCode.CONFIG_INVALID:
+            if not interactive or not isinstance(exc, ConfigInvalid):
                 raise
             # Ask again only for prompted answers; values given as flags are kept, so an error caused
             # by flags alone (e.g. --provider azure --size dev) cannot be fixed by asking.
+            found = " ".join(f"{i.path} {i.message}" for i in exc.issues)
             bad = set()
-            if "cloudProvider.cidr" in exc.message:
+            if "cloudProvider.cidr" in found:
                 bad |= {"cidr"}
-            if "cloudProvider.region" in exc.message:
+            if "cloudProvider.region" in found:
                 bad |= {"region"}
-            if any(s in exc.message for s in ("cloudProvider.type", "singleNode", "availability")):
+            if any(s in found for s in ("cloudProvider.type", "singleNode", "availability")):
                 bad |= {"provider", "size"}
-            if "serviceGroups" in exc.message and not groups:
+            if "serviceGroups" in found and not groups:
                 bad |= {"groups"}
             flags = {"provider": provider, "size": size, "region": region, "cidr": cidr, "support_plan": support_plan,
                      "groups": groups or None}
             if all(flags[k] is not None for k in (bad or flags)):
                 raise
-            err(exc.message)
-            err("Please try again.")
+            error(exc.message, "Please try again: only the questions behind the problem are asked again.")
             for k in bad | ({"disk"} if "provider" in bad else set()):  # a disk belongs to its provider
                 answers.pop(k, None)
 
@@ -673,6 +789,7 @@ def cluster_create(state: AppState, name: str, project: str | None, free_tier: b
         sizing = f"{len(sg)} groups · {sum(g['numOfNodes'] for g in sg)} nodes ({_groups_line(sg)})"
     else:
         sizing = f"{sg[0]['numOfNodes']} × {sg[0]['node']['compute']['cpu']} vCPU/{sg[0]['node']['compute']['ram']} GB"
+    warn_other_projects(state, ed, project, cidr_)
     out(f"New cluster {name} in project {project}: {provider_} {region_}, {sizing}, network {cidr_}, support {plan_}")
     plan, ctx = change_and_apply(state, ed, f"cluster/{project}/{name}",
                                  f"Add {name} to capella.yaml and deploy it now?", no_apply, text,
@@ -689,37 +806,48 @@ def _check_create_options(groups: tuple[str, ...], single_node: bool, size: str 
         given = [f for f, v in (("--nodes", nodes), ("--cpu", cpu), ("--ram", ram), ("--services", services),
                                 ("--size", size)) if v is not None]
         if given:
-            raise CliExit(ExitCode.CONFIG_INVALID, f"--group sets nodes, size and services per group; remove "
-                                                   f"{', '.join(given)}", topic="scaling")
+            raise CliExit(ExitCode.CONFIG_INVALID, f"--group sets nodes, size and services per group, so {', '.join(given)} "
+                                                   f"cannot be given with it", topic="scaling",
+                                                   action=f"Remove {', '.join(given)}, or use them without --group "
+                                                          f"for a cluster with one group.")
     if single_node:
         if size is not None:
-            raise CliExit(ExitCode.CONFIG_INVALID, "--single-node sets the size; remove --size", topic="scaling")
+            raise CliExit(ExitCode.CONFIG_INVALID, "--single-node sets the size", topic="scaling",
+                                                   action="Remove --size.")
         if nodes not in (None, 1):
-            raise CliExit(ExitCode.CONFIG_INVALID, "singleNode clusters have exactly 1 node; remove --nodes",
-                          topic="scaling")
+            raise CliExit(ExitCode.CONFIG_INVALID, "singleNode clusters have exactly 1 node",
+                          topic="scaling",
+                                                   action="Remove --nodes.")
         if availability == "multi":
             raise CliExit(ExitCode.CONFIG_INVALID, "singleNode clusters must use availability: single",
-                          topic="scaling")
+                          topic="scaling",
+                                                   action="Remove --availability multi, or leave out --single-node.")
         if len(groups) > 1:
             raise CliExit(ExitCode.CONFIG_INVALID, "singleNode clusters have exactly one service group",
-                          topic="scaling")
+                          topic="scaling",
+                                                   action="Give one --group, or leave out --single-node.")
     if server_version is not None and not VERSION_SHAPE.fullmatch(server_version):
         raise CliExit(ExitCode.CONFIG_INVALID, f"--server-version takes a version like 8.0 or 7.6.4 (got "
-                                               f"'{server_version}')")
+                                               f"'{server_version}')",
+                                               action="Give a version like 8.0 or 7.6.4, or leave out "
+                                                      "--server-version for Capella's default.")
     if cmek_id is not None and not cmek_id.strip():
-        raise CliExit(ExitCode.CONFIG_INVALID, "--cmek-id needs the ID of an existing encryption key")
+        raise CliExit(ExitCode.CONFIG_INVALID, "--cmek-id is empty",
+                                               action="Give the ID of an existing customer-managed encryption key, "
+                                                      "or leave out --cmek-id.")
 
 
 def _create_free(state: AppState, ed: ConfigEditor, proj_node: Any, project: str, name: str,
                  provider: str | None, region: str | None, cidr: str | None, description: str | None,
-                 used: list[str], no_apply: bool, interactive: bool, keep: dict[str, Any]) -> None:
+                 used: list[str], live_only: list[dict[str, Any]], no_apply: bool, interactive: bool,
+                 keep: dict[str, Any]) -> None:
     from capellactl.config.crossref import FREE_TIER_REGIONS
 
     provider_ = provider or (_ask("Cloud provider", "aws", PROVIDERS) if interactive else "aws")
     regions = FREE_TIER_REGIONS[provider_]
     region_ = region or (_ask("Region (free-tier regions)", regions[0], regions) if interactive else regions[0])
-    cidr_ = cidr or (_ask("Network CIDR (must not overlap other clusters)", suggest_cidr(used))
-                     if interactive else suggest_cidr(used))
+    cidr_ = ask_cidr(cidr, suggest_cidr(used), live_only, used, interactive)
+    warn_other_projects(state, ed, project, cidr_)
     cluster: dict[str, Any] = {"name": name}
     if description:
         cluster["description"] = description
@@ -748,20 +876,20 @@ def _take_undeployed(ed: ConfigEditor, proj_node: Any, name: str, project: str) 
     try:
         found = ed.find_cluster(name, project)
     except LookupError as exc:
-        raise CliExit(ExitCode.CONFIG_INVALID, str(exc)) from None
+        raise CliExit(ExitCode.CONFIG_INVALID, str(exc),
+                                               action="Check the name with 'capellactl cluster list'; if it exists "
+                                                      "in Capella but not in capella.yaml, run 'capellactl sync' "
+                                                      "first.") from None
     if found is None:
         return {}
     if "id" in found[1]:  # was deployed once: deleted outside capellactl, so let the user decide
-        raise CliExit(ExitCode.BLOCKED, _exists_msg(name))
+        raise CliExit(ExitCode.BLOCKED, f"cluster {name} already exists",
+                                        action="Change it with 'capellactl cluster update' or 'capellactl cluster "
+                                               "scale', or run 'capellactl sync' to bring it into capella.yaml.")
     keep = {k: v for k, v in found[1].items() if k not in CREATE_KEYS}
     ed.remove_cluster(name, proj_node)
     err(f"{name} is in {ed.path.name} but was never deployed to Capella; replacing it with these settings")
     return keep
-
-
-def _exists_msg(name: str) -> str:
-    return (f"cluster {name} already exists; use 'capellactl cluster update' or 'capellactl cluster scale', "
-            f"or 'capellactl sync' to bring it into capella.yaml")
 
 
 def _record_server_version(ed: ConfigEditor, name: str, project_name: str, plan: Plan, ctx: Any) -> None:
@@ -826,11 +954,14 @@ def cluster_update(state: AppState, name: str, project: str | None, description:
     if cl.get("tier") == "free":
         if any(v is not None for v in (support_plan, support_timezone, cpu, ram, disk_type, disk_size, disk_iops,
                                        disk_auto_expansion)):
-            raise CliExit(ExitCode.BLOCKED, FREE_FIXED)
+            raise CliExit(ExitCode.BLOCKED, "free-tier clusters have 1 node and a fixed size",
+                                            action="Create a provisioned cluster for that ('capellactl cluster "
+                                                   "create NAME').")
         if description is None:
             if not console.is_interactive():
-                raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change; free-tier clusters only allow "
-                                                       "--description")
+                raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change: free-tier clusters only allow "
+                                                       "--description",
+                                                       action="Add --description TEXT.")
             description = _ask("Description", cl.get("description", ""))
         put(cl, "description", description)
         change_and_apply(state, ed, f"cluster/{proj_node.get('name')}/{name}",
@@ -839,7 +970,9 @@ def cluster_update(state: AppState, name: str, project: str | None, description:
     try:
         g = ed.group(cl, group)
     except LookupError as exc:
-        raise CliExit(ExitCode.CONFIG_INVALID, str(exc), topic="scaling") from None
+        raise CliExit(ExitCode.CONFIG_INVALID, str(exc), topic="scaling",
+                                               action="Name the group by its services with --group SERVICES "
+                                                      "('capellactl cluster group list CLUSTER' lists them).") from None
     comp, disk = g["node"]["compute"], g["node"]["disk"]
     support = cl.get("support") or {}
     provider = str((cl.get("cloudProvider") or {}).get("type"))
@@ -849,19 +982,26 @@ def cluster_update(state: AppState, name: str, project: str | None, description:
     fixed = fixed_size_disk(provider, disk.get("type"))
     if fixed and (disk_size is not None or disk_iops is not None):
         raise CliExit(ExitCode.CONFIG_INVALID, f"{name} uses Azure disk type {disk.get('type')}, whose size and IOPS "
-                                               "are set by the type; --disk-size and --disk-iops apply to Ultra disks "
-                                               "only", topic="scaling")
+                                               f"are set by the type", topic="scaling",
+                                               action="Choose a larger type with --disk-type (for example P20), or "
+                                                      "Ultra to set the size and IOPS yourself ('capellactl cluster "
+                                                      "disk-types --provider azure' lists them).")
     if disk_auto_expansion is not None and provider != "azure":
-        raise CliExit(ExitCode.CONFIG_INVALID, "auto-expansion is for azure disks only", topic="scaling")
+        raise CliExit(ExitCode.CONFIG_INVALID, "auto-expansion is for Azure disks only", topic="scaling",
+                                               action="Remove --disk-auto-expansion: AWS and Google Cloud disks "
+                                                      "always grow automatically.")
     if disk_iops is not None and provider == "gcp":
-        raise CliExit(ExitCode.CONFIG_INVALID, "Google Cloud pd-ssd disks get their IOPS from their size (60 per GB); "
-                                               "use --disk-size to make the disk faster (capellactl cluster disk-types)",
-                      topic="scaling")
+        raise CliExit(ExitCode.CONFIG_INVALID, "Google Cloud pd-ssd disks get their IOPS from their size (60 per "
+                                               "GB)",
+                      topic="scaling",
+                                               action="Remove --disk-iops, and use --disk-size to make the disk "
+                                                      "faster ('capellactl cluster disk-types').")
     if not any(v is not None for v in (description, support_plan, support_timezone, cpu, ram, disk_type, disk_size,
                                        disk_iops, disk_auto_expansion)):
         if not console.is_interactive():
-            raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change; pass for example --support-plan, --cpu, "
-                                                   "--ram or --disk-size")
+            raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change: no option was given",
+                                                   action="Add what to change, for example --support-plan, --cpu, "
+                                                          "--ram or --disk-size.")
         out(f"Press Enter to keep the current value of {name}.")
         description = _ask("Description", cl.get("description", ""))
         support_plan = _ask("Support plan", str(support.get("plan", "developer pro")).lower(), SUPPORT_PLANS)
@@ -923,11 +1063,15 @@ def scale_in_file(state: AppState, name: str, nodes: int, group: str | None, no_
     ed = open_editor(state)
     proj_node, cl = locate(ed, name, project)
     if cl.get("tier") == "free":
-        raise CliExit(ExitCode.BLOCKED, FREE_FIXED, topic="scaling")
+        raise CliExit(ExitCode.BLOCKED, "free-tier clusters have 1 node and a fixed size", topic="scaling",
+                                        action="Create a provisioned cluster for that ('capellactl cluster create "
+                                               "NAME').")
     try:
         g = ed.group(cl, group)
     except LookupError as exc:
-        raise CliExit(ExitCode.CONFIG_INVALID, str(exc), topic="scaling") from None
+        raise CliExit(ExitCode.CONFIG_INVALID, str(exc), topic="scaling",
+                                               action="Name the group by its services with --group SERVICES "
+                                                      "('capellactl cluster group list CLUSTER' lists them).") from None
     g["numOfNodes"] = nodes
     from capellactl.engine.normalize import group_key
 
@@ -1040,13 +1184,16 @@ def step_scale(state: AppState, name: str, step: int, group: str | None, lo: int
     client, pid, cl = live_cluster(state, name, project)
     if cl.get("currentState") in TRANSITIONAL:  # AC5: compute the step from the count after the running change
         if state.no_wait:
-            raise CliExit(ExitCode.BLOCKED, f"cluster is {cl['currentState']}; try again later", topic="scaling")
+            raise CliExit(ExitCode.BLOCKED, f"cluster is {cl['currentState']}", topic="scaling",
+                                            action="Wait until it is healthy ('capellactl cluster get NAME' shows "
+                                                   "its state), then run the command again.")
         on_state, on_tick = console.wait_progress(f"cluster {name}")
         try:
             wait_for_cluster(client, pid, str(cl["id"]), "ready", state.timeout, get_clock(), on_state, name=name,
                              on_tick=on_tick)
         except (WaitFailed, WaitTimeout) as exc:
-            raise CliExit(ExitCode.ERROR, str(exc)) from None
+            raise CliExit(ExitCode.ERROR, exc.what,
+                                          action=exc.action) from None
         cl, _ = ep.get_cluster(client, pid, str(cl["id"]))
     live = list(cl.get("serviceGroups") or [])
     single = cl.get("configurationType") == "singleNode"
@@ -1056,9 +1203,10 @@ def step_scale(state: AppState, name: str, step: int, group: str | None, lo: int
         key = ",".join(sorted(s.strip() for s in group.split(",") if s.strip())) if group else None
         chosen = [i for i, g in enumerate(live) if (group_key(g) == key if key else "data" in (g.get("services") or []))]
         if len(chosen) != 1:
-            raise CliExit(ExitCode.CONFIG_INVALID, f"no single service group {'matches ' + repr(key) if key else 'runs data'}"
-                                                   f" (groups: {', '.join(group_key(g) for g in live)}); pass --group",
-                          topic="scaling")
+            raise CliExit(ExitCode.CONFIG_INVALID, f"no single service group {'matches ' + repr(key) if key else 'runs data'} "
+                                                   f"(groups: {', '.join(group_key(g) for g in live)})",
+                          topic="scaling",
+                                                   action="Add --group SERVICES with one of the groups listed.")
     results: list[dict[str, Any]] = []
     for i in chosen:
         g = live[i]
@@ -1093,7 +1241,8 @@ def step_scale(state: AppState, name: str, step: int, group: str | None, lo: int
         try:
             ed.group(node, r["group"])["numOfNodes"] = r["to"]
         except LookupError as exc:
-            raise CliExit(ExitCode.CONFIG_INVALID, f"{exc}; run 'capellactl sync' first", topic="scaling") from None
+            raise CliExit(ExitCode.CONFIG_INVALID, str(exc), topic="scaling",
+                                                   action="Run 'capellactl sync' first, then run the command again.") from None
     question = "Apply " + ", ".join(f"{r['group']} {r['from']} → {r['to']}" for r in moving) + \
                f" to {name} and record it in capella.yaml?"
     try:

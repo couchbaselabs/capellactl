@@ -18,7 +18,7 @@ intervals and retention a cluster may use depend on its support plan: `cluster b
 **Backups themselves are not.** `create`, `retain`, `delete`, `restore` and `export` act on Capella only:
 - Back up before a change: `capellactl cluster backup create NAME`, `capellactl bucket backup create CLUSTER BUCKET`
   (both wait until the backup is done; `--no-wait` returns at once).
-- List: `capellactl cluster backup list NAME` (without NAME: every cluster of the project),
+- List: `capellactl cluster backup list NAME` (without NAME: every cluster of every project in capella.yaml, or of --project),
   `capellactl bucket backup list CLUSTER [BUCKET]`, `capellactl bucket backup cycle list CLUSTER BUCKET`.
 - Restore: `capellactl cluster backup restore NAME BACKUP_ID` replaces all data of the cluster;
   `capellactl bucket backup restore CLUSTER BACKUP_ID [--to-cluster NAME] [--include-data B.S.C]` keeps newer

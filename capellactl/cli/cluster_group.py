@@ -14,7 +14,6 @@ import click
 
 from capellactl.cli import console
 from capellactl.cli.cluster_ops import (
-    FREE_FIXED,
     _ask_disk,
     change_and_apply,
     locate,
@@ -109,10 +108,13 @@ def group_add(state: AppState, name: str, services: str | None, nodes: int | Non
     ed = open_editor(state)
     proj_node, cl = locate(ed, name, project)
     if cl.get("tier") == "free":
-        raise CliExit(ExitCode.BLOCKED, FREE_FIXED, topic="scaling")
+        raise CliExit(ExitCode.BLOCKED, "free-tier clusters have 1 node and a fixed size", topic="scaling",
+                                        action="Create a provisioned cluster to add service groups ('capellactl "
+                                               "cluster create NAME').")
     if cl.get("configurationType") == "singleNode":
-        raise CliExit(ExitCode.CONFIG_INVALID, "singleNode clusters have exactly one service group; create a "
-                                               "multiNode cluster to add groups", topic="scaling")
+        raise CliExit(ExitCode.CONFIG_INVALID, "singleNode clusters have exactly one service group", topic="scaling",
+                                               action="Create a multiNode cluster to add groups ('capellactl "
+                                                      "cluster create NAME --group …').")
     if services is None:
         services = console.ask("Services of the new group", flag="--services")
     names = parse_services(str(services), "--services")
@@ -124,10 +126,11 @@ def group_add(state: AppState, name: str, services: str | None, nodes: int | Non
         same = all(want is None or want == have for want, have in
                    ((nodes, existing.get("numOfNodes")), (cpu, comp.get("cpu")), (ram, comp.get("ram"))))
         if not same:
-            raise CliExit(ExitCode.CONFIG_INVALID, f"group {key} exists with {existing.get('numOfNodes')} × "
-                                                   f"{comp.get('cpu')}/{comp.get('ram')}; use 'capellactl cluster scale "
-                                                   f"{name} --group {key} --nodes N' or 'capellactl cluster update "
-                                                   f"{name} --group {key}'", topic="scaling")
+            raise CliExit(ExitCode.CONFIG_INVALID, f"group {key} already exists with {existing.get('numOfNodes')} × "
+                                                   f"{comp.get('cpu')}/{comp.get('ram')}", topic="scaling",
+                                                   action=f"Change its node count with 'capellactl cluster scale "
+                                                          f"{name} --group {key} --nodes N', or its size with "
+                                                          f"'capellactl cluster update {name} --group {key}'.")
         out(f"group {key} already exists on {name}; nothing to add")
         return
     if nodes is None:
@@ -175,7 +178,8 @@ def group_remove(state: AppState, name: str, services: str, allow_service_remova
     ed = open_editor(state)
     proj_node, cl = locate(ed, name, project)
     if cl.get("tier") == "free":
-        raise CliExit(ExitCode.BLOCKED, FREE_FIXED, topic="scaling")
+        raise CliExit(ExitCode.BLOCKED, "free-tier clusters have 1 node and a fixed size", topic="scaling",
+                                        action="None needed: a free-tier cluster has no groups to remove.")
     key = ",".join(parse_services(services, "SERVICES"))
     groups = cl.get("serviceGroups") or []
     target = next((g for g in groups if group_key(g) == key), None)
@@ -184,7 +188,10 @@ def group_remove(state: AppState, name: str, services: str, allow_service_remova
         return
     others = [g for g in groups if g is not target]
     if "data" in (target.get("services") or []) and not any("data" in (g.get("services") or []) for g in others):
-        raise CliExit(ExitCode.BLOCKED, "the last group running data cannot be removed", topic="scaling")
+        raise CliExit(ExitCode.BLOCKED, "the last group running data cannot be removed", topic="scaling",
+                                        action="Every cluster needs a group that runs data. To replace this one, "
+                                               "add the new data group first ('capellactl cluster group add'), then "
+                                               "remove this one.")
     groups.remove(target)
     change_and_apply(state, ed, f"cluster/{proj_node.get('name')}/{name}",
                      f"Remove service group {key} from {name} and record it in capella.yaml?", no_apply,

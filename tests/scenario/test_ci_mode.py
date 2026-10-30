@@ -104,7 +104,7 @@ def test_ci_ac2_no_command_reads_stdin(fake, run, environment):
 def test_ci_ac2_missing_required_answer_exits_3(fake, run):
     r = run("configure", no_env=True, input="")
     assert r.exit_code == 3, r.output
-    assert "missing --api-key-stdin (no terminal to ask; pass it on the command line)" in r.output
+    assert "[ERROR]: missing --api-key-stdin: there is no terminal to ask for it\n[ACTION]: Give it on the command line: --api-key-stdin VALUE." in r.output
 
 
 @pytest.mark.story("CAP-042", "AC3")
@@ -113,11 +113,11 @@ def test_ci_ac3_uniform_refusal(fake, run, environment, args, verb):
     before = environment.read_text(encoding="utf-8")
     r = run(*args)
     assert r.exit_code == 1, r.output
-    assert f"refusing to {verb} without approval; pass --auto-approve" in r.output
+    assert f"[ERROR]: refusing to {verb} without approval: there is no terminal to ask\n[ACTION]: Add --auto-approve" in r.output
     assert "pipeline step" not in r.output
     assert fake.writes() == [] and environment.read_text(encoding="utf-8") == before
     r = run(*args, extra_env={"CI": "true"})
-    assert r.exit_code == 1 and "add --auto-approve to this pipeline step" in r.output
+    assert r.exit_code == 1 and "[ACTION]: Add --auto-approve to this pipeline step." in r.output
     assert fake.writes() == []
 
 

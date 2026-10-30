@@ -19,7 +19,7 @@ def test_rotation_ac3_weak_password_rejected(tmp_path, run, fake):
     p.write_text(textwrap.dedent(MINIMAL) + ORDERS_BUCKET + ORDERS_APP, encoding="utf-8")
     with pytest.raises(ConfigError) as exc:
         load_config(p, env={"CAPELLA_ORG_ID": "org-1", "ORDERS_APP_PASSWORD": "short"})
-    assert f"clusters[0].databaseCredentials[0].password: {MESSAGE}" in str(exc.value)
+    assert f"credential orders_app › password (line 28)\n    {MESSAGE}" in str(exc.value)
     for args in (("validate",), ("--auto-approve", "credential", "update", "nova-dev-01", "orders_app",
                                  "--rotate-password")):
         r = run(*args, extra_env={"ORDERS_APP_PASSWORD": "short1"})

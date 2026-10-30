@@ -14,7 +14,7 @@ from capellactl.api import endpoints as ep
 from capellactl.api.client import CapellaClient
 from capellactl.api.errors import CapellaApiError, Unauthorized
 from capellactl.cli import console
-from capellactl.cli.console import out
+from capellactl.cli.console import out, warning
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.groups import SuggestingGroup
 from capellactl.cli.state import AppState
@@ -53,14 +53,13 @@ def clean_api_key(raw: str) -> tuple[str, list[str]]:
     return key, fixed
 
 
-def rejection_help(key: str, base_url: str, message: str, hint: str | None) -> str:
+def rejection_help(key: str, base_url: str, message: str, hint: str | None) -> tuple[str, str]:
+    """(what happened, what to check) for a rejected API Key Token (CAP-063)."""
     tail = key[-4:] if len(key) >= 8 else "?"
-    lines = [
-        f"API Key Token rejected by Capella (HTTP 401: {message}); nothing was saved.",
-    ]
+    what = f"API Key Token rejected by Capella (HTTP 401: {message}); nothing was saved"
     if hint:
-        lines.append(f"Capella says: {hint}")
-    lines += [
+        what += f"\nCapella says: {hint}"
+    lines = [
         f"The key received has {len(key)} characters and ends in …{tail}. Check that:",
         "  1. this machine's public IP is in the API key's allowed IP list (Capella UI → Organization settings →",
         "     API Keys → your key). Find your IP with: curl -s https://checkip.amazonaws.com",
@@ -75,7 +74,7 @@ def rejection_help(key: str, base_url: str, message: str, hint: str | None) -> s
         f"  curl -s -o /dev/null -w '%{{http_code}}\\n' -H \"Authorization: Bearer $CAPELLA_API_KEY\" {base_url}/v4/organizations",
         "Avoid pasting into the hidden prompt: pbpaste | capellactl configure --api-key-stdin",
     ]
-    return "\n".join(lines)
+    return what, "\n".join(lines)
 
 
 def _profile_name(state: AppState, local: str | None) -> str:
@@ -114,28 +113,38 @@ def configure(ctx: click.Context, local_profile: str | None, org_id: str | None,
         raw = console.ask("Capella API Key Token (input hidden)", flag="--api-key-stdin", hide_input=True)
     key, fixed = clean_api_key(raw)
     if not key:
-        raise CliExit(ExitCode.CONFIG_INVALID, "no API Key Token entered")
+        raise CliExit(ExitCode.CONFIG_INVALID, "no API Key Token entered",
+                                               action="Run 'capellactl configure' again and paste the API Key Token "
+                                                      "at the prompt, or pipe it in with --api-key-stdin.")
     for note in fixed:
         out(f"note: {note} from the pasted key")
     client = CapellaClient(key, None, base_url, clock=get_clock())
     try:
         orgs = ep.list_organizations(client)
     except Unauthorized as exc:
-        raise CliExit(ExitCode.ERROR, rejection_help(key, base_url, exc.message, exc.hint),
-                      topic="environment") from None
+        what, action = rejection_help(key, base_url, exc.message, exc.hint)
+        raise CliExit(ExitCode.ERROR, what, topic="environment", action=action) from None
     if not orgs:
-        raise CliExit(ExitCode.ERROR, "this API key cannot see any organization; nothing was saved")
+        raise CliExit(ExitCode.ERROR, "this API key cannot see any organization; nothing was saved",
+                                      action="Give the API key a role in an organization (Capella UI → Organization "
+                                             "settings → API Keys), or create a key there, then run 'capellactl "
+                                             "configure' again.")
 
     chosen = None
     if org_id:
         chosen = next((o for o in orgs if o.get("id") == org_id), None)
         if chosen is None:
-            raise CliExit(ExitCode.ERROR, f"organization {org_id} is not visible to this API key; nothing was saved")
+            raise CliExit(ExitCode.ERROR, f"organization {org_id} is not visible to this API key; nothing was saved",
+                                          action=f"Run 'capellactl configure' without --org-id to choose from the "
+                                                 f"organizations this key can see, or use a key from organization "
+                                                 f"{org_id}.")
     elif len(orgs) == 1:
         chosen = orgs[0]
     elif api_key_stdin:  # stdin held the key, so there is no terminal left to ask which organization
         names = ", ".join(f"{o.get('name')} ({o.get('id')})" for o in orgs)
-        raise CliExit(ExitCode.CONFIG_INVALID, f"this key sees several organizations ({names}); pass --org-id ID")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"this key sees several organizations ({names})",
+                                               action="Run 'capellactl configure --org-id ID' with the ID of the "
+                                                      "one to use.")
     else:
         out("Organizations:")
         for i, o in enumerate(orgs, 1):
@@ -204,10 +213,11 @@ def _check_existing(state: AppState, client: CapellaClient, org: dict[str, Any],
     org_name = str(org.get("name") or org_id)
     file_org = declared_org_id(target, state.env)
     if file_org and file_org != org_id:
-        out(f"warning: {target} is for organization {file_org}, but this key is for {org_name} ({org_id}).")
-        out(f"Commands that read {target} will use organization {file_org} and fail with this key. Either:")
-        out(f"  - rewrite it for {org_name} (the current file is kept as {target.name}.bak): capellactl sync --force")
-        out(f"  - keep it, and save a key for {file_org} in its own profile: capellactl configure --profile NAME")
+        warning(f"{target} is for organization {file_org}, but this key is for {org_name} ({org_id}); commands that "
+                f"read {target} will use organization {file_org} and fail with this key",
+                f"Either rewrite it for {org_name} with 'capellactl sync --force' (the current file is kept as "
+                f"{target.name}.bak), or keep it and save a key for {file_org} in its own profile with "
+                "'capellactl configure --profile NAME'.")
         if prompt and console.ask_yes_no(f"Back up {target.name} and re-import it for {org_name}?", False):
             run_import(state, client, force=True)
         return
@@ -223,8 +233,9 @@ def _check_existing(state: AppState, client: CapellaClient, org: dict[str, Any],
     names = ", ".join(sorted(existing)) or "none"
     for name in declared:
         if name not in existing:
-            out(f"warning: {target} declares project {name}, which is not in organization {org_name} "
-                f"(projects: {names})")
+            warning(f"{target} declares project {name}, which is not in organization {org_name} (projects: {names})",
+                    f"Run 'capellactl project create {name}' to create it, or 'capellactl sync --force' to rewrite "
+                    f"{target.name} for {org_name}.")
 
 
 @configure.command("list")
