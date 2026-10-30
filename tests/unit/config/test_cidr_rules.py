@@ -24,7 +24,7 @@ def _error(tmp_path, extra):
 @pytest.mark.story("CAP-022", "AC2")
 def test_cidr_validate_ac2_host_bits_rejected(tmp_path):
     msg = _error(tmp_path, "    allowedCidrs:\n      - cidr: 10.0.0.5/24\n")
-    assert "clusters[0].allowedCidrs[0].cidr: 10.0.0.5/24 is not a network address (did you mean 10.0.0.0/24?)" in msg
+    assert "allowed IP range 10.0.0.5/24 (line 19)\n    10.0.0.5/24 is not a network address (did you mean 10.0.0.0/24?)" in msg
 
 
 @pytest.mark.story("CAP-022", "AC2")
@@ -35,11 +35,13 @@ def test_cidr_validate_ac2_cli_exit_3(tmp_path, run):
 
 
 @pytest.mark.story("CAP-022", "AC5")
-def test_cidr_validate_ac5_any_ip_requires_flag(tmp_path):
-    msg = _error(tmp_path, "    allowedCidrs:\n      - cidr: 0.0.0.0/0\n")
-    assert "0.0.0.0/0 allows every IP address; set allowAnyIp: true on the cluster to confirm" in msg
+def test_cidr_validate_ac5_any_ip_unconfirmed_warns(tmp_path):
+    cfg = _load(tmp_path, "    allowedCidrs:\n      - cidr: 0.0.0.0/0\n")  # valid: the file loads
+    [w] = [w for w in cfg.warnings if "0.0.0.0/0" in w.what]
+    assert "0.0.0.0/0 lets every IP address connect" in w.what and "'apply' will not create it" in w.what
+    assert "capellactl sync --project nova-dev" in w.action and "capellactl cidr delete nova-dev-01 0.0.0.0/0" in w.action
     cfg = _load(tmp_path, "    allowAnyIp: true\n    allowedCidrs:\n      - cidr: 0.0.0.0/0\n")
-    assert cfg.counts()["allowed CIDR"] == 1
+    assert cfg.counts()["allowed CIDR"] == 1 and not any("0.0.0.0/0" in w.what for w in cfg.warnings)
 
 
 @pytest.mark.story("CAP-022", "AC6")

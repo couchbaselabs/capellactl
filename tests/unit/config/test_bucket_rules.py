@@ -38,4 +38,4 @@ def test_bucket_validate_ac5_validate_exits_3(run, write_config):
                            "        storageBackend: magma\n        memoryAllocationInMb: 256\n")
     r = run("validate")
     assert r.exit_code == 3
-    assert "clusters[0].buckets[0].storageBackend: not allowed for ephemeral buckets" in r.output
+    assert "bucket sessions › storageBackend (line 21)\n    not allowed for ephemeral buckets" in r.output

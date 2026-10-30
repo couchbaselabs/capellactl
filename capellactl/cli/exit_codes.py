@@ -17,10 +17,14 @@ class ExitCode(IntEnum):
 
 
 class CliExit(Exception):
-    """Raised anywhere to end the command with a message and an exit code."""
+    """Raised anywhere to end the command with a message and an exit code.
 
-    def __init__(self, code: ExitCode, message: str = "", topic: str | None = None) -> None:
+    `message` says what happened, `action` what the reader can do about it (CAP-063): every CliExit with a message
+    gives an action."""
+
+    def __init__(self, code: ExitCode, message: str = "", topic: str | None = None, action: str = "") -> None:
         super().__init__(message)
         self.code = code
         self.message = message
         self.topic = topic
+        self.action = action

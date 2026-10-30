@@ -134,6 +134,15 @@ backup" and "Download a bucket backup".
 |---|---|---|
 | `test_bucket_backup_ac7_help` | `tests/scenario/test_bucket_backup.py` | |
 
+### AC8 — Progress while waiting
+**Given** a bucket backup or export that takes longer than 30 seconds, **then** the wait looks like a cluster wait (CAP-007 AC9): each
+status starts a line, `  backup of orders: running (25s) ....`, with a dot every 30 seconds and the spinner on a terminal,
+and the final status (`ready`, or a failure) ends the line with the total time.
+
+| Test | Location | Verifies |
+|---|---|---|
+| `test_backup_progress_ac8_failed_ends_the_line` | `tests/unit/cli/test_backup_progress.py` | |
+
 ## Open questions
 - `includeData`/`excludeData`/`mapData` are free strings in the spec; the format (`bucket.scope.collection`, comma
   separated, `src=dst`) is taken from `cbbackupmgr` and must be confirmed against the sandbox before AC5 is built.
@@ -168,3 +177,6 @@ backup" and "Download a bucket backup".
 | AC5 | `test_bucket_backup_ac5_restore_options_body`, `test_bucket_backup_ac5_restore_refused`, `test_bucket_backup_ac5_restore_target_turned_off` |
 | AC6 | `test_bucket_backup_ac6_export`, `test_bucket_backup_ac6_export_existing_and_refused` |
 | AC7 | `test_bucket_backup_ac7_help` |
+| AC8 | `test_backup_progress_ac8_failed_ends_the_line` |
+
+- AC8 (2026-10-30): bucket backup and export waits show progress like a cluster wait (see CAP-057 AC8).

@@ -149,7 +149,8 @@ def credential_get(state: AppState, cluster: str, name: str, project: str | None
     client, pid, cl = live_cluster(state, cluster, project)
     found = _find(client, pid, str(cl["id"]), name)
     if found is None:
-        raise CliExit(ExitCode.ERROR, f"credential {cluster}/{name} not found")
+        raise CliExit(ExitCode.ERROR, f"credential {cluster}/{name} not found",
+                                      action=f"Check the name with 'capellactl credential list {cluster}'.")
     body, _ = ep.get_credential(client, pid, str(cl["id"]), str(found["id"]))
     if state.json:
         out(dumps(body))
@@ -172,13 +173,19 @@ def _grant(privileges: str | None, bucket: str | None, scope: str | None, collec
     if not (privileges or bucket or scope or collections or all_buckets):
         return None
     if scope and not bucket:
-        raise CliExit(ExitCode.CONFIG_INVALID, "--scope needs --bucket")
+        raise CliExit(ExitCode.CONFIG_INVALID, "--scope was given without --bucket",
+                                               action="Add --bucket with the bucket the scope is in.")
     if collections and not scope:
-        raise CliExit(ExitCode.CONFIG_INVALID, "--collection needs --scope")
+        raise CliExit(ExitCode.CONFIG_INVALID, "--collection was given without --scope",
+                                               action="Add --scope with the scope the collection is in.")
     if bucket and all_buckets:
-        raise CliExit(ExitCode.CONFIG_INVALID, "use either --bucket or --all-buckets, not both")
+        raise CliExit(ExitCode.CONFIG_INVALID, "both --bucket and --all-buckets were given",
+                                               action="Keep one: --bucket NAME for one bucket, or --all-buckets for "
+                                                      "every bucket.")
     if not bucket and not all_buckets:
-        raise CliExit(ExitCode.CONFIG_INVALID, "pass --bucket NAME (least privilege) or --all-buckets", topic="credentials")
+        raise CliExit(ExitCode.CONFIG_INVALID, "no bucket was given for the access", topic="credentials",
+                                               action="Add --bucket NAME (least privilege), or --all-buckets for "
+                                                      "every bucket.")
     grant: dict[str, Any] = {"privileges": PRIVILEGES[privileges or "read"]}
     if bucket:
         rb: dict[str, Any] = {"name": bucket}
@@ -190,7 +197,8 @@ def _grant(privileges: str | None, bucket: str | None, scope: str | None, collec
 
 def _password_ref(env_var: str | None, file: str | None) -> str | None:
     if env_var and file:
-        raise CliExit(ExitCode.CONFIG_INVALID, "use either --password-env or --password-file, not both")
+        raise CliExit(ExitCode.CONFIG_INVALID, "both --password-env and --password-file were given",
+                                               action="Keep one of them.")
     return f"${{{env_var}}}" if env_var else f"${{file:{file}}}" if file else None
 
 
@@ -220,12 +228,14 @@ def credential_create(state: AppState, cluster: str, name: str, privileges: str 
     ed = open_editor(state)
     _, cl = locate(ed, cluster, project)
     if _node(cl, name) is not None:
-        raise CliExit(ExitCode.BLOCKED, f"credential {name} is already in capella.yaml for {cluster}; change it with "
-                                        f"'capellactl credential update {cluster} {name}'", topic="idempotency")
+        raise CliExit(ExitCode.BLOCKED, f"credential {name} is already in capella.yaml for {cluster}", topic="idempotency",
+                                        action=f"Change it with 'capellactl credential update {cluster} {name}'.")
     grant = _grant(privileges, bucket, scope, collections, all_buckets)
     if grant is None:
-        raise CliExit(ExitCode.CONFIG_INVALID, "pass --bucket NAME (least privilege) or --all-buckets",
-                      topic="credentials")
+        raise CliExit(ExitCode.CONFIG_INVALID, "no bucket was given for the access",
+                      topic="credentials",
+                                               action="Add --bucket NAME (least privilege), or --all-buckets for "
+                                                      "every bucket.")
     entry: dict[str, Any] = {"name": name}
     ref = _password_ref(password_env, password_file)
     if ref:
@@ -265,18 +275,23 @@ def credential_update(state: AppState, cluster: str, name: str, privileges: str 
     _, cl = locate(ed, cluster, project)
     node = _node(cl, name)
     if node is None:
-        raise CliExit(ExitCode.CONFIG_INVALID, f"credential {name} is not in capella.yaml for {cluster}; add it with "
-                                               f"'capellactl credential create {cluster} {name}' (an existing "
-                                               "credential is adopted, not re-created)")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"credential {name} is not in capella.yaml for {cluster}",
+                                               action=f"Add it with 'capellactl credential create {cluster} {name}' "
+                                                      f"(a credential that exists in Capella is adopted, not created "
+                                                      f"again), then run the command again.")
     grant = _grant(privileges, bucket, scope, collections, all_buckets)
     ref = _password_ref(password_env, password_file)
     if grant is None and ref is None and not rotate_password:
-        raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change; pass --privileges with --bucket or --all-buckets, "
-                                               "--password-env/--password-file, or --rotate-password")
+        raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change: no option was given",
+                                               action="Add --privileges with --bucket or --all-buckets, "
+                                                      "--password-env or --password-file, or --rotate-password.")
     if grant is not None:
         if len(node.get("access") or []) > 1:
-            raise CliExit(ExitCode.CONFIG_INVALID, f"credential {name} has several access grants; change them in "
-                                                   "capella.yaml and run 'capellactl apply'")
+            raise CliExit(ExitCode.CONFIG_INVALID, f"credential {name} has several access grants, and this command "
+                                                   f"changes one",
+                                                   action=f"Delete it with 'capellactl credential delete {cluster} "
+                                                          f"{name}' and create it again with the access it needs "
+                                                          f"(keep its password with --password-env).")
         node["access"] = to_commented([grant])
     if ref is not None:
         node["password"] = ref

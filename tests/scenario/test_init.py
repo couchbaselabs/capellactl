@@ -77,7 +77,7 @@ def test_init_ac2_lists_orgs_and_projects(fake, run, tmp_path, tty):
 def test_init_ac2_without_key_typed_org(fake, run, tmp_path, tty):
     r = run("init", input=answers(start=["", "org-9"]), no_env=True)
     assert r.exit_code == 0, r.output
-    assert "run 'capellactl configure'" in r.output
+    assert "save a key first with 'capellactl configure'" in r.output
     assert "organizationId: org-9\n" in (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert fake.calls() == []
 
@@ -124,7 +124,7 @@ def test_init_ac5_existing_file_prompt(fake, run, tmp_path, tty):
 def test_init_ac5_non_interactive_requires_force(fake, run, tmp_path):
     (tmp_path / "capella.yaml").write_text("# mine\n", encoding="utf-8")
     r = run("init", "--non-interactive", *FLAGS)
-    assert r.exit_code == 1 and "pass --force" in r.output
+    assert r.exit_code == 1 and "[ACTION]: Pass --force" in r.output
     assert (tmp_path / "capella.yaml").read_text(encoding="utf-8") == "# mine\n"
 
 
@@ -139,16 +139,16 @@ def test_init_ac5_backup_written(fake, run, tmp_path, tty):
 
 @pytest.mark.story("CAP-035", "AC6")
 @pytest.mark.parametrize(("question", "bad", "message"), [
-    ("cluster", "x" * 257, "clusters[0].name: must be at most 256 characters"),
+    ("cluster", "x" * 257, "…: must be at most 256 characters"),
     ("cidrs", "10.0.0.5/24", "10.0.0.5/24 is not a network address (did you mean 10.0.0.0/24?)"),
-    ("window", "08:15-18:00", "clusters[0].hibernation.weekdays: start minute must be 00 or 30 (got 08:15)"),
+    ("window", "08:15-18:00", "hibernation.weekdays: start minute must be 00 or 30 (got 08:15)"),
 ], ids=["cluster-name", "cidr-host-bits", "schedule-minute"])
 def test_init_ac6_invalid_answers_reprompted(fake, run, tmp_path, tty, question, bad, message):
     good = dict(FLOW)[question]
     r = run("init", input=answers(**{question: [bad, good]}))
     assert r.exit_code == 0, r.output
     assert message in r.output
-    assert "Please answer again." in r.output
+    assert "[ACTION]: Please answer again." in r.output
     assert (tmp_path / "capella.yaml").read_text(encoding="utf-8") == GOLDEN.read_text(encoding="utf-8")
 
 

@@ -21,7 +21,7 @@ def _repo(tmp_path):
 @pytest.mark.story("CAP-008", "AC4")
 def test_gitcheck_ac4_warns_when_not_ignored(tmp_path):
     d = _repo(tmp_path)
-    assert git_warning(d) == f"warning: {d} is not git-ignored; add .capellactl/ to .gitignore"
+    assert git_warning(d) == (f"{d} is not git-ignored", "Add .capellactl/ to .gitignore so the saved password is never committed.")
 
 
 @pytest.mark.story("CAP-008", "AC4")

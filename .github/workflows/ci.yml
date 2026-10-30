@@ -38,7 +38,9 @@ jobs:
         env:
           CAPELLACTL_IT_TARGET: fake
       - run: python scripts/check-ac-coverage.py
+      - run: python scripts/check-ac-coverage.py --docs docs/release-1.5.0
       - run: python scripts/update-story-index.py --check docs/release-1.0.0
+      - run: python scripts/update-story-index.py --check docs/release-1.5.0
       - run: python scripts/update-api-coverage.py --check     # API-COVERAGE.md matches story statuses
       - run: python scripts/third-party-notices.py --check      # CAP-044 AC3/AC4, per OS and Python
       - run: python scripts/update-reference.py --check         # docs/reference.md matches the schema (CAP-033)

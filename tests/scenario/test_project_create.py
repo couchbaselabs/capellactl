@@ -39,7 +39,7 @@ def test_project_create_ac2_auto_approve(fake, run, tmp_path):
 @pytest.mark.story("CAP-039", "AC2")
 def test_project_create_ac2_needs_auto_approve(fake, run, tmp_path):
     r = run("project", "create", "nova-qa", "--description", "QA")
-    assert r.exit_code == 1 and "without approval; pass --auto-approve" in r.output
+    assert r.exit_code == 1 and "without approval: there is no terminal to ask\n[ACTION]: Add --auto-approve" in r.output
     assert fake.writes() == [] and not (tmp_path / "capella.yaml").exists()
 
 
@@ -48,7 +48,7 @@ def test_project_create_ac3_existing_name(fake, run, tmp_path):
     fake.seed_project("nova-qa")
     r = run("--auto-approve", "project", "create", "nova-qa")
     assert r.exit_code == 4
-    assert "project nova-qa already exists; to add it to capella.yaml run 'capellactl sync --project nova-qa'" in r.output
+    assert "[ERROR]: project nova-qa already exists\n[ACTION]: Run 'capellactl sync --project nova-qa' to add it to capella.yaml." in r.output
     assert fake.writes() == [] and not (tmp_path / "capella.yaml").exists()
 
 

@@ -59,11 +59,11 @@ def test_cluster_adv_ac2_single_node_custom(fake, run, imported):
 
 @pytest.mark.story("CAP-053", "AC2")
 @pytest.mark.parametrize("args,msg", [
-    (["--nodes", "3"], "singleNode clusters have exactly 1 node; remove --nodes"),
+    (["--nodes", "3"], "singleNode clusters have exactly 1 node\n[ACTION]: Remove --nodes."),
     (["--availability", "multi"], "singleNode clusters must use availability: single"),
     (["--group", "data:1x4/16", "--group", "search:2x4/16"], "singleNode clusters have exactly one service group"),
     (["--services", "data,analytics"], "singleNode clusters run only data, index, query and search"),
-    (["--size", "dev"], "--single-node sets the size; remove --size"),
+    (["--size", "dev"], "--single-node sets the size\n[ACTION]: Remove --size."),
 ])
 def test_cluster_adv_ac2_single_node_refused(fake, run, imported, args, msg):
     before = imported.read_text(encoding="utf-8")
@@ -78,7 +78,7 @@ def test_cluster_adv_ac2_single_node_refused(fake, run, imported, args, msg):
     (["--disk-auto-expansion"], "autoExpansion is for azure disks only"),
     (["--provider", "gcp", "--disk-auto-expansion"], "autoExpansion is for azure disks only"),
     (["--server-version", "latest"], "--server-version takes a version like 8.0 or 7.6.4 (got 'latest')"),
-    (["--cmek-id", " "], "--cmek-id needs the ID of an existing encryption key"),
+    (["--cmek-id", " "], "--cmek-id is empty\n[ACTION]: Give the ID of an existing customer-managed encryption key"),
 ])
 def test_cluster_adv_ac3_rules(fake, run, imported, args, msg):
     r = run("--auto-approve", "cluster", "create", "bad-01", *args)
@@ -118,7 +118,7 @@ def test_cluster_adv_ac5_update_auto_expansion(fake, run, imported):
     assert len(puts) == 1 and puts[0].body["serviceGroups"][0]["node"]["disk"]["autoExpansion"] is True
     assert _cluster(imported, "nova-az-01")["serviceGroups"][0]["node"]["disk"]["autoExpansion"] is True
     r = run("--auto-approve", "cluster", "update", "nova-dev-01", "--disk-auto-expansion")
-    assert r.exit_code == 3 and "auto-expansion is for azure disks only" in r.output
+    assert r.exit_code == 3 and "[ERROR]: auto-expansion is for Azure disks only\n[ACTION]: Remove --disk-auto-expansion" in r.output
 
 
 @pytest.mark.story("CAP-053", "AC6")

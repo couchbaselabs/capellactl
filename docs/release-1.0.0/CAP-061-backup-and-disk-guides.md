@@ -105,3 +105,8 @@ PowerShell translation table (CAP-055 AC5 scan extended to `backup-restore.md`).
 | AC3 | `test_backup_guide_ac3_no_planned_notes` (tests/unit/docs/test_backup_guide.py) |
 | AC4 | `test_backup_guide_ac4_linked` |
 | AC5 | `test_backup_guide_ac5_powershell_scan_covers_it` |
+
+- Guide revision (2026-10-30, customer report): every step of `docs/backup-restore.md` now has a table of its
+  command's options (default and meaning) before the command; the options all commands share (`--project`,
+  `--no-apply`, `--no-wait`, `--auto-approve`, `--timeout`) are explained once, in "Options every backup command
+  takes".

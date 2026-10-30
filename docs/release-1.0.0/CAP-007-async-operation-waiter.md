@@ -91,6 +91,7 @@ def wait_for_cluster(client, project_id, cluster_id, op: Literal["create","updat
 |---|---|---|
 | `test_waiter_ac9_tick_every_30s_same_polls` | `tests/unit/engine/test_waiter.py` | Ticks at 30, 60, …; poll gaps unchanged |
 | `test_waiter_ac9_dots_and_total_time` | `tests/scenario/test_waiter_cli.py` | Apply / cluster create |
+| `test_waiter_ac9_each_state_on_its_own_line` | `tests/unit/cli/test_backup_progress.py` | deploying, then rebalancing |
 | `test_waiter_ac9_delete_dots_and_total_time` | same | `cluster delete` |
 | `test_spinner_turns_between_dots_and_leaves_only_the_dots` | `tests/unit/cli/test_console_spinner.py` | Spinner turns, dots replace it, nothing left over |
 | `test_no_spinner_in_ci_or_dumb_terminals`, `test_no_spinner_when_stderr_is_not_a_terminal` | same | Logs keep only the dots |
@@ -118,4 +119,7 @@ def wait_for_cluster(client, project_id, cluster_id, op: Literal["create","updat
 | AC6 | `test_waiter_ac6_transitional_state_no_second_write` (tests/scenario/test_waiter_cli.py)<br>`test_waiter_ac6_update_waits_until_healthy_first` (tests/scenario/test_waiter_cli.py) |
 | AC7 | `test_waiter_ac7_delete_404_is_success` (tests/unit/engine/test_waiter.py) |
 | AC8 | `test_waiter_ac8_interrupt_message` (tests/scenario/test_waiter_cli.py) |
-| AC9 | `test_waiter_ac9_tick_every_30s_same_polls` (tests/unit/engine/test_waiter.py)<br>`test_waiter_ac9_dots_and_total_time` (tests/scenario/test_waiter_cli.py)<br>`test_waiter_ac9_delete_dots_and_total_time` (tests/scenario/test_waiter_cli.py) |
+| AC9 | `test_waiter_ac9_tick_every_30s_same_polls` (tests/unit/engine/test_waiter.py)<br>`test_waiter_ac9_dots_and_total_time` (tests/scenario/test_waiter_cli.py)<br>`test_waiter_ac9_delete_dots_and_total_time` (tests/scenario/test_waiter_cli.py)<br>`test_waiter_ac9_each_state_on_its_own_line` (tests/unit/cli/test_backup_progress.py) |
+
+- AC9 fix (2026-10-30): two in-progress states in a row (`deploying`, then `rebalancing`) were printed on one line;
+  `console.err_inline(text, start=True)` now ends the open line first, and status lines use it (dots do not).

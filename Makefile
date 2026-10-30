@@ -1,5 +1,5 @@
 PY ?= .venv/bin/python
-RELEASE ?= docs/release-1.0.0
+RELEASES ?= docs/release-1.0.0 docs/release-1.5.0
 
 .PHONY: lint typecheck test test-integration test-integration-fake janitor ac-coverage index index-check coverage coverage-check notices notices-check docs docs-check dist build image binary downloads downloads-check rulesets rulesets-check check
 
@@ -22,13 +22,13 @@ janitor:  # delete capellactl-ci-* sandbox projects older than 24 hours (CAP-032
 	$(PY) scripts/ci-janitor.py
 
 ac-coverage:
-	$(PY) scripts/check-ac-coverage.py --docs $(RELEASE)
+	for r in $(RELEASES); do $(PY) scripts/check-ac-coverage.py --docs $$r || exit 1; done
 
 index:
-	$(PY) scripts/update-story-index.py $(RELEASE)
+	for r in $(RELEASES); do $(PY) scripts/update-story-index.py $$r || exit 1; done
 
 index-check:
-	$(PY) scripts/update-story-index.py --check $(RELEASE)
+	for r in $(RELEASES); do $(PY) scripts/update-story-index.py --check $$r || exit 1; done
 
 coverage:
 	$(PY) scripts/update-api-coverage.py

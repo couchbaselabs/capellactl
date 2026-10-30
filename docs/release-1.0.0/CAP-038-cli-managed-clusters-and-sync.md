@@ -171,6 +171,25 @@ Capella does not answer bucket and credential reads while a cluster is `turnedOf
 | `test_sync_ac14_read_error_keeps_previous_values` | same | `GET …/users` 500 |
 | `test_sync_ac14_first_sync_of_turned_off_cluster_still_notes_it` | same | |
 
+### AC15 — A cluster network never overlaps one that is already in Capella
+`cluster create` checks the network (`--cidr`, the answer, or the default) before anything is written or sent. The
+file's validation already refuses an overlap with a cluster the file lists; this AC adds clusters that exist in
+Capella but not in capella.yaml (created in the UI since the last `sync`), and other projects.
+
+**Given** a cluster `ui-made` on `10.0.0.0/24` in the same project in Capella but not in capella.yaml, **when**
+`cluster create test-01 --cidr 10.0.0.0/24` runs (with or without `--no-apply`), **then** it exits 3 with
+`[ERROR]: 10.0.0.0/24 overlaps the network of cluster ui-made (10.0.0.0/24), which is in this project in Capella but
+not in capella.yaml` and an `[ACTION]` naming a free range, makes no write, and leaves the file unchanged; the free
+tier is refused the same way. **When** the overlapping range was typed at the question, **then** the error is shown
+and only that question is asked again. **Given** an overlapping cluster in another project, **then** a `[WARNING]`
+names it and the create goes on.
+
+| Test | Location | Verifies |
+|---|---|---|
+| `test_cluster_create_ac15_overlap_with_capella_only_cluster_refused` | `tests/scenario/test_cluster_cli.py` | Flag, `--no-apply`, free tier; zero writes |
+| `test_cluster_create_ac15_overlap_typed_is_reasked` | same | |
+| `test_cluster_create_ac15_other_project_warns` | same | |
+
 ## Out of scope
 - Commands for buckets, scopes, collections, credentials, IP allowlist and schedules (they arrive with CAP-022 to CAP-028, following the same pattern).
 - Deleting clusters (CAP-014).
@@ -214,3 +233,8 @@ Capella does not answer bucket and credential reads while a cluster is `turnedOf
 | AC12 | `test_readme_ac12_no_manual_edit_steps` (tests/scenario/test_readme_walkthrough.py)<br>`test_readme_walkthrough_steps` (tests/scenario/test_readme_walkthrough.py) |
 | AC13 | `test_sync_ac13_removes_project_deleted_in_capella` (tests/scenario/test_sync.py)<br>`test_sync_ac13_last_project_deleted_leaves_valid_file` (tests/scenario/test_sync.py)<br>`test_sync_ac13_keeps_project_never_deployed` (tests/scenario/test_sync.py)<br>`test_sync_ac13_removes_cluster_deleted_in_capella` (tests/scenario/test_sync.py) |
 | AC14 | `test_sync_ac14_turned_off_cluster_keeps_buckets_and_credentials` (tests/scenario/test_sync.py)<br>`test_sync_ac14_read_error_keeps_previous_values` (tests/scenario/test_sync.py)<br>`test_sync_ac14_first_sync_of_turned_off_cluster_still_notes_it` (tests/scenario/test_sync.py) |
+- **AC15** (2026-10-30, customer question): a `--cidr` was checked only against the clusters in capella.yaml, so one
+  that overlapped a cluster created in the Capella UI since the last `sync` was sent to Capella. `cluster create`
+  already read the project's clusters (for the suggested range); `ask_cidr` now also refuses an overlap with those
+  that the file does not list, and `warn_other_projects` warns about other projects (one `list_clusters` call per
+  project, only when the command gets that far).

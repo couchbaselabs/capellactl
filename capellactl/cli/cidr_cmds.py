@@ -27,10 +27,10 @@ from capellactl.cli.resource_cmds import (
     live_cluster,
 )
 from capellactl.cli.state import AppState
-from capellactl.config.crossref import normalize_cidr
+from capellactl.config.crossref import ANY_IP, normalize_cidr
 from capellactl.config.editor import put, to_commented
 from capellactl.output.render import dumps
-from capellactl.resources.allowed_cidr import ANY_IP, canonical
+from capellactl.resources.allowed_cidr import canonical
 
 PROJECT_OPT = click.option("--project", metavar="NAME", help="Project of the cluster (only needed when the name repeats).")
 
@@ -50,9 +50,13 @@ def _strict(value: str) -> str:
         try:
             net = ipaddress.ip_network(value.strip(), strict=False)
         except ValueError:
-            raise CliExit(ExitCode.CONFIG_INVALID, f"{value} is not a valid CIDR", topic="config") from None
+            raise CliExit(ExitCode.CONFIG_INVALID, f"{value} is not a valid CIDR", topic="config",
+                                                   action="Give an address and prefix length, for example "
+                                                          "203.0.113.10/32 for one address or 10.0.0.0/24 for 256.") from None
         raise CliExit(ExitCode.CONFIG_INVALID, f"{value} is not a network address (did you mean {net}?)",
-                      topic="config") from None
+                      topic="config",
+                                               action=f"Use {net} instead: the bits after the prefix length must be "
+                                                      f"zero.") from None
 
 
 def _declared(state: AppState, cluster: str, project: str | None) -> set[str]:
@@ -97,8 +101,9 @@ def cidr_create(state: AppState, cluster: str, cidr_value: str, comment: str | N
     ed = open_editor(state)
     _, cl = locate(ed, cluster, project)
     if any(canonical(str(c.get("cidr", ""))) == canon for c in cl.get("allowedCidrs") or [] if isinstance(c, dict)):
-        raise CliExit(ExitCode.BLOCKED, f"{canon} is already in capella.yaml for {cluster}; to change its comment or "
-                                        f"expiry, delete it and create it again", topic="idempotency")
+        raise CliExit(ExitCode.BLOCKED, f"{canon} is already in capella.yaml for {cluster}", topic="idempotency",
+                                        action=f"To change its comment or expiry, run 'capellactl cidr delete "
+                                               f"{cluster} {canon}', then create it again with the new values.")
     entry: dict[str, Any] = {"cidr": canon}
     if comment:
         entry["comment"] = comment

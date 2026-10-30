@@ -10,18 +10,21 @@ at every point, not only at the end of a release.
 - When every AC of a story has a passing test tagged `@pytest.mark.story("CAP-NNN", "ACn")`, set it to `Implemented`.
 - A story that is dropped is set to `Descoped` (keep the file and ID; say why in the file).
 - After **any** status, points, priority, title or dependency change, regenerate in the same change:
-  `python3 scripts/update-story-index.py docs/release-1.0.0` (or `make index`).
+  `python3 scripts/update-story-index.py docs/release-<version>` for the story's release (or `make index`, which does
+  every release).
 - In the same change, regenerate the API coverage reports: `python3 scripts/update-api-coverage.py` (or
-  `make coverage`). `docs/release-1.0.0/API-COVERAGE.md` derives every command's and operation's status from the
-  story statuses, so a story that becomes Implemented updates it.
+  `make coverage`). `docs/release-1.0.0/API-COVERAGE.md` and `docs/release-1.5.0/API-COVERAGE.md` derive every
+  command's and operation's status from the story statuses, so a story that becomes Implemented updates them.
 - Never edit README.md or the API coverage reports by hand. CI runs
-  `python3 scripts/update-story-index.py --check docs/release-1.0.0` and `python3 scripts/update-api-coverage.py --check`
+  `python3 scripts/update-story-index.py --check docs/release-<version>` for each release and
+  `python3 scripts/update-api-coverage.py --check`
   and fails when any of them is stale.
 
 ## API coverage
 
 - Every Management API operation is mapped in `scripts/update-api-coverage.py`, either to the capellactl command(s)
-  that call it with their stories, or to a proposed command for a later release. App Services are reported in
+  that call it with their stories. Release 1.0.0 covers the core operational database and release 1.5.0 the rest of
+  it (`RELEASE_15` in the script); a story's release is the directory it lives in. App Services are reported in
   `docs/release-2.0.0/API-COVERAGE-APP-SERVICES.md`; AI operations are out of scope.
 - When a story adds a command or starts calling an endpoint, update its entry in the command dictionary (`cmd(...)`)
   or operation map (`op(...)`). If a needed command has no story, write the story first (next free `CAP-NNN`,

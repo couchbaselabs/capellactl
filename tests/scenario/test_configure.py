@@ -116,7 +116,7 @@ def test_configure_ac7_rejection_shows_hint_and_checklist(fake, run, keychain):
     fake.api_keys = {"the-real-key"}
     r = run("configure", "--api-key-stdin", input="Bearer wrong-key-abcd\n", no_env=True)
     assert r.exit_code == 1
-    for s in ("API Key Token rejected by Capella (HTTP 401: Unauthorized); nothing was saved.",
+    for s in ("[ERROR]: API Key Token rejected by Capella (HTTP 401: Unauthorized); nothing was saved",
               "the API key allowlist", "has 14 characters and ends in …abcd",
               "allowed IP list", "not the API Key ID or name", "curl -s -o /dev/null", "--api-key-stdin",
               "note: removed a leading 'Bearer ' from the pasted key"):
@@ -132,7 +132,7 @@ def test_configure_ac7_api_key_stdin(fake, run, keychain):
     assert keychain.store[("capellactl", "default")] == KEY
     fake.orgs["org-2"] = {"id": "org-2", "name": "Nova Labs", "description": ""}
     r = run("configure", "--profile", "two", "--api-key-stdin", input=KEY, no_env=True)
-    assert r.exit_code == 3 and "pass --org-id ID" in r.output and "Nova Labs (org-2)" in r.output
+    assert r.exit_code == 3 and "[ACTION]: Run 'capellactl configure --org-id ID'" in r.output and "Nova Labs (org-2)" in r.output
     r = run("configure", "--profile", "two", "--api-key-stdin", "--org-id", "org-2", input=KEY, no_env=True)
     assert r.exit_code == 0 and "profile 'two' saved (org Nova Labs)" in r.output
 

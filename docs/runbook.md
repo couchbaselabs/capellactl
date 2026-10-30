@@ -597,7 +597,7 @@ capellactl cluster backup schedule options $CLUSTER              # intervals and
 capellactl cluster backup schedule set $CLUSTER --every 24 --retain 30d --start 02:00
 capellactl cluster backup schedule show $CLUSTER
 capellactl cluster backup schedule delete $CLUSTER              # existing backups are kept until they expire
-capellactl cluster backup list $CLUSTER                         # without a name: every cluster of the project
+capellactl cluster backup list $CLUSTER                         # without a name: every cluster, every project
 capellactl cluster backup create $CLUSTER                       # waits until complete (--no-wait returns at once)
 capellactl cluster backup retain $CLUSTER $BACKUP_ID --retain 90d
 capellactl cluster backup restore $CLUSTER $BACKUP_ID           # replaces all data; type the name to confirm

@@ -48,7 +48,7 @@ def test_redaction_ac5_uncaught_exception_redacted(fake, run, write_config, monk
     monkeypatch.setattr("capellactl.cli.env.build_plan", boom)
     r = run("plan")
     assert r.exit_code == 1
-    assert "Error: unexpected failure while using key ***" in r.output
+    assert "[ERROR]: unexpected error: unexpected failure while using key ***\n[ACTION]: " in r.output
     r = run("--log-level", "debug", "plan")
     assert "Traceback" in r.output
     assert_no_secret(r.output, API_KEY)

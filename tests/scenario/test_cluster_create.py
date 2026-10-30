@@ -124,7 +124,7 @@ def test_cluster_ac6_422_message_and_hint(fake, run, write_config):
     write_config()
     r = run("--auto-approve", "apply")
     assert r.exit_code == 1
-    assert "Failed: cluster nova-dev-01" in r.output and "Hint: injected 422" in r.output
+    assert "[ERROR]: Failed: cluster nova-dev-01" in r.output and "[ACTION]: injected 422." in r.output
     assert len(fake.writes()) == 1
 
 

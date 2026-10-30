@@ -54,7 +54,7 @@ def test_planner_ac5_ambiguous_name_blocked(fake, run, write_config):
     write_config()
     r = run("plan", "--detailed-exitcode")
     assert r.exit_code == 4
-    assert f"! cluster nova-dev-01  2 clusters share this name (ids: {a}, {b}); add id: to choose one" in r.output
+    assert f"! cluster nova-dev-01  2 clusters share this name (ids: {a}, {b}), so capellactl cannot tell" in r.output
 
 
 @pytest.mark.story("CAP-005", "AC5")
@@ -63,7 +63,7 @@ def test_planner_ac5_ambiguous_project_blocked(fake, run, write_config):
     write_config()
     r = run("plan")
     assert r.exit_code == 4
-    assert f"2 projects share this name (ids: {p1}, {p2}); add id: under project: to choose one" in r.output
+    assert f"2 projects share this name (ids: {p1}, {p2}), so capellactl cannot tell" in r.output
 
 
 @pytest.mark.story("CAP-005", "AC6")
@@ -115,7 +115,7 @@ def test_planner_ac6_unsupported_kind_shown_deferred(fake, run, write_config, mo
     seed_healthy(fake)
     write_config(MINIMAL + "    hibernation: { timezone: US/Pacific, weekdays: \"08:00-18:00\", weekend: \"off\" }\n")
     r = run("plan")
-    assert "… schedule nova-dev-01  hibernation schedule — not managed by this build yet (CAP-999)" in r.output
+    assert "… schedule nova-dev-01  hibernation schedule — not managed by this build yet; left unchanged" in r.output
     assert "deferred." in r.output
 
 

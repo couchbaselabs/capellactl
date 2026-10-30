@@ -20,6 +20,7 @@ import yaml
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
 
+from capellactl.output.notice import Notice
 from capellactl.output.redact import redactor
 
 API_VERSION = "capellactl/v1"
@@ -40,22 +41,80 @@ def fmt_path(path: PathT) -> str:
     return out or "(root)"
 
 
+def parse_path(text: str) -> PathT:
+    """`projects[1].clusters[0].name` → ("projects", 1, "clusters", 0, "name"); the inverse of fmt_path."""
+    return tuple(int(i) if i else k for i, k in re.findall(r"\[(\d+)\]|([^.\[\]]+)", text))
+
+
+# List keys whose entries are named resources (CAP-062): the label shown and the field that names an entry.
+NAMED_LISTS = {"projects": ("project", "name"), "clusters": ("cluster", "name"), "serviceGroups": ("service group", "services"),
+               "buckets": ("bucket", "name"), "scopes": ("scope", "name"), "collections": ("collection", "name"),
+               "databaseCredentials": ("credential", "name"), "allowedCidrs": ("allowed IP range", "cidr")}
+
+
+def describe(data: Any, path: PathT) -> str:
+    """Where a problem is, by name: `project shop › cluster web-01 › service group data › numOfNodes` (CAP-062 AC1).
+
+    Named resources are followed while each one sits directly in the one before it; the rest is the field path."""
+    parts: list[str] = []
+    if path[:1] == ("clusters",) and isinstance(data, dict) and isinstance(data.get("project"), dict):
+        parts.append(f"project {data['project'].get('name')}")  # the single-project form
+    node, i = data, 0
+    while i + 1 < len(path) and path[i] in NAMED_LISTS and isinstance(path[i + 1], int):
+        label, key = NAMED_LISTS[path[i]]
+        items = node.get(path[i]) if isinstance(node, dict) else None
+        item = items[path[i + 1]] if isinstance(items, list) and path[i + 1] < len(items) else None
+        name = item.get(key) if isinstance(item, dict) else None
+        if isinstance(name, list):
+            name = ",".join(sorted(str(s) for s in name))
+        if isinstance(name, str) and len(name) > 40:
+            name = name[:40] + "…"  # a name that is itself the problem (too long) would fill the line
+        parts.append(f"{label} {name}" if name not in (None, "") else f"{label} #{path[i + 1] + 1}")
+        node, i = item, i + 2
+    rest = path[i:]
+    if parts and rest == (NAMED_LISTS[path[i - 2]][1],):
+        rest = ()  # the field that names the entry is the entry itself
+    return " › ".join(parts + ([fmt_path(rest)] if rest or not parts else []))
+
+
 @dataclass
 class ConfigIssue:
     path: str
     message: str
     line: int | None = None
     topic: str = "config"
+    fix: str = ""
+    where: str = ""
 
     def __str__(self) -> str:
-        suffix = f" (line {self.line})" if self.line else ""
-        return f"{self.path}: {self.message}{suffix}"
+        """`where (line N)`, then the problem and its next step (`action:`) indented under it (CAP-062, CAP-063)."""
+        out = f"{self.where or self.path}{f' (line {self.line})' if self.line else ''}\n  {self.message}"
+        return out + (f"\n  action: {self.fix}" if self.fix else "")
+
+
+def render_issues(heading: str, issues: list[ConfigIssue]) -> str:
+    """A heading, then one indented block per problem."""
+    return "\n".join([heading, *("  " + str(i).replace("\n", "\n  ") for i in issues)])
+
+
+FIX_PROBLEMS = "Fix each problem above (an 'action:' line says how), then run the command again."
+
+
+def count_problems(n: int) -> str:
+    return f"{n} problem{'' if n == 1 else 's'}"
 
 
 class ConfigError(Exception):
-    def __init__(self, issues: list[ConfigIssue]) -> None:
+    def __init__(self, issues: list[ConfigIssue], source: str = "capella.yaml") -> None:
         self.issues = sorted(issues, key=lambda i: (i.line or 0, i.path))
-        super().__init__("\n".join(str(i) for i in self.issues))
+        self.source = source
+        super().__init__(render_issues(f"{source} has {count_problems(len(self.issues))}:", self.issues))
+
+
+def _raise(issues: list[ConfigIssue], data: Any, source: str) -> None:
+    for i in issues:
+        i.where = i.where or describe(data, parse_path(i.path))
+    raise ConfigError(issues, source)
 
 
 @dataclass
@@ -89,6 +148,7 @@ class Config:
     lines: dict[PathT, int]
     organization_id: str | None
     hints: list[str] = field(default_factory=list)
+    warnings: list[Notice] = field(default_factory=list)
 
     def projects(self) -> list[ProjectEntry]:
         return project_entries(self.data)
@@ -392,29 +452,30 @@ def load_config(path: str | Path, env: dict[str, str] | None = None) -> Config:
     try:
         text = p.read_text(encoding="utf-8")
     except FileNotFoundError:
-        raise ConfigError([ConfigIssue(str(p), "file not found; run 'capellactl sync' to write it from your Capella project")]) from None
+        raise ConfigError([ConfigIssue(str(p), "file not found; run 'capellactl sync' to write it from your Capella project")],
+                          p.name) from None
     try:
         data, lines = _load_yaml(text)
     except yaml.YAMLError as exc:
         mark = getattr(exc, "problem_mark", None)
         raise ConfigError([ConfigIssue(str(p), f"invalid YAML: {getattr(exc, 'problem', exc)}",
-                                       (mark.line + 1) if mark else None)]) from None
+                                       (mark.line + 1) if mark else None)], p.name) from None
     if not isinstance(data, dict):
-        raise ConfigError([ConfigIssue(str(p), "the file must be a YAML mapping")])
+        raise ConfigError([ConfigIssue(str(p), "the file must be a YAML mapping")], p.name)
 
     version = data.get("apiVersion")
     if version != API_VERSION:
         if isinstance(version, str) and version.startswith("capellactl/"):
             raise ConfigError([ConfigIssue("apiVersion", f"this file needs capellactl supporting {version}; installed version "
-                                                         f"supports {API_VERSION}", lines.get(("apiVersion",)))])
-        raise ConfigError([ConfigIssue("apiVersion", f"must be {API_VERSION}", lines.get(("apiVersion",), 1))])
+                                                         f"supports {API_VERSION}", lines.get(("apiVersion",)))], p.name)
+        raise ConfigError([ConfigIssue("apiVersion", f"must be {API_VERSION}", lines.get(("apiVersion",), 1))], p.name)
 
     hints: list[str] = []
     issues = _resolve_secrets(data, p.parent, lines, env)
     _normalize_hibernation_booleans(data, hints)
     issues += _validate_schema(data, lines)
     if issues:
-        raise ConfigError(issues)
+        _raise(issues, data, p.name)
 
     apply_defaults(data)
 
@@ -423,6 +484,6 @@ def load_config(path: str | Path, env: dict[str, str] | None = None) -> Config:
     cfg = Config(path=p, data=data, lines=lines, organization_id=data.get("organizationId") or None, hints=hints)
     issues = check_cross_references(cfg)
     if issues:
-        raise ConfigError(issues)
-    cfg.hints += config_warnings(cfg)
+        _raise(issues, data, p.name)
+    cfg.warnings = config_warnings(cfg)
     return cfg

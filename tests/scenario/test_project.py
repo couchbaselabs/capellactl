@@ -53,7 +53,7 @@ def test_project_ac4_ambiguous_blocked(fake, run, write_config):
     fake.seed_project("nova-dev")
     write_config(PROJECT_ONLY)
     r = run("--auto-approve", "apply")
-    assert r.exit_code == 4 and "add id: under project: to choose one" in r.output
+    assert r.exit_code == 4 and "capellactl sync --force" in r.output
     assert fake.writes() == []
 
 

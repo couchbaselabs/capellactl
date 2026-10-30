@@ -69,12 +69,14 @@ capellactl cluster backup restore nova-prod-01 3f1c…
 ### AC1 — List
 **Given** a cluster with three backups, **then** `cluster backup list NAME` prints three rows, newest first, with
 S.NO first and ID last; `-o json` returns Capella's items. **Given** no `NAME`, **then** the project-level endpoint
-is used and the `CLUSTER` column is shown. **Given** no backups, `no backups`, exit 0.
+is used and the `CLUSTER` column is shown, for every project in capella.yaml (with a `PROJECT` column when there
+are several) or for `--project`. **Given** no backups, `no backups`, exit 0.
 
 | Test | Location | Verifies |
 |---|---|---|
 | `test_cluster_backup_ac1_list` | `tests/scenario/test_cluster_backup.py` | Text, JSON, empty |
 | `test_cluster_backup_ac1_list_project` | same | |
+| `test_cluster_backup_ac1_list_every_project` | same | Two projects, `--project`, JSON |
 
 ### AC2 — Back up now
 **Given** `cluster backup create nova-dev-01 --retain 7d`, **then** one `POST` with `retention: 168` is sent, the
@@ -131,6 +133,15 @@ backup before a change" and "Restore a cluster from a backup".
 |---|---|---|
 | `test_cluster_backup_ac7_help` | `tests/scenario/test_cluster_backup.py` | |
 
+### AC8 — Progress while waiting
+**Given** a backup or restore that takes longer than 30 seconds, **then** the wait looks like a cluster wait (CAP-007 AC9): each
+status starts a line, `  backup of nova-dev-01: running (25s) ....`, with a dot every 30 seconds and the spinner on a terminal,
+and the final status (`complete`, or a failure) ends the line with the total time.
+
+| Test | Location | Verifies |
+|---|---|---|
+| `test_backup_progress_ac8_dots_every_30s_on_one_line` | `tests/unit/cli/test_backup_progress.py` | |
+
 ## Out of scope
 - **Clone a backup into a new cluster** (`POST …/projects/{p}/cloudsnapshotbackups/{backupId}/clone`): creates a
   cluster outside capella.yaml, so it needs the CAP-038 record-then-apply design. Proposed as `cluster backup clone`
@@ -160,10 +171,19 @@ backup before a change" and "Restore a cluster from a backup".
 
 | AC | Tests |
 |---|---|
-| AC1 | `test_cluster_backup_ac1_list`, `test_cluster_backup_ac1_list_project` (tests/scenario/test_cluster_backup.py) |
+| AC1 | `test_cluster_backup_ac1_list`, `test_cluster_backup_ac1_list_project`, `test_cluster_backup_ac1_list_every_project` (tests/scenario/test_cluster_backup.py) |
 | AC2 | `test_cluster_backup_ac2_create_waits`, `test_cluster_backup_ac2_create_refused` |
 | AC3 | `test_cluster_backup_ac3_retain`, `test_cluster_backup_ac3_retain_rerun_noop` |
 | AC4 | `test_cluster_backup_ac4_delete`, `test_cluster_backup_ac4_delete_missing_noop` |
 | AC5 | `test_cluster_backup_ac5_restore_confirm`, `test_cluster_backup_ac5_restore_waits`, `test_cluster_backup_ac5_restore_turned_off` |
 | AC6 | `test_cluster_backup_ac6_restores_and_regions` |
 | AC7 | `test_cluster_backup_ac7_help` |
+| AC8 | `test_backup_progress_ac8_dots_every_30s_on_one_line` |
+
+- AC8 (2026-10-30, customer report): backup, restore and export waits printed one plain line per status, with no
+  dots or spinner, so a long backup looked stuck. `wait_for_status` takes `on_tick` (the cluster waiter's sleep
+  slices, now shared as `waiter._sleep`) and `backup_common.progress` returns `on_state`/`on_tick` shown like
+  `console.wait_progress`.
+- AC1 revised (2026-10-30, customer report): `cluster backup list` without NAME refused a capella.yaml with several
+  projects ("Add --project NAME"); it now lists every project's clusters, with a PROJECT column, and `--project`
+  narrows it. JSON items gain `projectName`.

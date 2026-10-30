@@ -9,7 +9,7 @@ from tests.conftest import MINIMAL, seed_healthy
 
 PROTECTED = MINIMAL + "    deletionProtection: true\n"
 ORDERS = "    buckets:\n      - name: orders\n        memoryAllocationInMb: 1024\n"
-MESSAGE = "deletion protection is on for nova-dev-01; run 'capellactl cluster protect nova-dev-01 --off' first"
+MESSAGE = "deletion protection is on for nova-dev-01"
 
 
 def _protection_puts(fake):

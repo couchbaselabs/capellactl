@@ -131,8 +131,8 @@ def test_bucket_backup_ac5_restore_options_body(fake, run, world):
 
 @pytest.mark.story("CAP-059", "AC5")
 @pytest.mark.parametrize("extra,code,message", [
-    (["--replace-ttl-with", "2027-01-01T00:00:00Z"], 3, "--replace-ttl-with needs --replace-ttl all"),
-    (["--replace-ttl", "none", "--replace-ttl-with", "2027-01-01T00:00:00Z"], 3, "--replace-ttl-with needs"),
+    (["--replace-ttl-with", "2027-01-01T00:00:00Z"], 3, "--replace-ttl-with was given without --replace-ttl\n[ACTION]: Add --replace-ttl all"),
+    (["--replace-ttl", "none", "--replace-ttl-with", "2027-01-01T00:00:00Z"], 3, "--replace-ttl-with was given without --replace-ttl"),
     (["--services", "data,index"], 3, "--services takes data, query or data,query"),
     (["--to-cluster", "nope-01"], 1, "cluster nope-01 not found"),
 ])
