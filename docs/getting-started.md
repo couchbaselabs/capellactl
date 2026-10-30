@@ -22,7 +22,8 @@ Two things to know before you start:
 **A Capella API key.** In the Capella UI, go to **Organization settings → API Keys** and create a key:
 
 - Role: **Organization Owner**, or **Project Creator** plus **Project Owner** on the project you will use.
-- Allowed IPs: add this machine's public IP (`curl -s https://checkip.amazonaws.com` shows it).
+- Allowed IPs: add this machine's public IP (`curl -s https://checkip.amazonaws.com` shows it; in PowerShell,
+  `curl.exe -s https://checkip.amazonaws.com`).
 - Copy the **API Key Token** when the key is created. Capella shows it only once, and the API Key ID will not work.
 
 **capellactl installed.** Follow [Install](../README.md#install), then check it:
@@ -37,6 +38,26 @@ capellactl --version               # capellactl 1.0.0.devN+g… (Management API 
 ```bash
 mkdir ~/capella-env && cd ~/capella-env
 ```
+
+### Using the commands in PowerShell
+
+This guide and the [runbook](runbook.md) show macOS/Linux commands. Every `capellactl` command is typed the same way
+in PowerShell; only these shell parts differ:
+
+<!-- powershell-translation:start -->
+| In the docs (macOS/Linux) | In PowerShell |
+|---|---|
+| `mkdir ~/capella-env && cd ~/capella-env` | `mkdir ~\capella-env; cd ~\capella-env` |
+| `export ORDERS_APP_PASSWORD='…'` | `$env:ORDERS_APP_PASSWORD = '…'` (in cmd.exe: `set ORDERS_APP_PASSWORD=…`) |
+| a long command with lines ending in `\` | end those lines with a backtick `` ` `` instead, or type it on one line |
+| `"$(curl -s https://checkip.amazonaws.com)/32"` | `"$(curl.exe -s https://checkip.amazonaws.com)/32"` (plain `curl` is a different command in Windows PowerShell) |
+| `pbpaste \| capellactl configure --api-key-stdin` | `Get-Clipboard \| capellactl configure --api-key-stdin` |
+| `capellactl plan --detailed-exitcode \|\| [ $? -eq 2 ]` | `capellactl plan --detailed-exitcode; if ($LASTEXITCODE -notin 0, 2) { exit $LASTEXITCODE }` |
+| `capellactl completion zsh` | not available in PowerShell |
+<!-- powershell-translation:end -->
+
+At the hidden `configure` prompt, paste with right-click or Ctrl+V: nothing appears, but the token is there; press
+Enter.
 
 ## Step by step
 
@@ -111,7 +132,7 @@ Next: capellactl cluster create NAME --project sandbox    (deploys the first clu
 ```
 
 `capellactl project list` now shows it. A name that already exists in Capella is refused; add an existing project to
-the file with `capellactl import --project NAME`.
+the file with `capellactl sync --project NAME`.
 
 **4. See what you can deploy**
 
@@ -379,7 +400,15 @@ capellactl cluster create dev-01 --project sandbox --provider azure --region eas
 ```
 
 On AWS use `--provider aws --region us-east-1`, on Google Cloud `--provider gcp --region us-east1`; capellactl picks
-each provider's disk type for you (Azure: Premium SSD, such as P6).
+each provider's default disk type for you (Azure: Premium SSD P6). To choose another one, `capellactl cluster
+disk-types` lists each type with its size range and speed; pass it with `--disk-type` (see
+[Choose the disk type](custom-clusters.md#10-choose-the-disk-type)).
+
+For a production layout with separate groups of nodes per service (multi-dimensional scaling), for example data on
+3 × 8 vCPU/32 GB and index and query on 2 × 8/32, see [Custom clusters and service groups](custom-clusters.md).
+
+To back the cluster up on a schedule, take a backup before a risky change, or restore a cluster or a bucket, see
+[Backup and restore](backup-restore.md).
 
 **12. Change a cluster**
 
@@ -746,13 +775,17 @@ Disks never shrink, and failed or degraded clusters are not changed. A turned-of
   Organization settings → API Keys → your key) not including this machine's public IP
   (`curl -s https://checkip.amazonaws.com`). Also check that you copied the **API Key Token**, not the API Key ID. The
   message shows Capella's own hint and a `curl` command to test the key. To avoid pasting into the hidden prompt:
-  `pbpaste | capellactl configure --api-key-stdin`.
-- `import` or `configure` says `buckets and database credentials not imported (turnedOff)`: Capella does not return
-  them while a cluster is off. Turn it on (`capellactl cluster power NAME --on`) and run `capellactl import` again.
+  `pbpaste | capellactl configure --api-key-stdin` (PowerShell: `Get-Clipboard | capellactl configure --api-key-stdin`).
+- Windows: `capellactl is not recognized`: this PowerShell window is not activated. Run
+  `.venv\Scripts\Activate.ps1` in the `capellactl` folder, or type the full path `…\capellactl\.venv\Scripts\capellactl.exe`.
+  `running scripts is disabled on this system`: run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once, or
+  use the full path ([Install on Windows](../README.md#on-windows-powershell)).
+- `sync` or `configure` says `buckets and database credentials not imported (turnedOff)`: Capella does not return
+  them while a cluster is off. Turn it on (`capellactl cluster power NAME --on`) and run `capellactl sync` again.
 - `plan` blocks a project with `probably renamed in Capella`: the project was renamed in the UI and the file has no
   `id:` for it. Run `capellactl sync` to adopt the new name (it also records the ids).
 - `project NAME not found`: the `capella.yaml` in this folder is probably for another organization or project. Run
-  `capellactl configure show` to see which file and organization are used; `capellactl import --force` rewrites the
+  `capellactl configure show` to see which file and organization are used; `capellactl sync --force` rewrites the
   file for your organization (the old one is kept as `.bak`).
 - Exit codes: `capellactl help exit-codes` (3 = config problem, 4 = blocked, 5 = timed out waiting).
 - Details of every API call (secrets masked): `capellactl --log-level debug plan`.
@@ -767,10 +800,10 @@ creates it and keeps it up to date; you do not need to edit it.
 
 | How it changes | Command |
 |---|---|
-| Created from your Capella projects | `capellactl configure` (offers it) or `capellactl import [--project NAME] [--cluster NAME]` |
+| Created from your Capella projects | `capellactl configure` (offers it) or `capellactl sync [--project NAME] [--cluster NAME]` |
 | Created for a new environment | `capellactl init` |
 | New project added | `capellactl project create NAME` |
-| More existing projects added | `capellactl import` (adds the ones that are missing, leaves the others alone) |
+| More existing projects added | `capellactl sync` (adds the ones that are missing; `--skip-project NAME` leaves one out) |
 | Cluster, bucket, scope, collection, IP range or app login added, changed or deleted | the matching `capellactl` command |
 | Refreshed after changes made in the Capella UI | `capellactl sync` |
 

@@ -20,6 +20,13 @@ EXPECTED = {
     "delete_scope", "list_collections", "get_collection", "create_collection", "update_collection",
     "delete_collection", "list_credentials", "get_credential", "create_credential", "update_credential",
     "delete_credential",
+    # Backups (CAP-056–CAP-059)
+    "get_snapshot_schedule", "upsert_snapshot_schedule", "delete_snapshot_schedule", "get_snapshot_schedule_options",
+    "list_snapshot_regions", "list_snapshots", "list_project_snapshots", "create_snapshot", "update_snapshot_retention",
+    "delete_snapshot", "restore_snapshot", "list_snapshot_restores", "get_bucket_backup_schedule",
+    "create_bucket_backup_schedule", "update_bucket_backup_schedule", "delete_bucket_backup_schedule",
+    "list_backup_cycles", "list_cycle_backups", "create_bucket_backup", "list_cluster_backups", "get_backup",
+    "delete_backup", "restore_backup", "export_backup", "get_backup_export",
 }
 
 

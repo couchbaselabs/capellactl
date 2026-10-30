@@ -1,0 +1,25 @@
+# Node sizes Capella offers per cloud provider, as vCPU/RAM GB (CAP-051 AC9). Change sizes here without changing
+# code. The Management API has no endpoint that lists them, so they come from the Capella documentation:
+#   aws    https://docs.couchbase.com/cloud/reference/aws.html
+#   gcp    https://docs.couchbase.com/cloud/reference/gcp.html
+#   azure  https://docs.couchbase.com/cloud/reference/azure.html   (RAM in GiB)
+# Read 2026-10-23. A size that is not listed only warns: Capella has the last word, and rejects a size it does not
+# offer in the region.
+#
+#   sizes        offered for every cluster
+#   singleNode   offered only for single-node clusters
+
+aws:
+  singleNode: [2/8]
+  sizes: [4/16, 4/32, 8/16, 8/32, 8/64, 16/32, 16/64, 16/128, 32/64, 32/128, 32/256, 48/96, 48/192, 48/384,
+          64/128, 64/256, 64/512]
+
+gcp:
+  singleNode: [2/8]
+  sizes: [4/16, 4/32, 8/16, 8/32, 8/64, 16/32, 16/64, 16/128, 32/128, 32/256, 36/72, 48/96, 48/192, 48/384,
+          64/256, 64/512, 72/144]
+
+azure:
+  singleNode: [2/8]
+  sizes: [4/16, 4/32, 8/16, 8/32, 8/64, 16/32, 16/64, 16/128, 20/160, 32/64, 32/128, 32/256, 48/96, 48/192, 48/384,
+          64/128, 64/256, 64/512, 72/144]

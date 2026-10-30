@@ -26,7 +26,7 @@ CREATE_FIELDS = ["name", "description", "configurationType", "cloudProvider", "c
                  "availability", "support", "zones", "cmekId", "enablePrivateDNSResolution"]
 IMMUTABLE = ["configurationType", "cloudProvider", "availability", "zones", "cmekId", "enablePrivateDNSResolution",
              "couchbaseServer"]
-NOT_API = {"id", "tier", "deletionProtection", "allowAnyIp", "allowedCidrs", "hibernation", "buckets",
+NOT_API = {"id", "tier", "deletionProtection", "allowAnyIp", "allowedCidrs", "hibernation", "backupSchedule", "buckets",
            "databaseCredentials"}
 FREE_SERVICES = "data,index,query,search"
 
@@ -59,13 +59,25 @@ def create_summary(d: dict[str, Any]) -> str:
     parts.append("multi-AZ" if (d.get("availability") or {}).get("type") == "multi" else "single-AZ")
     if d.get("configurationType") == "singleNode":
         parts.append("single node")
-    for g in d.get("serviceGroups") or []:
+    groups = d.get("serviceGroups") or []
+    if len(groups) > 1:  # one plan line per group follows (create_group_lines)
+        parts.append(f"{len(groups)} service groups · {sum(int(g.get('numOfNodes') or 0) for g in groups)} nodes")
+    for g in groups if len(groups) == 1 else []:
         node = g.get("node") or {}
         comp = node.get("compute") or {}
         parts.append(f"{g.get('numOfNodes')} × {comp.get('cpu')} vCPU/{comp.get('ram')} GB")
         parts.append(",".join(sorted(g.get("services") or [])))
     parts.append(str((d.get("support") or {}).get("plan", "")).lower())
     return " · ".join(p for p in parts if p)
+
+
+def create_group_lines(d: dict[str, Any]) -> list[str]:
+    """Plan lines under a new multi-dimensional cluster: each group expanded with its disk (CAP-051)."""
+    groups = d.get("serviceGroups") or []
+    if len(groups) < 2:
+        return []
+    width = max(len(group_key(g)) for g in groups)
+    return [f"+ serviceGroups[{group_key(g)}]{' ' * (width - len(group_key(g)))}  {_size(g)}" for g in groups]
 
 
 def _version_matches(desired: str | None, observed: str | None) -> bool:
@@ -239,6 +251,7 @@ class ClusterReconciler(Reconciler):
             action = Action(self.kind, key, ActionType.CREATE, self, desired=desired, parent=parent,
                             summary=create_summary(desired),
                             data={"state": None, "free": desired.get("tier") == "free"})
+            action.remarks += create_group_lines(desired)
             hint = self._rename_hint(desired, parent)
             if hint:
                 action.notes.append(hint)

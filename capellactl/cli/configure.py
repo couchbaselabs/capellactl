@@ -36,6 +36,9 @@ def clean_api_key(raw: str) -> tuple[str, list[str]]:
     if _PASTE_MARKERS.search(key):
         key = _PASTE_MARKERS.sub("", key)
         fixed.append("removed terminal paste markers")
+    if "﻿" in key:                                           # Windows PowerShell piping with a UTF-8 BOM
+        key = key.replace("﻿", "")
+        fixed.append("removed a byte-order mark")
     key = key.strip()
     if len(key) >= 2 and key[0] == key[-1] and key[0] in "'\"":
         key = key[1:-1].strip()
@@ -165,7 +168,7 @@ def configure(ctx: click.Context, local_profile: str | None, org_id: str | None,
 
 def _offer_import(state: AppState, client: CapellaClient, org: dict[str, Any], do_import: bool | None,
                   interactive: bool) -> None:
-    """Hand off to `capellactl import` so the user never has to write capella.yaml by hand (CAP-036)."""
+    """Hand off to the import that `capellactl sync` also runs so the user never has to write capella.yaml by hand (CAP-036)."""
     from capellactl.cli.env import run_import
 
     target = state.config_path()
@@ -181,10 +184,10 @@ def _offer_import(state: AppState, client: CapellaClient, org: dict[str, Any], d
         return
     if do_import is None:
         if not interactive:
-            out("Next: capellactl import    (writes capella.yaml from your Capella project)")
+            out("Next: capellactl sync    (writes capella.yaml from your Capella project)")
             return
         if not console.ask_yes_no("Discover your projects and clusters and write capella.yaml now?", True):
-            out("Later: capellactl import")
+            out("Later: capellactl sync")
             return
     run_import(state, client, force=bool(do_import) and target.exists())
 
@@ -203,13 +206,13 @@ def _check_existing(state: AppState, client: CapellaClient, org: dict[str, Any],
     if file_org and file_org != org_id:
         out(f"warning: {target} is for organization {file_org}, but this key is for {org_name} ({org_id}).")
         out(f"Commands that read {target} will use organization {file_org} and fail with this key. Either:")
-        out(f"  - rewrite it for {org_name} (the current file is kept as {target.name}.bak): capellactl import --force")
+        out(f"  - rewrite it for {org_name} (the current file is kept as {target.name}.bak): capellactl sync --force")
         out(f"  - keep it, and save a key for {file_org} in its own profile: capellactl configure --profile NAME")
         if prompt and console.ask_yes_no(f"Back up {target.name} and re-import it for {org_name}?", False):
             run_import(state, client, force=True)
         return
     if hint:
-        out(f"{target} already exists; to refresh it from Capella: capellactl import --force")
+        out(f"{target} already exists; to refresh it from Capella: capellactl sync")
     declared = [str(p.get("name")) for p in file_projects(state) if p.get("name")]
     if not declared:
         return

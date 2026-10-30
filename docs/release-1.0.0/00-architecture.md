@@ -24,7 +24,7 @@ organization (existing)
 ```
 
 0. **Set up access** once: `capellactl configure` saves the organization and stores the API key in the OS keychain (or use `CAPELLA_API_KEY`).
-1. **Describe** the organization in one `capella.yaml` (or `capella.yml`), written by the tool: `capellactl import` discovers every existing project and cluster, `capellactl project create` and `capellactl cluster create` add new ones. The file holds a `projects:` list, each project with its `clusters:` (CAP-040); the older single-project form is still accepted.
+1. **Describe** the organization in one `capella.yaml` (or `capella.yml`), written by the tool: `capellactl sync` discovers every existing project and cluster (CAP-054), `capellactl project create` and `capellactl cluster create` add new ones. The file holds a `projects:` list, each project with its `clusters:` (CAP-040); the older single-project form is still accepted.
 2. **Validate** it offline (`capellactl validate`).
 3. **Plan**: compare the file with Capella and show every create, update, replace, delete or blocked change (`capellactl plan`).
 4. **Apply**: make only those changes, in dependency order, waiting for long cluster operations (`capellactl apply`).
@@ -66,7 +66,7 @@ Customers who already run Terraform should be pointed to Couchbase's official Ca
 
 ## 3. Design principles
 
-1. **Declarative, tool-owned file.** `capella.yaml` is the desired state and the record of the whole organization (all projects), but users never edit it: `import`/`sync` write it from Capella, and `cluster create|update|scale` change it (validate → plan → confirm → write → apply). Hand-editing remains possible, never required (CAP-038).
+1. **Declarative, tool-owned file.** `capella.yaml` is the desired state and the record of the whole organization (all projects), but users never edit it: `sync` writes and refreshes it from Capella (`import` is its alias, CAP-054), and `cluster create|update|scale` change it (validate → plan → confirm → write → apply). Hand-editing remains possible, never required (CAP-038).
 2. **Idempotent.** A second `apply` with an unchanged file makes zero `POST`, `PUT` or `DELETE` calls and exits 0 with `No changes`.
 3. **Stateless.** No local state file. Capella is the source of truth; resources are found by natural key (section 6.1).
 4. **Plan before apply.** Every write is first shown as a plan line. `apply` asks for confirmation unless `--auto-approve`.
@@ -185,7 +185,7 @@ Getting help and setting up
   completion bash|zsh|fish
   configure [list | show | remove] [--profile NAME]
   init [--file PATH] [--non-interactive …] [--dry-run] [--force]
-  import --project NAME [--cluster NAME…] [--file PATH] [--full] [--stdout] [--force]
+  sync [--project NAME…] [--skip-project NAME…] [--cluster NAME…] [--dry-run] [--stdout] [--full] [--force]
 
 Environment
   validate | plan [--detailed-exitcode] | apply [--target KIND/NAME…] [--prune] | destroy | drift
@@ -194,11 +194,19 @@ Resources
   project    list | get | create | update | delete [--cascade] [--discard-snapshots]
   cluster    options | list | get | create | update | delete [--cascade] [--discard-snapshots]
   cluster    protect NAME --on|--off
+  cluster    create NAME [--group SERVICES:NODESxCPU/RAM[:DISK] …]   (multi-dimensional, CAP-051)
+                     [--single-node] [--server-version V] [--zone Z] [--cmek-id ID] [--private-dns]   (CAP-053)
   cluster    scale NAME (--nodes N | --step +1|-1) [--group SERVICES] [--min N] [--max N]
+  cluster    group list | add | remove NAME   (service groups, CAP-052)
   cluster    power NAME --on [--with-app-service] | --off
   cluster    schedule show|apply|pause|resume|delete NAME
+  cluster    disk-types [--provider P]   (CAP-060)
+  cluster    backup list|create|retain|delete|restore|restores|regions   (cloud snapshots, CAP-057)
+  cluster    backup schedule show|options|set|delete NAME   (CAP-056)
   cidr       list | create | delete
   bucket     list | get | create | update | delete
+  bucket     backup list|get|create|delete|restore|export   (CAP-059)
+  bucket     backup schedule show|set|delete · backup cycle list|get   (CAP-058)
   scope      list | create | delete
   collection list | create | update | delete
   credential list | get | create | update [--rotate-password] | delete
@@ -342,6 +350,8 @@ Scaling is a change to `serviceGroups` sent with the cluster `PUT` (section 6.4)
 
 `cluster scale` records the new node count in `capella.yaml` and applies it, so the file and Capella always agree (CAP-038). `--step` (CAP-018) will follow the same path.
 
+Every row of the table above has a command, so no service-layout change needs a file edit: `cluster create --group` builds several groups at once (CAP-051), `cluster group add|remove` adds or removes one (CAP-052, the CAP-015/016 rules), `cluster scale --group` changes a group's node count and `cluster update --group` its compute and disk. A group's services set is changed by adding the new group and removing the old one.
+
 ---
 
 ## 8. Asynchronous operations and cluster states
@@ -453,6 +463,6 @@ Every exporter in `importer/` is covered by the **round-trip AC** (CAP-036 AC2):
 
 ## 14. Release scope
 
-**In 1.0.0:** `help` with topics and per-field config help; shell completion; profiles with keychain-stored API keys; `init` wizard; `import` of existing projects and clusters; projects; provisioned clusters (create, edit, protect, delete); scale out, in and vertically; power off/on; hibernation (on/off) schedules with pause/resume; cluster allowed CIDRs; buckets, scopes, collections; basic database credentials; full-environment apply/destroy; drift.
+**In 1.0.0:** `help` with topics and per-field config help; shell completion; profiles with keychain-stored API keys; `init` wizard; `import` of existing projects and clusters; projects; provisioned clusters (create, edit, protect, delete); scale out, in and vertically; power off/on; free-tier clusters; disk type choice; hibernation (on/off) schedules with pause/resume; cluster and bucket backup schedules, backups and restore; cluster allowed CIDRs; buckets, scopes, collections; basic database credentials; full-environment apply/destroy; drift.
 
-**Not in 1.0.0 (candidates for 1.1):** free-tier clusters; advanced credentials (`userRoles`) and custom database roles; App Services and App Endpoints; private endpoints and network peering; backup schedules; audit logging; CMEK key management; organization users and API keys; server version upgrades; sample buckets.
+**Not in 1.0.0 (candidates for 1.1):** advanced credentials (`userRoles`) and custom database roles; App Services and App Endpoints; private endpoints and network peering; cloning a cluster from a backup; Operational Insights clusters; audit logging; CMEK key management; organization users and API keys; server version upgrades; sample buckets.

@@ -10,7 +10,8 @@ How to run Capella with capellactl after the first environment is up (new to cap
 Every command that changes something shows the plan, asks once (`[y/N]`), records the change in `capella.yaml`
 (keeping the previous version as `capella.yaml.bak`) and applies it. Add `--auto-approve` (or `-y`, before the
 command) to skip the question, `--quiet` (`-q`) for short output, or `--no-apply` (after the command) to only record
-the change and deploy it later with `capellactl apply`. In a pipeline, see `capellactl help ci`.
+the change and deploy it later with `capellactl apply`. In a pipeline, see `capellactl help ci`. On Windows, see
+[Using the commands in PowerShell](getting-started.md#using-the-commands-in-powershell).
 
 Current status of every command: [API-COVERAGE.md](release-1.0.0/API-COVERAGE.md). Every field of `capella.yaml`:
 [reference.md](reference.md).
@@ -48,6 +49,32 @@ Apply complete in 6m12s.
 
 For one step within limits, for example from an alert: `capellactl -y cluster scale nova-dev-01 --step +1 --max 6`
 (exit 0 and `at_limit` when already at 6).
+
+## Add or remove a service group
+
+Give a service its own nodes (multi-dimensional scaling), for example dedicated search nodes. The new group's size
+defaults to the data group's; `--cpu`, `--ram` and `--disk-size` choose another. Layouts, sizes and creating a cluster
+with several groups: [Custom clusters and service groups](custom-clusters.md).
+
+```bash
+capellactl cluster group add nova-dev-01 --services search --nodes 2
+capellactl cluster group remove nova-dev-01 search --allow-service-removal
+```
+
+```text
+  ~ cluster nova-dev-01   scale out
+    + serviceGroups[search]  2 × 4 vCPU/16 GB gp3 50 GB
+
+Plan: 0 to add, 1 to change, 0 to delete, 0 blocked.
+Add service group search to nova-dev-01 and record it in capella.yaml? [y/N]: y
+capella.yaml updated (previous version kept as capella.yaml.bak)
+→ updating cluster nova-dev-01 …
+  cluster nova-dev-01: scaling (0s) ..
+  cluster nova-dev-01: healthy (1m21s)
+Apply complete in 1m21s.
+```
+
+Removing a group runs the scale-in checks; removing the last nodes of a service needs `--allow-service-removal`.
 
 ## Scale in
 
@@ -237,6 +264,135 @@ Add 203.0.113.10/32 to capella.yaml and allow it on nova-dev-01? [y/N]: y
 
 `0.0.0.0/0` (any address) is refused unless you add `--allow-any-ip`.
 
+## Change a disk type
+
+Each service group has its own disk; `capellactl cluster disk-types` says what each type is for, how large it can be
+and how fast it is. Without `--disk-iops`, capellactl uses Capella's recommended IOPS for the disk size.
+
+```bash
+capellactl cluster disk-types --provider aws
+capellactl cluster update nova-dev-01 --group data,index,query --disk-type io2
+```
+
+```text
+S.NO  PROVIDER  TYPE  SIZE (GB)  IOPS        FOR
+1     aws       gp3   50–16000   3000–16000  general-purpose SSD (default)
+2     aws       io2   50–16000   3000–64000  provisioned-IOPS SSD for latency-sensitive, write-heavy workloads; costs more
+
+  ~ cluster nova-dev-01   scale up
+      serviceGroups[data,index,query].node.disk.type:  "gp3" → "io2"
+
+Plan: 0 to add, 1 to change, 0 to delete, 0 blocked.
+  disk type io2: provisioned-IOPS SSD for latency-sensitive, write-heavy workloads; costs more (IOPS 3000–64000)
+  AWS changes a disk in place at most once every 6 hours; otherwise Capella replaces and rebalances the nodes
+Record these changes in capella.yaml and apply them to nova-dev-01? [y/N]: y
+```
+
+## Set a cluster backup schedule
+
+Cloud snapshot backups of the whole cluster. The intervals and retention allowed depend on the support plan.
+
+```bash
+capellactl cluster backup schedule options nova-dev-01
+capellactl cluster backup schedule set nova-dev-01 --every 24 --retain 30d --start 02:00
+```
+
+```text
+Cluster backup schedule options for nova-dev-01 (support plan: developer pro)
+  every (hours)   1, 2, 4, 6, 8, 12, 24
+  keep            1 day to 90 days
+  copy regions    us-east-2, us-west-2, eu-west-1 (up to two)
+
+  + backup-schedule nova-dev-01  every 24 h · kept 30 days · first at 02:00 UTC
+
+Plan: 1 to add, 0 to change, 0 to delete, 0 blocked.
+Record this backup schedule in capella.yaml and apply it to nova-dev-01? [y/N]: y
+```
+
+## Set a bucket backup schedule
+
+A weekly full backup of the bucket, then incrementals. Without options: Sunday 00:00 UTC, every 24 hours, 30 days.
+
+```bash
+capellactl bucket backup schedule set nova-dev-01 orders --start-at 2 --incremental-every 12
+```
+
+```text
+  + bucket-backup-schedule nova-dev-01/orders  weekly full on sunday at 02:00 UTC · incremental every 12 h · kept 30 days
+
+Plan: 1 to add, 0 to change, 0 to delete, 0 blocked.
+Record this backup schedule in capella.yaml and apply it to bucket orders? [y/N]: y
+```
+
+## Take a cluster backup before a change
+
+```bash
+capellactl cluster backup create nova-dev-01
+capellactl cluster backup list nova-dev-01
+```
+
+```text
+→ backing up cluster nova-dev-01 …
+  backup of nova-dev-01: pending (0s)
+  backup of nova-dev-01: complete (6m10s)
+backup 3f1c… of nova-dev-01 is complete
+
+S.NO  CREATED           TYPE      STATUS    SIZE   EXPIRES           COPIES  ID
+1     2026-10-29 10:12  onDemand  complete  42 GB  2026-11-28 10:12  -       3f1c…
+```
+
+`capellactl bucket backup create nova-dev-01 orders` backs up one bucket the same way.
+
+## Restore a cluster from a backup
+
+All data of the cluster is replaced with the backup; you type the cluster name to confirm.
+
+```bash
+capellactl cluster backup restore nova-dev-01 3f1c…
+```
+
+```text
+  ± cluster nova-dev-01  all data is replaced with the backup of 2026-10-29 10:12 UTC
+Type the cluster name to confirm the restore: nova-dev-01
+→ restoring cluster nova-dev-01 …
+  restore of nova-dev-01: complete (12m30s)
+  cluster nova-dev-01: healthy (13m02s)
+restored cluster nova-dev-01 from the backup of 2026-10-29 10:12 UTC
+```
+
+## Restore a bucket from a backup
+
+Documents that are newer in the target are kept unless `--force-updates`. `--to-cluster` restores into another
+cluster of the project; `--include-data orders.sales` restores one collection.
+
+```bash
+capellactl bucket backup list nova-dev-01 orders
+capellactl bucket backup restore nova-dev-01 7a2e… --replace-ttl none
+```
+
+```text
+  ~ restore orders from the backup of 2026-10-29 12:00 UTC into nova-dev-01
+    services: data · newer documents in nova-dev-01 are kept
+Type the target cluster name to confirm the restore: nova-dev-01
+restore of orders into nova-dev-01 started; Capella reports its progress in the cluster's activity log (the Management API has no restore status for bucket backups)
+```
+
+## Download a bucket backup
+
+```bash
+capellactl bucket backup export nova-dev-01 7a2e…
+```
+
+```text
+export 9d78… of orders started
+  export of orders: complete (4m20s)
+export 9d78… is complete: 3.1 GB, available until 2026-10-29 22:00 UTC
+download (valid for one hour; treat it like a password):
+  https://…
+```
+
+A new link: `capellactl bucket backup export nova-dev-01 7a2e… --export-id 9d78…`.
+
 ## Recover from deploymentFailed
 
 A cluster that failed to deploy blocks every plan and apply that includes it (exit 4):
@@ -338,8 +494,8 @@ pbpaste | capellactl configure --api-key-stdin            # macOS: no hidden-pro
 ```bash
 capellactl init                                           # wizard: writes a new capella.yaml
 capellactl init --dry-run                                 # print the YAML only
-capellactl import                                         # write existing projects/clusters to capella.yaml (read-only)
-capellactl import --project $PROJECT --cluster $CLUSTER
+capellactl sync                                           # write or refresh capella.yaml from every project (read-only)
+capellactl sync --project $PROJECT --cluster $CLUSTER
 capellactl sync                                           # refresh capella.yaml after changes made in the Capella UI
 capellactl sync --dry-run                                 # show differences; exit 2 when out of date (CI)
 capellactl validate
@@ -373,6 +529,7 @@ capellactl project delete $PROJECT --cascade          # deletes its clusters fir
 
 ```bash
 capellactl cluster options                                # what you can deploy (free tier, sizes, regions)
+capellactl cluster disk-types --provider azure            # disk types: size range, IOPS, what each is for
 capellactl cluster list
 capellactl cluster get $CLUSTER
 # create: each line is an alternative way to deploy $CLUSTER (a name can exist once per project)
@@ -380,15 +537,21 @@ capellactl cluster create $CLUSTER --project $PROJECT --provider azure   # asks 
 capellactl cluster create $CLUSTER --project $PROJECT --free-tier --provider azure --region eastus   # free tier on Azure: eastus, swedencentral, koreacentral
 capellactl cluster create $CLUSTER --project $PROJECT --provider azure --region $REGION --size medium --support-plan enterprise
 capellactl cluster create $CLUSTER --project $PROJECT --provider azure --region westeurope --size small --disk-type P10
+capellactl cluster create $CLUSTER --project $PROJECT --provider azure --group data:3x8/32 --group index,query:2x8/32   # one --group per service group (MDS)
+capellactl cluster create $CLUSTER --project $PROJECT --single-node --cpu 8 --ram 32 --server-version 8.0   # advanced options: cluster create --help
 capellactl cluster clone $CLUSTER $CLUSTER-weu --region westeurope        # same size, buckets, scopes, collections; new network
 capellactl cluster clone $CLUSTER $CLUSTER-dr --region westus2 --with-cidrs --with-credentials --support-plan "developer pro"
 capellactl cluster clone                                  # asks: source project, cluster, region, name, project, network
 capellactl cluster update $CLUSTER --support-plan enterprise
 capellactl cluster update $CLUSTER --description "Nova dev"
 capellactl cluster update $CLUSTER --cpu 8 --ram 32       # bigger nodes; less RAM runs the memory check; multi-node clusters
+capellactl cluster update $CLUSTER --disk-type P15        # another disk type for the data group (--group SERVICES)
 capellactl cluster scale $SCALE_CLUSTER --nodes 4         # scale out; multi-node clusters (a --size dev cluster stays 1 node)
 capellactl cluster scale $SCALE_CLUSTER --nodes 3         # scale in: memory and replica checks first
 capellactl cluster scale $SCALE_CLUSTER --nodes 2 --group search
+capellactl cluster group list $SCALE_CLUSTER
+capellactl cluster group add $SCALE_CLUSTER --services search --nodes 2              # new group; size defaults to the data group's
+capellactl cluster group remove $SCALE_CLUSTER search                                # scale-in checks; last data group never removed
 capellactl cluster scale $SCALE_CLUSTER --step +1 --max 6                 # one node more; exit 0 at the limit
 capellactl cluster scale $SCALE_CLUSTER --step -1 --min 3                 # one node less, capacity-checked
 capellactl cluster scale $SCALE_CLUSTER --step +1 --all-groups            # each group +1 on its own
@@ -422,7 +585,33 @@ capellactl cluster schedule delete $CLUSTER                      # removes it fr
 
 Windows are `HH:MM-HH:MM` with minutes `00` or `30` (`24:00` = end of day); a day is `on`, `off` or a window; a week cannot be off every day.
 
-Azure disks: the disk type sets the size (`P6` default, `P10`, `P15`, `P20`, `P30` … `P60`, `Ultra`); choose it with `--disk-type` at create. `--disk-size` and `--disk-iops` are for AWS/GCP disks. On another provider, use `--provider aws --region us-east-1` or `--provider gcp --region us-east1`.
+Azure disks: the disk type sets the size and speed (`P6` default, `P10`, `P15`, `P20`, `P30` … `P60`); `Ultra` takes `--disk-size` and `--disk-iops`. AWS: `gp3` or `io2` with `--disk-size` and `--disk-iops`; Google Cloud: `pd-ssd`, whose speed follows its size. All of them: `capellactl cluster disk-types`.
+
+## Backups
+
+Cluster backups (cloud snapshots of the whole cluster) and bucket backups: `capellactl help backup`, step by step in
+[backup-restore.md](backup-restore.md).
+
+```bash
+capellactl cluster backup schedule options $CLUSTER              # intervals and retention the support plan allows
+capellactl cluster backup schedule set $CLUSTER --every 24 --retain 30d --start 02:00
+capellactl cluster backup schedule show $CLUSTER
+capellactl cluster backup schedule delete $CLUSTER              # existing backups are kept until they expire
+capellactl cluster backup list $CLUSTER                         # without a name: every cluster of the project
+capellactl cluster backup create $CLUSTER                       # waits until complete (--no-wait returns at once)
+capellactl cluster backup retain $CLUSTER $BACKUP_ID --retain 90d
+capellactl cluster backup restore $CLUSTER $BACKUP_ID           # replaces all data; type the name to confirm
+capellactl cluster backup restores $CLUSTER
+capellactl cluster backup delete $CLUSTER $BACKUP_ID
+capellactl bucket backup schedule set $CLUSTER orders           # Sunday 00:00 UTC, every 24 h, 30 days
+capellactl bucket backup schedule show $CLUSTER orders
+capellactl bucket backup cycle list $CLUSTER orders
+capellactl bucket backup list $CLUSTER orders
+capellactl bucket backup create $CLUSTER orders
+capellactl bucket backup restore $CLUSTER $BACKUP_ID --replace-ttl none
+capellactl bucket backup export $CLUSTER $BACKUP_ID             # prints a download link valid for one hour
+capellactl bucket backup delete $CLUSTER $BACKUP_ID             # deletes the backup's whole cycle
+```
 
 ## Allowed IP ranges
 

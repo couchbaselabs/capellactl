@@ -63,6 +63,26 @@ jobs:
       - shell: bash
         run: pipx install dist/*.whl && capellactl --version
 
+  windows-install:          # CAP-055 AC3: the README's Windows steps, as written, in Windows PowerShell 5.1
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0    # the version comes from git tags (scripts/version.py)
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - shell: powershell
+        run: |
+          $python = @()
+          py -3.12 --version
+          if ($LASTEXITCODE) { $python = @('--python', (Get-Command python).Source); Write-Host "py launcher has no 3.12: using $($python[1])" }
+          python scripts/readme-windows-steps.py --source "$env:GITHUB_WORKSPACE" --workdir "$env:RUNNER_TEMP\windows-install" --out "$env:RUNNER_TEMP\steps.ps1" @python
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          powershell -NoProfile -ExecutionPolicy Bypass -File "$env:RUNNER_TEMP\steps.ps1"
+
   image-smoke:              # CAP-001 AC6
     needs: test
     runs-on: ubuntu-latest

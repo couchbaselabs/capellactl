@@ -13,7 +13,27 @@ First release, 1.0.0: declarative management of Couchbase Capella through the Ma
   hibernation schedules, deletion protection, allowed CIDRs, buckets, scopes, collections and database credentials,
   each with list/get/create/update/delete commands that record the change in `capella.yaml`.
 - `cluster clone`: deploy a copy of a cluster in another region.
+- Custom clusters from the CLI: several service groups (multi-dimensional scaling) with
+  `cluster create --group SERVICES:NODESxCPU/RAM[:DISK]` or the interactive `custom` → `multiple groups` questions;
+  `cluster group list|add|remove`; `--single-node`, `--server-version`, `--zone`, `--cmek-id`, `--private-dns` and
+  `--disk-auto-expansion`; node sizes Capella offers in `cluster options`, with a warning for any other size. Guide:
+  [docs/custom-clusters.md](docs/custom-clusters.md).
+- Backup and restore: cluster backups (cloud snapshots) with `cluster backup schedule show|options|set|delete` and
+  `cluster backup list|create|retain|delete|restore|restores|regions`; bucket backups with
+  `bucket backup schedule show|set|delete`, `bucket backup cycle list|get` and
+  `bucket backup list|get|create|delete|restore|export`. Schedules are recorded as `backupSchedule` in `capella.yaml`
+  and covered by `plan`, `apply`, `drift` and `sync`. Guide: [docs/backup-restore.md](docs/backup-restore.md).
+- Disk types: `cluster disk-types` lists each provider's types with their size range, speed and use; interactive
+  `cluster create` and `cluster group add` offer them after the node size; `cluster update --disk-type`; disks get
+  Capella's recommended IOPS for their size, and sizes or IOPS a type does not accept are refused offline.
+- `sync` is the one command for `capella.yaml`: it writes the file when there is none, refreshes it, and adds the
+  organization's projects that are missing (`--skip-project` leaves one out). `import` remains as an alias.
+- `sync` keeps the buckets and credentials of a cluster that is turned off (or cannot be read) instead of removing them
+  from `capella.yaml`.
 - Non-interactive (CI/CD) mode: `--auto-approve`/`--yes`/`-y` is the only approval, nothing waits for input without
   a terminal, and `--quiet` keeps pipeline logs short (`capellactl help ci`).
 - Secret redaction everywhere, generated passwords saved locally, API Key Token in the OS keychain.
 - `make dist`: source archive, wheel and `SHA256SUMS`, reproducible and versioned from the git tag.
+- Windows: step-by-step PowerShell install in the README (checked in CI on Windows PowerShell 5.1), PowerShell
+  equivalents for the docs' shell commands, and an API Key Token piped from PowerShell (`Get-Clipboard |`) is
+  accepted with its byte-order mark.

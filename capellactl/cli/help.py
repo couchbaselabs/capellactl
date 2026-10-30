@@ -15,11 +15,12 @@ from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.config.loader import load_schema
 
 TOPICS: dict[str, str] = {
-    "getting-started": "configure → init or import → validate → plan → apply",
+    "getting-started": "configure → init or sync → validate → plan → apply",
     "config": "capella.yaml layout, secret references, defaults, .yaml/.yml discovery",
     "idempotency": "plan symbols, how resources are matched, what is compared",
     "scaling": "scale out, in and up; limits; scale-in checks; --step",
     "hibernation": "power off/on, weekly on/off schedule, pause/resume",
+    "backup": "cluster backups and bucket backups: schedules, back up now, restore, export",
     "credentials": "database credentials, generated passwords, rotation",
     "safety": "deletion protection, prune, cascade, confirmations",
     "exit-codes": "what each exit code means",
@@ -30,7 +31,7 @@ TOPICS: dict[str, str] = {
 GETTING_STARTED = """\
 Getting started:
   1. capellactl configure         save your API Key Token (OS keychain) and organization
-  2. capellactl init              describe a new environment (or: capellactl import --project NAME)
+  2. capellactl init              describe a new environment (or: capellactl sync --project NAME)
   3. capellactl validate          check capella.yaml offline
   4. capellactl plan              see what would change
   5. capellactl apply             make Capella match the file (run it again: "No changes")

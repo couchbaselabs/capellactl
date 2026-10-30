@@ -19,7 +19,7 @@ import yaml
 from capellactl import __version__
 from capellactl.api import endpoints as ep
 from capellactl.api.client import CapellaClient
-from capellactl.api.errors import CapellaApiError
+from capellactl.api.errors import CapellaApiError, Forbidden, NotFound
 from capellactl.config.loader import BUCKET_DEFAULTS
 
 NEW_CLUSTER_TEMPLATE = """\
@@ -27,7 +27,7 @@ NEW_CLUSTER_TEMPLATE = """\
 """
 NO_PROJECTS_TEMPLATE = """\
 # No projects left in Capella. Create one with: capellactl project create NAME
-# or add an existing one with: capellactl import --project NAME
+# or add an existing one with: capellactl sync --project NAME
 """
 
 
@@ -44,6 +44,9 @@ class ImportResult:
     blocks: dict[str, str] = field(default_factory=dict)     # placeholder key -> commented-out YAML block
     warnings: list[str] = field(default_factory=list)
     counts: dict[str, int] = field(default_factory=dict)
+    # cluster id -> {"name", "reason", "fields"}: parts Capella could not return now (powered off, or an error), so
+    # sync keeps them from the previous file instead of dropping them. "scopes:B" = the scopes of bucket B.
+    unread: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 class _Skip(Exception):
@@ -127,6 +130,31 @@ def _day_value(d: dict[str, Any]) -> str:
     if state in ("on", "off"):
         return str(state)
     return f"{_hhmm(d.get('from'))}-{_hhmm(d.get('to'), end=True)}"
+
+
+BACKUP_ROLE_WARNING = ("backup schedules not read: the API key needs the Organization Owner or Project Owner role; "
+                       "capella.yaml keeps the ones it has")
+
+
+def export_snapshot_schedule(body: dict[str, Any]) -> dict[str, Any]:
+    """Cloud snapshot schedule → capella.yaml (CAP-056): startTime as the UTC time of day."""
+    from capellactl.resources.backup_schedule import start_hm
+
+    out: dict[str, Any] = {"interval": body.get("interval"), "retention": body.get("retention")}
+    hm = start_hm(body.get("startTime"))
+    if hm:
+        out["startTime"] = hm
+    if body.get("copyToRegions"):
+        out["copyToRegions"] = list(body["copyToRegions"])
+    return out
+
+
+def export_bucket_backup_schedule(body: dict[str, Any]) -> dict[str, Any]:
+    """Bucket backup schedule → capella.yaml (CAP-058): the weeklySchedule fields, flat."""
+    from capellactl.resources.backup_schedule import BUCKET_DEFAULTS
+
+    weekly = body.get("weeklySchedule") or {}
+    return {f: weekly.get(f, BUCKET_DEFAULTS[f]) for f in BUCKET_DEFAULTS}
 
 
 def export_schedule(body: dict[str, Any]) -> dict[str, Any]:
@@ -260,14 +288,19 @@ def build_document(
         counts["cluster"] += 1
         state = str(body.get("currentState", ""))
 
-        def guarded(what: str, fn: Any, *args: Any, _cl: dict[str, Any] = cl, _state: str = state,
+        def not_read(key: str, reason: str, _cid: str = cid, _name: str = body["name"]) -> None:
+            entry = res.unread.setdefault(_cid, {"name": _name, "reason": reason, "fields": []})
+            entry["fields"].append(key)
+
+        def guarded(what: str, fn: Any, *args: Any, key: str, _cl: dict[str, Any] = cl, _state: str = state,
                     _name: str = body["name"]) -> Any:
             try:
                 return fn(*args)
             except CapellaApiError as exc:
+                not_read(key, f"Capella returned {exc.http_status}")
                 note = ids.next("comment")
                 _cl[note] = (f"not imported: {what} (Capella returned {exc.http_status} while the cluster is "
-                             f"{_state or 'unavailable'};\nrun capellactl import again when it is on)")
+                             f"{_state or 'unavailable'};\nrun capellactl sync again when it is on)")
                 res.warnings.append(f"cluster {_name}: {what} not imported ({exc.http_status})")
                 return None
 
@@ -280,12 +313,31 @@ def build_document(
         except CapellaApiError as exc:
             sched = None
             if exc.http_status != 404:
+                not_read("hibernation", f"Capella returned {exc.http_status}")
                 res.warnings.append(f"cluster {body['name']}: hibernation schedule not imported ({exc.http_status})")
         if sched:
             cl["hibernation"] = export_schedule(sched)
             counts["hibernation schedule"] += 1
 
-        cidrs = guarded("allowed CIDRs", ep.list_allowed_cidrs, client, pid, cid)
+        backups_readable = not free and state not in POWERED_OFF
+        if backups_readable:
+            try:
+                snap = ep.get_snapshot_schedule(client, pid, cid)
+            except Forbidden:
+                snap, backups_readable = None, False
+                not_read("backupSchedule", "the API key cannot read backups")
+                if BACKUP_ROLE_WARNING not in res.warnings:
+                    res.warnings.append(BACKUP_ROLE_WARNING)
+            except CapellaApiError as exc:
+                snap = None
+                not_read("backupSchedule", f"Capella returned {exc.http_status}")
+                res.warnings.append(f"cluster {body['name']}: backup schedule not imported ({exc.http_status})")
+            if snap:
+                cl["backupSchedule"] = export_snapshot_schedule(snap)
+        elif not free:
+            not_read("backupSchedule", state)
+
+        cidrs = guarded("allowed CIDRs", ep.list_allowed_cidrs, client, pid, cid, key="allowedCidrs")
         if cidrs:
             active = [export_cidr(x) for x in cidrs if x.get("status", "active") != "expired"]
             if active:
@@ -294,15 +346,17 @@ def build_document(
 
         if state in POWERED_OFF:  # Capella answers 500 (retried) for buckets and 422 for credentials: don't ask
             cl[ids.next("comment")] = (f"not imported: buckets and database credentials (the cluster is {state};\n"
-                                       "run capellactl import again when it is on)")
+                                       "run capellactl sync again when it is on)")
             res.warnings.append(f"cluster {body['name']}: buckets and database credentials not imported ({state})")
+            not_read("buckets", state)
+            not_read("databaseCredentials", state)
             exported_clusters.append(cl)
             continue
 
         if free:
-            buckets = guarded("buckets", lambda *a: ep.list_free_buckets(*a)[0], client, pid, cid)
+            buckets = guarded("buckets", lambda *a: ep.list_free_buckets(*a)[0], client, pid, cid, key="buckets")
         else:
-            buckets = guarded("buckets", ep.list_buckets, client, pid, cid)
+            buckets = guarded("buckets", ep.list_buckets, client, pid, cid, key="buckets")
         if buckets:
             exported = []
             for b in buckets:
@@ -313,15 +367,31 @@ def build_document(
                     exported.append(eb)
                     counts["bucket"] += 1
                     continue
-                scopes = guarded(f"scopes of bucket {b['name']}", ep.list_scopes, client, pid, cid, b["id"])
+                scopes = guarded(f"scopes of bucket {b['name']}", ep.list_scopes, client, pid, cid, b["id"],
+                                 key=f"scopes:{b['name']}")
                 eb = export_bucket(b, scopes, full)
+                if backups_readable:
+                    try:
+                        bsched: dict[str, Any] | None = ep.get_bucket_backup_schedule(client, pid, cid, b["id"])
+                    except NotFound:
+                        bsched = None
+                    except CapellaApiError as exc:
+                        bsched = None
+                        not_read(f"bucketBackup:{b['name']}", f"Capella returned {exc.http_status}")
+                    if bsched:  # before the scopes, as `bucket backup schedule set` writes it
+                        scopes_ = eb.pop("scopes", None)
+                        eb["backupSchedule"] = export_bucket_backup_schedule(bsched)
+                        if scopes_ is not None:
+                            eb["scopes"] = scopes_
+                elif not free:
+                    not_read(f"bucketBackup:{b['name']}", "the API key cannot read backups")
                 exported.append(eb)
                 counts["bucket"] += 1
                 counts["scope"] += len(eb.get("scopes") or [])
                 counts["collection"] += sum(len(s.get("collections") or []) for s in eb.get("scopes") or [])
             cl["buckets"] = exported
 
-        users = guarded("database credentials", ep.list_credentials, client, pid, cid)
+        users = guarded("database credentials", ep.list_credentials, client, pid, cid, key="databaseCredentials")
         if users:
             creds: list[Any] = []
             for u in users:

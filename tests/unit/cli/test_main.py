@@ -12,7 +12,7 @@ import pytest
 from capellactl import __version__
 from capellactl.cli.main import cli
 
-GROUPS = {"help", "completion", "configure", "init", "import", "sync", "validate", "plan", "apply", "destroy", "drift",
+GROUPS = {"help", "completion", "configure", "init", "sync", "validate", "plan", "apply", "destroy", "drift",
           "project", "cluster", "cidr", "bucket", "scope", "collection", "credential"}
 
 
@@ -35,9 +35,10 @@ def test_cli_ac1_version_output(run):
 def test_cli_ac2_root_lists_all_groups(run):
     r = run("--help")
     assert r.exit_code == 0
-    assert set(cli.commands) == GROUPS
+    assert {n for n, c in cli.commands.items() if not c.hidden} == GROUPS
     for g in GROUPS:
         assert f"  {g} " in r.output or f"  {g}\n" in r.output
+    assert cli.commands["import"].hidden and "  import " not in r.output  # alias of sync since CAP-054
 
 
 @pytest.mark.story("CAP-001", "AC2")

@@ -53,7 +53,7 @@ def test_help_ac2_unknown_command_suggestion(run):
 def test_help_ac3_topics_listed(run):
     r = run("help", "topics")
     assert r.exit_code == 0
-    assert len(TOPICS) == 10
+    assert len(TOPICS) == 11  # backup: CAP-056
     for name, summary in TOPICS.items():
         assert name in r.output and summary in r.output
 

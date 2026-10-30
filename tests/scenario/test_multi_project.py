@@ -97,17 +97,14 @@ def test_multi_ac5_import_merges_missing(fake, run, tmp_path):
     _two_projects(fake)
     assert run("import", "--project", "nova-dev").exit_code == 0
     path = tmp_path / "capella.yaml"
-    path.write_text(path.read_text(encoding="utf-8").replace("projects:\n", "# my note\nprojects:\n"), encoding="utf-8")
     before = file_projects(path)[0]
-    r = run("import")
+    r = run("import")  # an alias of sync since CAP-054: refreshes nova-dev and adds the missing project
     assert r.exit_code == 0, r.output
-    assert "Added 1 project, 1 cluster" in r.output
-    assert "Already in capella.yaml (left as is; 'capellactl sync' refreshes them): nova-dev" in r.output
+    assert "added project non-prod (1 cluster)" in r.output
     projects = file_projects(path)
     assert projects[0] == before and [p["name"] for p in projects] == ["nova-dev", "non-prod"]
-    assert "# my note" in path.read_text(encoding="utf-8")
     r = run("import")
-    assert "already describes nova-dev, non-prod; nothing to add" in r.output
+    assert "already in sync with Capella: 2 projects, 2 clusters" in r.output
     assert run("plan", "--detailed-exitcode").exit_code == 0
 
 

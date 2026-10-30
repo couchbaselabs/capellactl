@@ -77,7 +77,7 @@ def pick_project(state: AppState, project: str | None) -> tuple[str, str | None]
         return str(projects[0].get("name")), projects[0].get("id")
     if not projects:
         raise CliExit(ExitCode.CONFIG_INVALID, "no project given and no capella.yaml here; pass --project NAME "
-                                               "or run 'capellactl import'", topic="getting-started")
+                                               "or run 'capellactl sync'", topic="getting-started")
     names = ", ".join(str(p.get("name")) for p in projects)
     raise CliExit(ExitCode.CONFIG_INVALID, f"capella.yaml has several projects ({names}); pass --project NAME")
 
@@ -222,7 +222,7 @@ def project_create(state: AppState, name: str, description: str | None) -> None:
     client = state.client()
     if any(p.get("name") == name for p in ep.list_projects(client)):
         hint = ("it is already in capella.yaml" if in_file
-                else f"to add it to capella.yaml run 'capellactl import --project {name}'")
+                else f"to add it to capella.yaml run 'capellactl sync --project {name}'")
         raise CliExit(ExitCode.BLOCKED, f"project {name} already exists; {hint}", topic="idempotency")
     interactive = console.is_interactive()
     if description is None and interactive:
@@ -279,7 +279,7 @@ def project_update(state: AppState, name: str, description: str | None, no_apply
         hint = cluster_not_project(state, name, "capellactl project update {}" + (
             f' --description "{description}"' if description is not None else ""))
         raise CliExit(ExitCode.CONFIG_INVALID, f"project {name} is not in capella.yaml"
-                      + (hint or f"; add it with 'capellactl import --project {name}'"))
+                      + (hint or f"; add it with 'capellactl sync --project {name}'"))
     if description is None:
         if not console.is_interactive():
             raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change; pass --description")
@@ -410,7 +410,8 @@ def _remove_from_file(state: AppState, name: str) -> None:
                     "  capellactl cluster scale nova-dev-01 --nodes 5\n  capellactl cluster list\n"
                     "  capellactl cluster get nova-dev-01")
 def cluster() -> None:
-    """Clusters: options, list, get, create, clone, update, scale, delete, protect, power, schedule."""
+    """Clusters: options, disk-types, list, get, create, clone, update, scale, delete, protect, power, schedule, group,
+    backup."""
 
 
 def _cluster_rows(items: list[dict[str, Any]], project: bool = False) -> list[tuple[str, ...]]:
@@ -525,11 +526,12 @@ def cluster_scale(state: AppState, name: str, nodes: int | None, group: str | No
 
 def _register_cluster_ops() -> None:
     from capellactl.cli.cluster_lifecycle import cluster_delete, cluster_protect
-    from capellactl.cli.cluster_ops import cluster_create, cluster_options, cluster_update
+    from capellactl.cli.cluster_ops import cluster_create, cluster_disk_types, cluster_options, cluster_update
 
     cluster.add_command(cluster_create)
     cluster.add_command(cluster_update)
     cluster.add_command(cluster_options)
+    cluster.add_command(cluster_disk_types)
     cluster.add_command(cluster_delete)
     cluster.add_command(cluster_protect)
     from capellactl.cli.cluster_clone import cluster_clone
@@ -540,6 +542,12 @@ def _register_cluster_ops() -> None:
 
     cluster.add_command(cluster_power)
     cluster.add_command(schedule)
+    from capellactl.cli.cluster_group import group
+
+    cluster.add_command(group)
+    from capellactl.cli.cluster_backup import backup
+
+    cluster.add_command(backup)
 
 
 _register_cluster_ops()
@@ -564,8 +572,10 @@ credential = _credential_group()
 
 
 def _bucket_group() -> click.Group:
+    from capellactl.cli.bucket_backup import backup as bucket_backup
     from capellactl.cli.bucket_cmds import bucket
 
+    bucket.add_command(bucket_backup)
     return bucket
 
 

@@ -154,7 +154,8 @@ def test_binary_ac7_bundle_allowlist():
     leaked = [n for n in names for f in FORBIDDEN if f in n and not n.startswith("capellactl/help/")]
     assert leaked == [], leaked
     ours = {n for n in names if n.startswith("capellactl/")}
-    assert ours == help_pages | {"capellactl/config/schema.json", "capellactl/config/presets.yaml"}, ours
+    assert ours == help_pages | {"capellactl/config/schema.json", "capellactl/config/presets.yaml",
+                                 "capellactl/config/compute.yaml", "capellactl/config/disks.yaml"}, ours
     for n in ("LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md", "BINARY_NOTICES.md"):  # and next to it
         assert (Path(BINARY).parent / n).is_file(), n
 

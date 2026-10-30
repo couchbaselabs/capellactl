@@ -64,10 +64,17 @@ cmd("project delete", "CAP-010")
 cmd("cluster options", "CAP-041")
 cmd("cluster list", "CAP-038")
 cmd("cluster get", "CAP-038, CAP-041")
-cmd("cluster create", "CAP-011, CAP-038, CAP-041")
-cmd("cluster update", "CAP-012, CAP-017", "Lowering RAM runs the CAP-016 memory guard (CAP-017 AC6).")
+cmd("cluster create", "CAP-011, CAP-038, CAP-041, CAP-051, CAP-053, CAP-060",
+    "Multi-dimensional service groups (`--group SPEC`, CAP-051); `--server-version`, `--single-node`, `--zone`, "
+    "`--cmek-id`, `--private-dns`, `--disk-auto-expansion` (CAP-053); disk type picker and size-based IOPS (CAP-060).")
+cmd("cluster update", "CAP-012, CAP-017, CAP-053, CAP-060", "Lowering RAM runs the CAP-016 memory guard (CAP-017 AC6); "
+    "`--disk-auto-expansion` on Azure (CAP-053); `--disk-type` (CAP-060).")
 cmd("cluster scale", "CAP-015, CAP-016, CAP-018",
     "Scale out and in (capacity checks); `--step ±1` within `--min/--max`, `--all-groups`.")
+cmd("cluster group list", "CAP-052", "Service groups with nodes, compute and disk.")
+cmd("cluster group add", "CAP-052, CAP-060", "Adds a service group; size defaults to the data group; disk type picker "
+    "(CAP-060).")
+cmd("cluster group remove", "CAP-052", "Removes a service group with the CAP-016 scale-in guards.")
 cmd("cluster clone", "CAP-049", "Copies size, services, buckets, scopes and collections to another region; "
     "`--with-cidrs`, `--with-credentials` (new passwords).")
 cmd("cluster delete", "CAP-014, CAP-041")
@@ -96,6 +103,16 @@ cmd("credential get", "CAP-046")
 cmd("credential create", "CAP-027, CAP-046")
 cmd("credential update", "CAP-027, CAP-028, CAP-046")
 cmd("credential delete", "CAP-029")
+for n in ("show", "options", "set", "delete"):
+    cmd(f"cluster backup schedule {n}", "CAP-056", "Cloud snapshot schedule; `backupSchedule` in capella.yaml.")
+for n in ("list", "create", "retain", "delete", "restore", "restores", "regions"):
+    cmd(f"cluster backup {n}", "CAP-057", "Cloud snapshot backups of the whole cluster.")
+for n in ("show", "set", "delete"):
+    cmd(f"bucket backup schedule {n}", "CAP-058", "Weekly full + incremental; `backupSchedule` under the bucket.")
+for n in ("list", "get"):
+    cmd(f"bucket backup cycle {n}", "CAP-058")
+for n in ("list", "get", "create", "delete", "restore", "export"):
+    cmd(f"bucket backup {n}", "CAP-059", "Bucket backups; `delete` removes the whole cycle.")
 
 PROPOSED = """
 org update
@@ -107,10 +124,7 @@ cluster migrate-buckets|cluster certificate
 db-role privileges|db-role list|db-role get|db-role create|db-role update|db-role delete
 bucket flush
 sample-bucket load|sample-bucket list|sample-bucket get|sample-bucket delete
-backup create|backup list|backup get|backup delete|backup restore
-backup schedule show|backup schedule set|backup schedule delete|backup cycle list|backup cycle get
-snapshot create|snapshot list|snapshot restores|snapshot regions|snapshot update|snapshot delete|snapshot restore|snapshot clone
-snapshot schedule show|snapshot schedule set|snapshot schedule delete
+cluster backup clone
 peer create|peer list|peer get|peer delete|peer azure-command
 private-endpoint show|private-endpoint enable|private-endpoint update|private-endpoint disable|private-endpoint list|private-endpoint command|private-endpoint accept|private-endpoint reject
 alert create|alert list|alert channels|alert get|alert update|alert delete|alert test
@@ -120,6 +134,11 @@ replication list|replication get|replication create|replication update|replicati
 data-api show|data-api update|data-api endpoint-command|data-api endpoint list|data-api endpoint accept|data-api endpoint reject
 billing get|billing prepaid|billing payg|billing download
 eventing list|eventing get|eventing create|eventing update|eventing delete|eventing code get|eventing code set|eventing state|eventing logs
+insights list|insights get|insights create|insights update|insights delete|insights power on|insights power off
+insights schedule show|insights schedule set|insights schedule delete|insights cidr list|insights cidr get|insights cidr create|insights cidr delete
+insights backup list|insights backup create|insights backup retain|insights backup delete|insights backup restore|insights backup restores
+insights backup schedule show|insights backup schedule set|insights backup schedule delete
+insights private-endpoint show|insights private-endpoint enable|insights private-endpoint disable|insights private-endpoint command|insights private-endpoint list|insights private-endpoint accept|insights private-endpoint reject
 """
 for _line in PROPOSED.strip().splitlines():
     for _n in _line.split("|"):
@@ -131,16 +150,20 @@ WORKFLOW = [
                                       "with an existing capella.yaml, also `GET …/projects` to check it (CAP-047)."),
     ("configure list / show / remove", "CAP-037", "No API calls."),
     ("init", "CAP-035", "Wizard that writes capella.yaml."),
-    ("import", "CAP-036, CAP-047, CAP-048", "Reads projects, clusters, CIDRs, buckets, scopes, schedules and credentials into capella.yaml."),
+    ("import", "CAP-036, CAP-047, CAP-048, CAP-054", "Hidden alias of `sync` since CAP-054. Reads projects, clusters, CIDRs, "
+                                                "buckets, scopes, schedules and credentials into capella.yaml."),
     ("validate", "CAP-002", "Offline check of schema, references and password rules."),
     ("plan", "CAP-005, CAP-048", "Diffs projects, clusters, deletion protection, schedules, CIDRs, buckets, scopes, "
                                  "collections and credentials."),
     ("apply", "CAP-006, CAP-016, CAP-019, CAP-031", "Same coverage as `plan`; `--prune`, `--rotate-passwords`, "
                                                     "`--power-on` and the scale-in flags."),
-    ("sync", "CAP-038, CAP-048", "Refreshes capella.yaml from Capella."),
+    ("sync", "CAP-038, CAP-048, CAP-054", "Refreshes capella.yaml from Capella; with CAP-054 it covers every "
+                                    "project in the organization and `import` becomes its alias."),
     ("destroy", "CAP-030", "Deletes every declared resource in reverse order; capella.yaml is kept."),
     ("drift", "CAP-031", "Read-only: changed, missing and unmanaged resources; `--detailed-exitcode`."),
     ("help / completion", "CAP-034", "No API calls."),
+    ("cluster disk-types", "CAP-060", "No API calls: disk types, sizes and IOPS from `config/disks.yaml` (Capella's "
+                                      "documentation; the spec has only the type names)."),
 ]
 
 # ======================================================================== operation map
@@ -180,9 +203,9 @@ op("DELETE", PRJ, "project delete", "`--cascade` deletes the project's clusters 
 # Clusters
 op("GET", PRJ + "/clusters", "cluster list")
 op("POST", PRJ + "/clusters", "cluster create / cluster clone")
-op("GET", CLU, "cluster get")
-op("PUT", CLU, "cluster update / cluster scale", "Description, support, scale out/in/up/down (capacity-checked), "
-   "step scaling.")
+op("GET", CLU, "cluster get / cluster group list")
+op("PUT", CLU, "cluster update / cluster scale / cluster group add / cluster group remove", "Description, support, "
+   "scale out/in/up/down (capacity-checked), step scaling, adding and removing service groups.")
 op("DELETE", CLU, "cluster delete", "`--discard-snapshots` maps to `retainsnapshotbackups=false`.")
 op("GET", CLU + "/stats", "internal: bucket memory and scale-in checks", "No `cluster stats` command.", status=DONE)
 op("POST", CLU + "/activationState", "cluster power on")
@@ -289,32 +312,37 @@ op("DELETE", RP + "/{replicationId}/activationStatus", "replication pause")
 op("POST", RP + "/{replicationId}/activationStatus", "replication resume")
 op("GET", RP + "/jobs/{jobId}", "replication job")
 # Backups & restore (bucket)
-op("POST", BKT + "/backups", "backup create")
-op("GET", CLU + "/backups", "backup list")
-op("GET", CLU + "/backups/{backupId}", "backup get")
-op("DELETE", CLU + "/backups/{backupId}", "backup delete")
-op("POST", CLU + "/backups/{backupId}/restore", "backup restore")
+op("POST", BKT + "/backups", "bucket backup create")
+op("GET", CLU + "/backups", "bucket backup list")
+op("GET", CLU + "/backups/{backupId}", "bucket backup get")
+op("DELETE", CLU + "/backups/{backupId}", "bucket backup delete", "Deletes the whole backup cycle.")
+op("POST", CLU + "/backups/{backupId}/restore", "bucket backup restore", "Same or another cluster; partial restores.")
+op("POST", BKT + "/backups/{backupId}/export", "bucket backup export", "Packages a backup cycle as a zip.")
+op("GET", BKT + "/backups/{backupId}/exports/{exportId}", "bucket backup export", "Polled for the download URL.")
 BS = BKT + "/backup"
-op("GET", BS + "/schedules", "backup schedule show")
-op("POST", BS + "/schedules", "backup schedule set")
-op("PUT", BS + "/schedules", "backup schedule set")
-op("DELETE", BS + "/schedules", "backup schedule delete")
-op("GET", BS + "/cycles", "backup cycle list")
-op("GET", BS + "/cycles/{cycleId}", "backup cycle get")
-# Cloud snapshot backups
+op("GET", BS + "/schedules", "bucket backup schedule show", "Also read by plan, sync and drift.")
+op("POST", BS + "/schedules", "bucket backup schedule set")
+op("PUT", BS + "/schedules", "bucket backup schedule set")
+op("DELETE", BS + "/schedules", "bucket backup schedule delete")
+op("GET", BS + "/cycles", "bucket backup cycle list")
+op("GET", BS + "/cycles/{cycleId}", "bucket backup cycle get")
+# Cloud snapshot backups (cluster backups)
 CS = CLU + "/cloudsnapshotbackups"
-op("POST", CS, "snapshot create")
-op("GET", CS, "snapshot list")
-op("GET", PRJ + "/cloudsnapshotbackups", "snapshot list", "Project-wide listing (`--project`).")
-op("GET", CS + "/restores", "snapshot restores")
-op("GET", CS + "/regions", "snapshot regions")
-op("PUT", CS + "/{backupId}", "snapshot update", "Changes retention.")
-op("DELETE", CS + "/{backupId}", "snapshot delete")
-op("POST", CS + "/{backupId}/restore", "snapshot restore")
-op("POST", PRJ + "/cloudsnapshotbackups/{backupId}/clone", "snapshot clone")
-op("GET", CLU + "/cloudsnapshotbackupschedule", "snapshot schedule show")
-op("PUT", CLU + "/cloudsnapshotbackupschedule", "snapshot schedule set")
-op("DELETE", CLU + "/cloudsnapshotbackupschedule", "snapshot schedule delete")
+op("POST", CS, "cluster backup create")
+op("GET", CS, "cluster backup list")
+op("GET", PRJ + "/cloudsnapshotbackups", "cluster backup list", "Project-wide listing (no cluster name).")
+op("GET", CS + "/restores", "cluster backup restores")
+op("GET", CS + "/regions", "cluster backup regions / cluster backup schedule options", "Regions a copy can go to.")
+op("PUT", CS + "/{backupId}", "cluster backup retain", "Changes retention.")
+op("DELETE", CS + "/{backupId}", "cluster backup delete")
+op("POST", CS + "/{backupId}/restore", "cluster backup restore")
+op("POST", PRJ + "/cloudsnapshotbackups/{backupId}/clone", "cluster backup clone", "Creates a cluster; out of "
+   "scope of CAP-057.")
+op("GET", CLU + "/cloudsnapshotbackupschedule", "cluster backup schedule show", "Also read by plan, sync and drift.")
+op("PUT", CLU + "/cloudsnapshotbackupschedule", "cluster backup schedule set")
+op("DELETE", CLU + "/cloudsnapshotbackupschedule", "cluster backup schedule delete")
+op("GET", CLU + "/cloudsnapshotbackupschedule/options", "cluster backup schedule options / cluster backup schedule set",
+   "Permitted intervals and retention for the support plan; read before every set.")
 # Network peers
 NP = CLU + "/networkPeers"
 op("POST", NP, "peer create")
@@ -395,6 +423,44 @@ op("GET", ORG + "/billing/payAsYouGo", "billing payg")
 op("POST", ORG + "/billing/download", "billing download")
 op("POST", CLU + "/billing/download", "billing download", "Itemized for one cluster (`--cluster`).")
 
+# Operational Insights clusters (a separate analytics cluster type, not the operational database)
+OI = PRJ + "/operationalInsightsClusters"
+OIC = OI + "/{analyticsClusterId}"
+op("POST", OI, "insights create")
+op("GET", OI, "insights list")
+op("GET", ORG + "/operationalInsightsClusters", "insights list", "Organization level.")
+op("GET", OIC, "insights get")
+op("PUT", OIC, "insights update")
+op("DELETE", OIC, "insights delete")
+op("POST", OIC + "/activationState", "insights power on")
+op("DELETE", OIC + "/activationState", "insights power off")
+op("GET", OIC + "/onOffSchedule", "insights schedule show")
+op("POST", OIC + "/onOffSchedule", "insights schedule set")
+op("PUT", OIC + "/onOffSchedule", "insights schedule set")
+op("DELETE", OIC + "/onOffSchedule", "insights schedule delete")
+op("GET", OIC + "/allowedcidrs", "insights cidr list")
+op("POST", OIC + "/allowedcidrs", "insights cidr create")
+op("GET", OIC + "/allowedcidrs/{allowedCidrId}", "insights cidr get")
+op("DELETE", OIC + "/allowedcidrs/{allowedCidrId}", "insights cidr delete")
+OB = OIC + "/cloudSnapshotBackups"
+op("POST", OB, "insights backup create")
+op("GET", OB, "insights backup list")
+op("PUT", OB + "/{backupId}", "insights backup retain")
+op("DELETE", OB + "/{backupId}", "insights backup delete")
+op("POST", OB + "/{backupId}/restore", "insights backup restore")
+op("GET", OB + "/restores", "insights backup restores")
+op("GET", OIC + "/cloudSnapshotBackupSchedule", "insights backup schedule show")
+op("PUT", OIC + "/cloudSnapshotBackupSchedule", "insights backup schedule set")
+op("DELETE", OIC + "/cloudSnapshotBackupSchedule", "insights backup schedule delete")
+OP = OIC + "/privateEndpointService"
+op("GET", OP, "insights private-endpoint show")
+op("POST", OP, "insights private-endpoint enable")
+op("DELETE", OP, "insights private-endpoint disable")
+op("POST", OP + "/endpointCommand", "insights private-endpoint command")
+op("GET", OP + "/endpoints", "insights private-endpoint list")
+op("POST", OP + "/endpoints/{endpointId}/associate", "insights private-endpoint accept")
+op("POST", OP + "/endpoints/{endpointId}/unassociate", "insights private-endpoint reject")
+
 AREAS = [  # (spec tag, label, in 1.0.0 scope)
     ("Organizations", "Organizations", True), ("Projects", "Projects", True), ("Clusters", "Clusters", True),
     ("Free Tier", "Free tier (clusters & buckets)", True), ("On/Off Schedule", "On/Off schedule (hibernation)", True),
@@ -403,20 +469,24 @@ AREAS = [  # (spec tag, label, in 1.0.0 scope)
     ("Database Credentials", "Database credentials", True), ("Database Roles", "Database roles (custom)", False),
     ("Sample Bucket", "Sample buckets", False), ("Query Indexes", "Query indexes", False),
     ("Eventing Functions", "Eventing functions", False), ("Data API", "Data API", False),
-    ("Replications", "Replications (XDCR)", False), ("Backups & Restore (Bucket)", "Backups & restore (bucket)", False),
-    ("Backup Schedule (Bucket)", "Backup schedule (bucket)", False),
-    ("Cloud Snapshot Backups & Restore", "Cloud snapshot backups & restore", False),
-    ("Cloud Snapshot Backups Schedule", "Cloud snapshot backup schedule", False),
+    ("Replications", "Replications (XDCR)", False), ("Backups & Restore (Bucket)", "Backups & restore (bucket)", True),
+    ("Backup Schedule (Bucket)", "Backup schedule (bucket)", True),
+    ("Cloud Snapshot Backups & Restore", "Cloud snapshot backups & restore (cluster)", True),
+    ("Cloud Snapshot Backups Schedule", "Cloud snapshot backup schedule (cluster)", True),
     ("Network Peers", "Network peers", False), ("Private Endpoint Service", "Private endpoint service", False),
     ("Certificates", "Certificates", False), ("Audit Logs", "Audit logs", False),
     ("CMEK", "CMEK (customer-managed keys)", False), ("Alert Integration", "Alert integrations", False),
     ("Events", "Events", False), ("Users", "Organization users", False), ("Api Keys", "API keys", False),
     ("Billing", "Billing", False),
+    ("Operational Insights Clusters", "Operational Insights clusters", False),
+    ("Operational Insights On/Off Schedule", "Operational Insights on/off schedule", False),
+    ("Allowed CIDRs (Operational Insights Cluster)", "Allowed CIDRs (Operational Insights)", False),
+    ("Operational Insights Cloud Snapshot Backups & Restore", "Operational Insights snapshot backups & restore", False),
+    ("Operational Insights Cloud Snapshot Backups Schedule", "Operational Insights snapshot backup schedule", False),
+    ("Operational Insights Private Endpoint Service", "Operational Insights private endpoints", False),
 ]
 
 GAPS = [
-    "**Scope note out of date.** [00-architecture.md §14](00-architecture.md) still lists *free-tier clusters* under "
-    "\"Not in 1.0.0\", but CAP-041 is Implemented. Update that line.",
     "**`GET …/allowedcidrs/{id}`** is wired in `capellactl/api/endpoints.py` but never called. Keep it for symmetry "
     "or drop it from `INVENTORY`.",
 ]
@@ -523,7 +593,7 @@ def is_app_services(tag: str, path: str) -> bool:
 
 
 def is_ai(tag: str) -> bool:
-    return tag.startswith("AI ") or "Model" in tag
+    return tag.startswith(("AI ", "MCP ")) or "Model" in tag
 
 
 def anchor(tag: str) -> str:
@@ -652,7 +722,7 @@ def build_db(snapshot: dict[str, Any], known: dict[str, dict[str, str]]) -> str:
       f"covers the **{len(ops)} operational-database operations**. Two groups are left out:\n")
     w(f"- **{excl['as']} App Services / App Endpoints operations**, including the 4 free-tier App Service operations. "
       "They are tracked in [release 2.0.0: App Services API coverage](../release-2.0.0/API-COVERAGE-APP-SERVICES.md).")
-    w(f"- **{excl['ai']} AI operations** (AI Data Plane, AI Workflows, Models). Not planned for now.\n")
+    w(f"- **{excl['ai']} AI operations** (AI Data Plane, AI Workflows, Models, AI Agent Memory, MCP servers and tools). Not planned for now.\n")
     w("**Status legend**\n")
     w("| Status | Meaning |\n|---|---|")
     w(f"| {DONE} | capellactl calls this operation, from a command, from `plan`/`apply`, or internally, and every story "

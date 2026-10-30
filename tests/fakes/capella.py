@@ -4,6 +4,9 @@ Install it into a `responses.RequestsMock`; every request from capellactl is ser
 here. Behaviour mirrors the OpenAPI spec: 202 + currentState progression for clusters, 201 creates,
 204 updates, ETag/If-Match/412, 409 code 1010 for duplicates, 404 after delete, base64 bucket IDs,
 generated credential passwords returned only on create, onOffSchedule 404 when none, /stats memory.
+Backups (CAP-056–CAP-059): cloud snapshot schedule (204 when none) checked against the plan's options, snapshots and
+restores that complete after `step_seconds`, bucket backup schedules (404 when none), backups grouped in cycles,
+on-demand bucket backups (202 without a body), restores and exports.
 """
 
 from __future__ import annotations
@@ -107,6 +110,17 @@ class FakeCapella:
         self.scopes: dict[tuple[str, str], dict[str, dict[str, dict[str, Any]]]] = {}
         self.users: dict[str, dict[str, Any]] = {}
         self.schedules: dict[str, dict[str, Any]] = {}
+        # Backups (CAP-056–CAP-059)
+        self.snapshot_schedules: dict[str, dict[str, Any]] = {}
+        self.snapshot_options = {"intervals": [1, 2, 4, 6, 8, 12, 24], "minimumRetention": 24, "maximumRetention": 2160}
+        self.snapshot_regions = ["us-east-2", "us-west-2", "eu-west-1"]
+        self.snapshots: dict[str, dict[str, Any]] = {}
+        self.snapshot_restores: dict[str, dict[str, Any]] = {}
+        self.bucket_backup_schedules: dict[tuple[str, str], dict[str, Any]] = {}
+        self.backups: dict[str, dict[str, Any]] = {}
+        self.exports: dict[str, dict[str, Any]] = {}
+        self.bucket_restores: list[dict[str, Any]] = []
+        self.backup_fails_next = False  # the next on-demand bucket backup ends in status failed
         self.versions: dict[str, int] = {}
         self.cluster_total_memory_mb = 20480
         # Capella's answer to a second POST of the same CIDR is unconfirmed (CAP-022 open question): 409 by default.
@@ -114,6 +128,7 @@ class FakeCapella:
         self.api_keys: set[str] | None = None  # None: accept any bearer token
         self._calls: list[Call] = []
         self._faults: list[_Fault] = []
+        self.fail_deploy_next = False  # the next cluster create ends in deploymentFailed (accepted, then fails)
         # Called as hook(method, path) before each request is served; may raise to simulate failures.
         self.hooks: list[Callable[[str, str], None]] = []
         self._ids = itertools.count(1)
@@ -191,6 +206,48 @@ class FakeCapella:
         for name, ttl in (collections or {}).items():
             cols[name] = {"name": name, "maxTTL": ttl}
             self.versions[f"collection:{cluster_id}/{bucket_id(bucket)}/{scope}/{name}"] = 1
+
+    def seed_snapshot(self, cluster_id: str, created_at: str = "2026-10-28T02:00:00Z", retention: int = 720,
+                      type_: str = "scheduled", status: str = "complete", **fields: Any) -> str:
+        """A cloud snapshot backup of a cluster (done unless `status` says otherwise)."""
+        sid = fields.pop("id", None) or self._new_id("snap")
+        project = self.clusters[cluster_id]["project"]
+        self.snapshots[sid] = {"id": sid, "clusterId": cluster_id, "projectId": project, "tenantId": self.org_id,
+                               "createdAt": created_at, "expiration": "2026-11-27T02:00:00Z", "retention": retention,
+                               "type": type_, "progress": {"status": status, "time": created_at},
+                               "crossRegionCopies": [], "cmek": [], "server": {"version": "8.0.1"},
+                               "databaseSize": 42 * 1024 ** 3, "_done_at": -1.0, **fields}
+        return str(sid)
+
+    def seed_bucket_backup(self, cluster_id: str, bucket: str, method: str = "full", source: str = "scheduled",
+                           cycle: str | None = None, date: str = "2026-10-27T02:00:00Z", status: str = "ready",
+                           **fields: Any) -> str:
+        """A backup of a bucket, in `cycle` (a new cycle when not given)."""
+        i = fields.pop("id", None) or self._new_id("bk")
+        cyc = cycle or self._new_id("cycle")
+        self.backups[i] = {"id": i, "clusterID": cluster_id, "tenantID": self.org_id,
+                           "projectID": self.clusters[cluster_id]["project"], "cycleID": cyc, "date": date,
+                           "restoreBefore": "2026-11-26T02:00:00Z", "status": status, "method": method,
+                           "bucketName": bucket, "bucketID": bucket_id(bucket), "source": source, "provider": "aws",
+                           "stats": {"sizeInMb": 3100.0, "items": 912000, "mutations": 912000, "tombstones": 0,
+                                     "gsi": 2, "fts": 0, "cbas": 0, "event": 0},
+                           "elapsedTimeInSeconds": 120,
+                           "scheduleInfo": {"backupType": "weekly", "backupTime": date, "increment": 24,
+                                            "retention": "30days"},
+                           "_done_at": -1.0, **fields}
+        return str(i)
+
+    def _snapshot_view(self, s: dict[str, Any]) -> dict[str, Any]:
+        view = {k: copy.deepcopy(v) for k, v in s.items() if not k.startswith("_")}
+        if s["_done_at"] >= 0 and self.clock.monotonic() >= s["_done_at"] and view["progress"]["status"] == "pending":
+            view["progress"]["status"] = "complete"
+            s["progress"]["status"] = "complete"
+        return view
+
+    def _backup_view(self, b: dict[str, Any]) -> dict[str, Any]:
+        if b["_done_at"] >= 0 and self.clock.monotonic() >= b["_done_at"] and b["status"] == "pending":
+            b["status"] = b.pop("_final", "ready")
+        return {k: copy.deepcopy(v) for k, v in b.items() if not k.startswith("_")}
 
     # ------------------------------------------------------------ state
     def set_transition(self, cluster_id: str, path: list[str], step_seconds: float | None = None) -> None:
@@ -424,7 +481,8 @@ class FakeCapella:
             fields = {k2: v for k2, v in body.items() if k2 != "name"}
             fields.setdefault("couchbaseServer", {"version": "8.0.1"})
             cid = self.seed_cluster(p, body["name"], **fields)
-            self.set_transition(cid, ["deploying", "healthy"])
+            self.set_transition(cid, ["deploying", "deploymentFailed" if self.fail_deploy_next else "healthy"])
+            self.fail_deploy_next = False
             return _ok(202, {"id": cid})
 
         def get_cluster(o: str, p: str, c: str, **k: Any) -> Resp:
@@ -841,11 +899,328 @@ class FakeCapella:
         def u_delete(o: str, p: str, c: str, i: str, **k: Any) -> Resp:
             return _ok(204) if self.users.pop(i, None) else _err(404, "credential not found", 4048)
 
+        self._build_backup_routes(CLU, BKT, PRJ)
         r("GET", CLU + "/users", u_list)
         r("POST", CLU + "/users", u_create)
         r("GET", CLU + "/users/{i}", u_get)
         r("PUT", CLU + "/users/{i}", u_put)
         r("DELETE", CLU + "/users/{i}", u_delete)
+
+    def _build_backup_routes(self, CLU: str, BKT: str, PRJ: str) -> None:  # noqa: C901, N803 - one table
+        r = self._route
+
+        def snapshot_cluster(o: str, p: str, c: str) -> Resp | None:
+            cl, e = self._cluster(o, p, c)
+            if e is not None:
+                return e
+            if str((cl["body"].get("support") or {}).get("plan")) == "free":  # type: ignore[index]
+                return _err(422, "Backups are not available for free tier clusters.", 4220)
+            return None
+
+        # Cloud snapshot backup schedule (GET: 204 when there is none)
+        def ss_get(o: str, p: str, c: str, **k: Any) -> Resp:
+            if (e := snapshot_cluster(o, p, c)) is not None:
+                return e
+            body = self.snapshot_schedules.get(c)
+            return _ok(200, body) if body is not None else _ok(204)
+
+        def ss_put(o: str, p: str, c: str, body: Any, **k: Any) -> Resp:
+            if (e := snapshot_cluster(o, p, c)) is not None:
+                return e
+            body = body or {}
+            opts = self.snapshot_options
+            if body.get("interval") not in opts["intervals"]:
+                return _err(422, f"interval must be one of {opts['intervals']}", 4220)
+            if not opts["minimumRetention"] <= int(body.get("retention") or 0) <= opts["maximumRetention"]:
+                return _err(422, "retention is outside the range the service plan permits", 4220)
+            if any(x not in self.snapshot_regions for x in body.get("copyToRegions") or []):
+                return _err(422, "copyToRegions has a region that is not available", 4220)
+            self.snapshot_schedules[c] = {k2: copy.deepcopy(v) for k2, v in body.items()
+                                          if k2 in ("interval", "retention", "startTime", "copyToRegions")}
+            return _ok(204)
+
+        def ss_delete(o: str, p: str, c: str, **k: Any) -> Resp:
+            if (e := snapshot_cluster(o, p, c)) is not None:
+                return e
+            self.snapshot_schedules.pop(c, None)
+            return _ok(204)
+
+        def ss_options(o: str, p: str, c: str, **k: Any) -> Resp:
+            return snapshot_cluster(o, p, c) or _ok(200, copy.deepcopy(self.snapshot_options))
+
+        r("GET", CLU + "/cloudsnapshotbackupschedule/options", ss_options)
+        r("GET", CLU + "/cloudsnapshotbackupschedule", ss_get)
+        r("PUT", CLU + "/cloudsnapshotbackupschedule", ss_put)
+        r("DELETE", CLU + "/cloudsnapshotbackupschedule", ss_delete)
+
+        # Cloud snapshot backups (registered before …/cloudsnapshotbackups/{backupId})
+        def cs_regions(o: str, p: str, c: str, **k: Any) -> Resp:
+            return snapshot_cluster(o, p, c) or _ok(200, list(self.snapshot_regions))
+
+        def cs_list(o: str, p: str, c: str, **k: Any) -> Resp:
+            if (e := snapshot_cluster(o, p, c)) is not None:
+                return e
+            items = [self._snapshot_view(s) for s in self.snapshots.values() if s["clusterId"] == c]
+            return self._page(sorted(items, key=lambda s: s["createdAt"], reverse=True), k["query"])
+
+        def cs_project(o: str, p: str, **k: Any) -> Resp:
+            if p not in self.projects:
+                return _err(404, f"project {p} not found", 4042)
+            rows = []
+            for cid, cl in self.clusters.items():
+                snaps = sorted((self._snapshot_view(s) for s in self.snapshots.values() if s["clusterId"] == cid),
+                               key=lambda s: s["createdAt"])
+                if cl["project"] != p or not snaps:
+                    continue
+                cp = cl["body"].get("cloudProvider") or {}
+                rows.append({"clusterId": cid, "clusterName": cl["body"]["name"], "currentStatus": self.cluster_state(cid),
+                             "cloudProvider": f"hosted{str(cp.get('type', 'aws')).upper()}", "region": cp.get("region"),
+                             "creationDateTime": "2026-01-01T00:00:00Z", "createdBy": "fake-api-key",
+                             "mostRecentSnapshot": snaps[-1], "oldestSnapshot": snaps[0]})
+            return self._page(rows, k["query"])
+
+        def cs_create(o: str, p: str, c: str, body: Any, **k: Any) -> Resp:
+            if (e := snapshot_cluster(o, p, c)) is not None:
+                return e
+            body = body or {}
+            regions = body.get("regionsToCopy") or []
+            if len(regions) > 2 or any(x not in self.snapshot_regions for x in regions):
+                return _err(422, "regionsToCopy: at most two of the available regions", 4220)
+            sid = self.seed_snapshot(c, created_at=f"2026-10-29T{len(self.snapshots) % 24:02d}:00:00Z",
+                                     retention=int(body.get("retention") or 720), type_="onDemand", status="pending",
+                                     crossRegionCopies=[{"regionCode": x, "status": "pending"} for x in regions])
+            self.snapshots[sid]["_done_at"] = self.clock.monotonic() + self.step_seconds
+            return _ok(202, {"backupId": sid})
+
+        def cs_restores(o: str, p: str, c: str, **k: Any) -> Resp:
+            if (e := snapshot_cluster(o, p, c)) is not None:
+                return e
+            items = []
+            for rs in self.snapshot_restores.values():
+                if rs["clusterId"] != c:
+                    continue
+                view = {k2: v for k2, v in rs.items() if not k2.startswith("_")}
+                if self.clock.monotonic() >= rs["_done_at"]:
+                    view.update(status="complete", restoreEnd="2026-10-29T03:00:00Z")
+                items.append(view)
+            return self._page(items, k["query"])
+
+        def cs_snapshot(c: str, b: str) -> dict[str, Any] | None:
+            s = self.snapshots.get(b)
+            return s if s is not None and s["clusterId"] == c else None
+
+        def cs_put(o: str, p: str, c: str, b: str, body: Any, **k: Any) -> Resp:
+            if (e := snapshot_cluster(o, p, c)) is not None:
+                return e
+            s = cs_snapshot(c, b)
+            if s is None:
+                return _err(404, "backup not found", 4040)
+            s["retention"] = int((body or {}).get("retention") or s["retention"])
+            return _ok(204)
+
+        def cs_delete(o: str, p: str, c: str, b: str, **k: Any) -> Resp:
+            if (e := snapshot_cluster(o, p, c)) is not None:
+                return e
+            if cs_snapshot(c, b) is None:
+                return _err(404, "backup not found", 4040)
+            del self.snapshots[b]
+            return _ok(202, {})
+
+        def cs_restore(o: str, p: str, c: str, b: str, body: Any, **k: Any) -> Resp:
+            if (e := snapshot_cluster(o, p, c)) is not None:
+                return e
+            s = cs_snapshot(c, b)
+            if s is None:
+                return _err(404, "backup not found", 4040)
+            if self.cluster_state(c) in ("turnedOff", "turningOff"):
+                return _err(422, "The cluster is turned off.", 4220)
+            rid = self._new_id("restore")
+            self.snapshot_restores[rid] = {"id": rid, "clusterId": c, "projectId": p, "tenantId": self.org_id,
+                                           "createdAt": "2026-10-29T02:30:00Z", "restoreTo": c,
+                                           "snapshot": s["createdAt"], "status": "pending",
+                                           "_done_at": self.clock.monotonic() + self.step_seconds,
+                                           "_body": copy.deepcopy(body)}
+            self.set_transition(c, ["rebalancing", "healthy"])
+            return _ok(202, {"restoreId": rid})
+
+        r("GET", CLU + "/cloudsnapshotbackups/regions", cs_regions)
+        r("GET", CLU + "/cloudsnapshotbackups/restores", cs_restores)
+        r("GET", CLU + "/cloudsnapshotbackups", cs_list)
+        r("POST", CLU + "/cloudsnapshotbackups", cs_create)
+        r("PUT", CLU + "/cloudsnapshotbackups/{b}", cs_put)
+        r("DELETE", CLU + "/cloudsnapshotbackups/{b}", cs_delete)
+        r("POST", CLU + "/cloudsnapshotbackups/{b}/restore", cs_restore)
+        r("GET", PRJ + "/cloudsnapshotbackups", cs_project)
+
+        # Bucket backup schedules (GET and PUT: 404 when there is none; POST: 409 when there is one)
+        def bucket_ok(o: str, p: str, c: str, b: str) -> Resp | None:
+            if (e := snapshot_cluster(o, p, c)) is not None:
+                return e
+            return None if (c, b) in self.buckets else _err(404, "bucket not found", 4045)
+
+        def schedule_problem(body: Any) -> Resp | None:
+            w = (body or {}).get("weeklySchedule") or {}
+            rules = {"dayOfWeek": ("sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"),
+                     "startAt": tuple(range(24)), "incrementalEvery": (1, 2, 4, 6, 8, 12, 24),
+                     "retentionTime": ("30days", "60days", "90days", "180days", "1year", "2years", "3years", "4years",
+                                       "5years"), "costOptimizedRetention": (True, False)}
+            if (body or {}).get("type") != "weekly":
+                return _err(422, "type must be weekly", 4220)
+            for f, allowed in rules.items():
+                if w.get(f) not in allowed:
+                    return _err(422, f"weeklySchedule.{f} is invalid", 4220)
+            return None
+
+        def bs_get(o: str, p: str, c: str, b: str, **k: Any) -> Resp:
+            if (e := bucket_ok(o, p, c, b)) is not None:
+                return e
+            body = self.bucket_backup_schedules.get((c, b))
+            if body is None:
+                return _err(404, "no backup schedule for this bucket", 4040)
+            return _ok(200, {"type": "weekly", "clusterID": c, "bucketId": b, **copy.deepcopy(body)})
+
+        def bs_post(o: str, p: str, c: str, b: str, body: Any, **k: Any) -> Resp:
+            if (e := bucket_ok(o, p, c, b) or schedule_problem(body)) is not None:
+                return e
+            if (c, b) in self.bucket_backup_schedules:
+                return _err(409, "There is a conflict with the current state of a resource.", 1010)
+            self.bucket_backup_schedules[(c, b)] = {"weeklySchedule": copy.deepcopy(body["weeklySchedule"])}
+            return _ok(202)
+
+        def bs_put(o: str, p: str, c: str, b: str, body: Any, **k: Any) -> Resp:
+            if (e := bucket_ok(o, p, c, b) or schedule_problem(body)) is not None:
+                return e
+            if (c, b) not in self.bucket_backup_schedules:
+                return _err(404, "no backup schedule for this bucket", 4040)
+            self.bucket_backup_schedules[(c, b)] = {"weeklySchedule": copy.deepcopy(body["weeklySchedule"])}
+            return _ok(204)
+
+        def bs_delete(o: str, p: str, c: str, b: str, **k: Any) -> Resp:
+            if (e := bucket_ok(o, p, c, b)) is not None:
+                return e
+            if self.bucket_backup_schedules.pop((c, b), None) is None:
+                return _err(404, "no backup schedule for this bucket", 4040)
+            return _ok(202)
+
+        def cycles(o: str, p: str, c: str, b: str, **k: Any) -> Resp:
+            if (e := bucket_ok(o, p, c, b)) is not None:
+                return e
+            first: dict[str, str] = {}
+            for bk in sorted(self.backups.values(), key=lambda x: x["date"]):
+                if bk["clusterID"] == c and bk["bucketID"] == b:
+                    first.setdefault(bk["cycleID"], bk["date"])
+            return _ok(200, {"data": [{"cycleID": cy, "createdAt": at} for cy, at in first.items()]})
+
+        def cycle_get(o: str, p: str, c: str, b: str, y: str, **k: Any) -> Resp:
+            if (e := bucket_ok(o, p, c, b)) is not None:
+                return e
+            items = [self._backup_view(bk) for bk in self.backups.values()
+                     if bk["clusterID"] == c and bk["bucketID"] == b and bk["cycleID"] == y]
+            if not items:
+                return _err(404, "cycle not found", 4040)
+            return _ok(200, {"data": [{k2: v for k2, v in i.items() if k2 != "bucketDownloadsCount"} for i in items]})
+
+        r("GET", BKT + "/backup/schedules", bs_get)
+        r("POST", BKT + "/backup/schedules", bs_post)
+        r("PUT", BKT + "/backup/schedules", bs_put)
+        r("DELETE", BKT + "/backup/schedules", bs_delete)
+        r("GET", BKT + "/backup/cycles", cycles)
+        r("GET", BKT + "/backup/cycles/{y}", cycle_get)
+
+        # Bucket backups
+        def bk_create(o: str, p: str, c: str, b: str, **k: Any) -> Resp:
+            if (e := bucket_ok(o, p, c, b)) is not None:
+                return e
+            name = self.buckets[(c, b)]["name"]
+            i = self.seed_bucket_backup(c, name, method="full", source="manual", status="pending",
+                                        date=f"2026-10-29T{len(self.backups) % 24:02d}:00:00Z")
+            self.backups[i]["_done_at"] = self.clock.monotonic() + self.step_seconds
+            if self.backup_fails_next:
+                self.backups[i]["_final"] = "failed"
+                self.backup_fails_next = False
+            return _ok(202)
+
+        def bk_list(o: str, p: str, c: str, **k: Any) -> Resp:
+            if (e := snapshot_cluster(o, p, c)) is not None:
+                return e
+            latest: dict[str, dict[str, Any]] = {}
+            for bk in sorted(self.backups.values(), key=lambda x: x["date"]):
+                if bk["clusterID"] == c:
+                    latest[bk["bucketID"]] = bk  # Capella lists the latest backup of each bucket
+            return _ok(200, {"data": [{**self._backup_view(bk), "bucketDownloadsCount": 0} for bk in latest.values()]})
+
+        def bk_get(o: str, p: str, c: str, i: str, **k: Any) -> Resp:
+            if (e := snapshot_cluster(o, p, c)) is not None:
+                return e
+            bk = self.backups.get(i)
+            if bk is None or bk["clusterID"] != c:
+                return _err(404, "backup not found", 4040)
+            return _ok(200, self._backup_view(bk))
+
+        def bk_delete(o: str, p: str, c: str, i: str, **k: Any) -> Resp:
+            if (e := snapshot_cluster(o, p, c)) is not None:
+                return e
+            bk = self.backups.get(i)
+            if bk is None or bk["clusterID"] != c:
+                return _err(404, "backup not found", 4040)
+            for j in [j for j, x in self.backups.items() if x["cycleID"] == bk["cycleID"]]:
+                del self.backups[j]  # the whole cycle goes
+            return _ok(202)
+
+        def bk_restore(o: str, p: str, c: str, i: str, body: Any, **k: Any) -> Resp:
+            if (e := snapshot_cluster(o, p, c)) is not None:
+                return e
+            body = body or {}
+            for f in ("targetClusterID", "sourceClusterID", "backupID", "services"):
+                if f not in body:
+                    return _err(422, f"{f} is required", 4220)
+            if i not in self.backups:
+                return _err(404, "backup not found", 4040)
+            target = self.clusters.get(str(body["targetClusterID"]))
+            if target is None:
+                return _err(404, "target cluster not found", 4041)
+            if self.cluster_state(str(body["targetClusterID"])) in ("turnedOff", "turningOff"):
+                return _err(422, "The target cluster is turned off.", 4220)
+            self.bucket_restores.append(copy.deepcopy(body))
+            return _ok(202)
+
+        def ex_create(o: str, p: str, c: str, b: str, i: str, **k: Any) -> Resp:
+            if (e := bucket_ok(o, p, c, b)) is not None:
+                return e
+            bk = self.backups.get(i)
+            if bk is None:
+                return _err(404, "backup not found", 4040)
+            if self._backup_view(bk)["status"] != "ready":
+                return _err(422, "The backup must be in a ready state.", 4220)
+            if any(x["cycleId"] == bk["cycleID"] and x["status"] != "failed" for x in self.exports.values()):
+                return _err(409, "The backup cycle already has an export.", 1010)
+            x = self._new_id("export")
+            self.exports[x] = {"id": x, "tenantId": self.org_id, "projectId": p, "clusterId": c,
+                               "cycleId": bk["cycleID"], "bucketName": bk["bucketName"], "status": "pending",
+                               "createdAt": "2026-10-29T04:00:00Z", "_backup": i,
+                               "_done_at": self.clock.monotonic() + self.step_seconds}
+            return _ok(202, {"exportId": x, "createdAt": "2026-10-29T04:00:00Z"})
+
+        def ex_get(o: str, p: str, c: str, b: str, i: str, x: str, **k: Any) -> Resp:
+            if (e := bucket_ok(o, p, c, b)) is not None:
+                return e
+            ex = self.exports.get(x)
+            if ex is None or ex["_backup"] != i:
+                return _err(404, "export not found", 4040)
+            view = {k2: v for k2, v in ex.items() if not k2.startswith("_")}
+            if self.clock.monotonic() >= ex["_done_at"]:
+                view.update(status="complete", sizeInBytes=3 * 1024 ** 3, sha256Checksum="ab" * 32,
+                            expiration="2026-10-29T16:00:00Z",
+                            backupDownloadURL=f"https://downloads.example.com/{x}.zip?X-Amz-Signature=s3cr3t")
+            return _ok(200, view)
+
+        r("POST", BKT + "/backups", bk_create)
+        r("POST", BKT + "/backups/{i}/export", ex_create)
+        r("GET", BKT + "/backups/{i}/exports/{x}", ex_get)
+        r("GET", CLU + "/backups", bk_list)
+        r("GET", CLU + "/backups/{i}", bk_get)
+        r("DELETE", CLU + "/backups/{i}", bk_delete)
+        r("POST", CLU + "/backups/{i}/restore", bk_restore)
 
     @staticmethod
     def _azure_disk_check(provider: Any, groups: Any) -> Resp | None:
