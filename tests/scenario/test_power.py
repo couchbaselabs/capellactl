@@ -91,7 +91,7 @@ def test_power_ac5_turning_on_failed(fake, run, write_config):
     fake.set_transition(cid, ["turningOn", "turningOnFailed"])
     write_config(MINIMAL)
     r = run("cluster", "power", "nova-dev-01", "--on")
-    assert r.exit_code == 1 and "entered turningOnFailed; check the Capella UI activity log" in r.output
+    assert r.exit_code == 1 and "entered turningOnFailed\n[ACTION]: Open the cluster's activity log in the Capella UI" in r.output
 
 
 @pytest.mark.story("CAP-019", "AC6")

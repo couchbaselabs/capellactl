@@ -9,9 +9,10 @@ capellactl never waits for input without a terminal, so a pipeline cannot hang o
 - It is the only way to approve. There is no environment variable or profile setting for it, so approval is
   always visible in the pipeline file and its logs, and a variable left set in a shell can never delete data.
 - Without a terminal and without the flag, every command that changes Capella or capella.yaml stops with
-  exit code 1 and changes nothing: `refusing to <verb> without approval; pass --auto-approve`.
+  exit code 1 and changes nothing: `[ERROR]: refusing to <verb> without approval: there is no terminal to ask`,
+  then `[ACTION]: Add --auto-approve to this pipeline step.`
 - A question that has a default uses it. A question that needs an answer stops with exit code 3:
-  `missing --FLAG (no terminal to ask; pass it on the command line)`.
+  `[ERROR]: missing --FLAG: there is no terminal to ask for it`, then `[ACTION]: Give it on the command line: --FLAG VALUE.`
 
 ## Credentials
 

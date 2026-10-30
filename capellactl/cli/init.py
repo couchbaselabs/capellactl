@@ -24,12 +24,19 @@ from capellactl.api import endpoints as ep
 from capellactl.api.client import CapellaClient
 from capellactl.cli import console
 from capellactl.cli.cluster_ops import DISK_DEFAULT, PROVIDERS, REGION_DEFAULT, SUPPORT_PLANS, suggest_cidr
-from capellactl.cli.console import err, note, out
+from capellactl.cli.console import error, note, out, warning
 from capellactl.cli.env import pass_state
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.state import AppState
 from capellactl.config.crossref import normalize_cidr
-from capellactl.config.loader import API_VERSION, ConfigError, ConfigIssue, load_config
+from capellactl.config.loader import (
+    API_VERSION,
+    ConfigError,
+    ConfigIssue,
+    count_problems,
+    load_config,
+    render_issues,
+)
 from capellactl.config.presets import is_single_node, load_presets
 from capellactl.engine.clock import get_clock
 
@@ -181,7 +188,7 @@ def _about(i: ConfigIssue, prefixes: tuple[str, ...]) -> bool:
 
 
 def _message(i: ConfigIssue) -> str:
-    return f"{i.path}: {i.message}"
+    return f"{i.where or i.path}: {i.message}"
 
 
 # ------------------------------------------------------------ the questions
@@ -204,15 +211,15 @@ class Wizard:
                 problems = [_message(i) for i in issues(self.state, self.a) if _about(i, about)]
             if not problems:
                 return
-            for p in problems:
-                err(p)
-            err("Please answer again.")
+            error("\n".join(problems), "Please answer again.")
 
     def finish(self) -> None:
         """Non-interactive (and a last check interactively): the whole file must validate."""
         found = issues(self.state, self.a)
         if found:
-            raise CliExit(ExitCode.CONFIG_INVALID, "\n".join(_message(i) for i in found), topic=found[0].topic)
+            raise CliExit(ExitCode.CONFIG_INVALID, render_issues(f"The answers give a capella.yaml with {count_problems(len(found))}:", found), topic=found[0].topic,
+                                                   action="Change the options named above ('capellactl init --help' "
+                                                          "lists them), then run the command again.")
 
 
 def _prompt(text: str, default: Any = None, kind: Any = str, choices: list[str] | None = None) -> Callable[[], Any]:
@@ -272,8 +279,8 @@ def organization(state: AppState, org_flag: str | None, interactive: bool,
     key = s.api_key.value
     default_org = org_flag or (str(s.org_id.value) if s.org_id.value else None)
     if not key:
-        err("No API key found, so init cannot list your organizations and projects (run 'capellactl configure' "
-            "to save one). Type the organization ID instead.")
+        warning("No API key found, so init cannot list your organizations and projects",
+                "Type the organization ID at the next question, or save a key first with 'capellactl configure'.")
         if org_flag or (default_org and not interactive):
             return None, str(default_org), None
         if not interactive:
@@ -307,7 +314,9 @@ def project_choice(client: CapellaClient | None, wanted: str | None, wanted_id: 
     if wanted_id:
         found = [p for p in projects if p.get("id") == wanted_id]
         if not found:
-            raise CliExit(ExitCode.CONFIG_INVALID, f"project {wanted_id} not found")
+            raise CliExit(ExitCode.CONFIG_INVALID, f"project {wanted_id} not found",
+                                                   action="Check the ID with 'capellactl project list', then run "
+                                                          "the command again.")
         wanted = str(found[0].get("name"))
     if interactive and not wanted:
         if projects:
@@ -328,8 +337,8 @@ def project_choice(client: CapellaClient | None, wanted: str | None, wanted_id: 
     if len(same) > 1:
         if not interactive:
             ids = ", ".join(str(p.get("id")) for p in same)
-            raise CliExit(ExitCode.CONFIG_INVALID, f"{len(same)} projects are named {wanted} (ids: {ids}); pass "
-                                                   "--project-id", topic="idempotency")
+            raise CliExit(ExitCode.CONFIG_INVALID, f"{len(same)} projects are named {wanted} (ids: {ids})", topic="idempotency",
+                                                   action="Add --project-id with the ID of the one to use.")
         out(f"{len(same)} projects are named {wanted}:")
         chosen = _choose(same, "Which one", None)
         return wanted, str(chosen["id"]), ep.list_clusters(client, str(chosen["id"])) if client else []
@@ -391,8 +400,9 @@ def init(state: AppState, file: str | None, non_interactive: bool, dry_run: bool
     path = Path(file) if file else state.config_path()
     if path.exists() and not dry_run and not force:
         if not interactive:
-            raise CliExit(ExitCode.ERROR, f"{path.name} exists; pass --force to overwrite it (the current file is "
-                                          f"kept as {path.name}.bak)")
+            raise CliExit(ExitCode.ERROR, f"{path.name} already exists",
+                                          action=f"Pass --force to overwrite it (the current file is kept as "
+                                                 f"{path.name}.bak), or run 'capellactl init' in another folder.")
         if not console.ask_yes_no(f"{path.name} exists. Overwrite?", False):
             out("Nothing was written.")
             return
@@ -409,8 +419,9 @@ def init(state: AppState, file: str | None, non_interactive: bool, dry_run: bool
     if not interactive:
         missing += [f for f, v in (("--project", project or project_id), ("--cluster", cluster)) if not v]
         if missing:
-            raise CliExit(ExitCode.CONFIG_INVALID, f"missing required options for --non-interactive: "
-                                                   f"{', '.join(missing)}", topic="getting-started")
+            raise CliExit(ExitCode.CONFIG_INVALID, f"missing required options for --non-interactive: {', '.join(missing)}", topic="getting-started",
+                                                   action="Add them to the command ('capellactl init --help' "
+                                                          "describes each one).")
     w = Wizard(state, interactive)
     a = w.a
     a.org_id, a.org_name = org, org_name
@@ -445,7 +456,9 @@ def init(state: AppState, file: str | None, non_interactive: bool, dry_run: bool
     if not interactive:
         problems = free_name(a.cluster) + (_env_name_check(password_env_of(a)) if a.credential else [])
         if problems:
-            raise CliExit(ExitCode.CONFIG_INVALID, "\n".join(problems))
+            raise CliExit(ExitCode.CONFIG_INVALID, "\n".join(problems),
+                                                   action="Change the values named above, then run the command "
+                                                          "again.")
         w.finish()
     else:
         _interview(w, free_name, region_given=region is not None)
@@ -542,11 +555,13 @@ def _import(state: AppState, path: Path, org_flag: str | None) -> None:
     missing: list[str] = []
     client, _, _ = organization(state, org_flag, True, missing)
     if client is None:
-        raise CliExit(ExitCode.CONFIG_INVALID, "importing needs an API key; run 'capellactl configure' first",
-                      topic="environment")
+        raise CliExit(ExitCode.CONFIG_INVALID, "importing needs an API key",
+                      topic="environment",
+                                               action="Run 'capellactl configure' first, or set CAPELLA_API_KEY.")
     projects = ep.list_projects(client)
     if not projects:
-        raise CliExit(ExitCode.ERROR, "this organization has no projects to import; choose 'new' instead")
+        raise CliExit(ExitCode.ERROR, "this organization has no projects to import",
+                                      action="Choose 'new' to describe a new environment instead.")
     out("Projects:")
     chosen = _choose(projects, "Project to import", None)
     names = str(console.ask("Clusters to import (comma-separated names; empty: all)", "", show_default=False))

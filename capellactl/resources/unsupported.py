@@ -35,7 +35,7 @@ class UnsupportedReconciler(Reconciler):
         return Action(
             self.kind, cluster, ActionType.DEFERRED, self, desired=desired, parent=parent,
             summary=self._describe(desired),
-            reason=f"not managed by this build yet ({self.story}); left unchanged",
+            reason="not managed by this build yet; left unchanged",
         )
 
 

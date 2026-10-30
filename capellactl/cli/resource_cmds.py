@@ -76,19 +76,23 @@ def pick_project(state: AppState, project: str | None) -> tuple[str, str | None]
     if len(projects) == 1:
         return str(projects[0].get("name")), projects[0].get("id")
     if not projects:
-        raise CliExit(ExitCode.CONFIG_INVALID, "no project given and no capella.yaml here; pass --project NAME "
-                                               "or run 'capellactl sync'", topic="getting-started")
+        raise CliExit(ExitCode.CONFIG_INVALID, "no project given, and there is no capella.yaml here", topic="getting-started",
+                                               action="Add --project NAME, or run 'capellactl sync' to write "
+                                                      "capella.yaml from Capella.")
     names = ", ".join(str(p.get("name")) for p in projects)
-    raise CliExit(ExitCode.CONFIG_INVALID, f"capella.yaml has several projects ({names}); pass --project NAME")
+    raise CliExit(ExitCode.CONFIG_INVALID, f"capella.yaml has several projects ({names})",
+                                           action="Add --project NAME to choose one.")
 
 
-def cluster_not_project(state: AppState, name: str, command: str) -> str:
-    """'' or a hint when NAME is a cluster in capella.yaml rather than a project (e.g. $CLUSTER passed for $PROJECT)."""
+def cluster_not_project(state: AppState, name: str, command: str) -> tuple[str, str]:
+    """('', '') or (what, action) when NAME is a cluster in capella.yaml rather than a project (e.g. $CLUSTER passed
+    for $PROJECT)."""
     owners = [str(p.get("name")) for p in file_projects(state)
               if any(isinstance(c, dict) and c.get("name") == name for c in p.get("clusters") or [])]
     if len(owners) != 1:
-        return ""
-    return f"\n{name} is a cluster in project {owners[0]}, not a project. Did you mean: {command.format(owners[0])}"
+        return "", ""
+    return (f"; {name} is a cluster in project {owners[0]}, not a project",
+            f"Did you mean: {command.format(owners[0])}")
 
 
 def project_of_cluster(state: AppState, cluster: str, project: str | None) -> str | None:
@@ -98,8 +102,8 @@ def project_of_cluster(state: AppState, cluster: str, project: str | None) -> st
     owners = [str(p.get("name")) for p in file_projects(state)
               if any(isinstance(c, dict) and c.get("name") == cluster for c in p.get("clusters") or [])]
     if len(owners) > 1:
-        raise CliExit(ExitCode.CONFIG_INVALID, f"cluster {cluster} is in several projects ({', '.join(owners)}); "
-                                               "pass --project NAME")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"cluster {cluster} is in several projects ({', '.join(owners)})",
+                                               action="Add --project NAME to choose one.")
     return owners[0] if owners else None
 
 
@@ -109,10 +113,13 @@ def _project_id(state: AppState, client: Any, project: str | None) -> tuple[str,
         return str(pinned), name
     matches = [p for p in ep.list_projects(client) if p.get("name") == name]
     if not matches:
-        raise CliExit(ExitCode.ERROR, f"project {name} not found"
-                      + cluster_not_project(state, str(name), "project {}"))
+        note, fix = cluster_not_project(state, str(name), "--project {}")
+        raise CliExit(ExitCode.ERROR, f"project {name} not found{note}",
+                      action=fix or "Check the name with 'capellactl project list', then run the command again.")
     if len(matches) > 1:
-        raise CliExit(ExitCode.BLOCKED, f"{len(matches)} projects named {name}; use the project id", topic="idempotency")
+        raise CliExit(ExitCode.BLOCKED, f"{len(matches)} projects are named {name}", topic="idempotency",
+                                        action="Rename one of them in the Capella UI so the names differ, run "
+                                               "'capellactl sync', then run the command again.")
     return str(matches[0]["id"]), str(name)
 
 
@@ -120,9 +127,13 @@ def find_cluster(client: Any, pid: str, name: str) -> dict[str, Any]:
     """The cluster of a project with this name (or id), as listed by Capella."""
     matches = [c for c in ep.list_clusters(client, pid) if c.get("name") == name or c.get("id") == name]
     if not matches:
-        raise CliExit(ExitCode.ERROR, f"cluster {name} not found")
+        raise CliExit(ExitCode.ERROR, f"cluster {name} not found",
+                                      action="Check the name with 'capellactl cluster list', then run the command "
+                                             "again.")
     if len(matches) > 1:
-        raise CliExit(ExitCode.BLOCKED, f"{len(matches)} clusters named {name}; use the cluster id", topic="idempotency")
+        raise CliExit(ExitCode.BLOCKED, f"{len(matches)} clusters are named {name}", topic="idempotency",
+                                        action="Give the cluster's ID instead of its name ('capellactl cluster "
+                                               "list' shows the IDs).")
     return matches[0]
 
 
@@ -214,16 +225,18 @@ def project_create(state: AppState, name: str, description: str | None) -> None:
         except yaml.YAMLError:
             raw = None
         if not (isinstance(raw, dict) and ("projects" in raw or "project" in raw)):
-            raise CliExit(ExitCode.CONFIG_INVALID, f"{path.name} is not a capellactl file; move it away or pass "
-                                                   f"--config {name}.yaml", topic="config")
+            raise CliExit(ExitCode.CONFIG_INVALID, f"{path.name} is not a capellactl file", topic="config",
+                                                   action=f"Move it away, or pass --config {name}.yaml to use "
+                                                          f"another file.")
         editor = ConfigEditor(path)
     in_file = editor is not None and name in editor.project_names()
 
     client = state.client()
     if any(p.get("name") == name for p in ep.list_projects(client)):
-        hint = ("it is already in capella.yaml" if in_file
-                else f"to add it to capella.yaml run 'capellactl sync --project {name}'")
-        raise CliExit(ExitCode.BLOCKED, f"project {name} already exists; {hint}", topic="idempotency")
+        raise CliExit(ExitCode.BLOCKED, f"project {name} already exists" + (" and is in capella.yaml" if in_file else ""),
+                      topic="idempotency",
+                      action="None needed; choose another name for a new project." if in_file else
+                      f"Run 'capellactl sync --project {name}' to add it to capella.yaml.")
     interactive = console.is_interactive()
     if description is None and interactive:
         description = console.ask("Description (optional)", "", show_default=False)
@@ -276,13 +289,14 @@ def project_update(state: AppState, name: str, description: str | None, no_apply
     ed = open_editor(state)
     node = ed.find_project(name)
     if node is None:
-        hint = cluster_not_project(state, name, "capellactl project update {}" + (
+        note, fix = cluster_not_project(state, name, "capellactl project update {}" + (
             f' --description "{description}"' if description is not None else ""))
-        raise CliExit(ExitCode.CONFIG_INVALID, f"project {name} is not in capella.yaml"
-                      + (hint or f"; add it with 'capellactl sync --project {name}'"))
+        raise CliExit(ExitCode.CONFIG_INVALID, f"project {name} is not in capella.yaml{note}",
+                      action=fix or f"Add it with 'capellactl sync --project {name}', then run the command again.")
     if description is None:
         if not console.is_interactive():
-            raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change; pass --description")
+            raise CliExit(ExitCode.CONFIG_INVALID, "nothing to change: no option was given",
+                                                   action="Add --description TEXT.")
         description = _ask("Description", node.get("description", ""))
     node["description"] = description
     change_and_apply(state, ed, f"project/{name}", f"Record this change in capella.yaml and apply it to {name}?",
@@ -306,7 +320,7 @@ def project_apply(state: AppState, name: str | None) -> None:
 @click.option("--discard-snapshots", is_flag=True, help="With --cascade: do not keep clusters' snapshot backups.")
 @pass_state
 def project_delete(state: AppState, name: str, cascade: bool, discard_snapshots: bool) -> None:
-    """Delete a project from Capella and from capella.yaml (CAP-010)."""
+    """Delete a project from Capella and from capella.yaml."""
     from capellactl.api.errors import Conflict
     from capellactl.cli import console
     from capellactl.cli.console import note, wait_progress
@@ -325,16 +339,20 @@ def project_delete(state: AppState, name: str, cascade: bool, discard_snapshots:
         return
     if len(matches) > 1:
         ids = ", ".join(str(p["id"]) for p in matches)
-        raise CliExit(ExitCode.BLOCKED, f"{len(matches)} projects are named {name} (ids: {ids}); pin the one to "
-                                        "delete with id: in capella.yaml", topic="idempotency")
+        raise CliExit(ExitCode.BLOCKED, f"{len(matches)} projects are named {name} (ids: {ids}), so capellactl "
+                                        f"cannot tell which one to delete", topic="idempotency",
+                                        action="Rename one of them in the Capella UI so the names differ, run "
+                                               "'capellactl sync', then run the command again.")
     pid = str(matches[0]["id"])
     clusters = ep.list_clusters(client, pid)
     if clusters and not cascade:
         names = ", ".join(str(c.get("name")) for c in clusters)
         noun = "cluster" if len(clusters) == 1 else "clusters"
-        raise CliExit(ExitCode.BLOCKED, f"project {name} contains {len(clusters)} {noun} ({names}). Delete "
-                                        f"{'it' if len(clusters) == 1 else 'them'} first or pass --cascade.",
-                      topic="safety")
+        raise CliExit(ExitCode.BLOCKED, f"project {name} contains {len(clusters)} {noun} ({names})",
+                      topic="safety",
+                                        action=f"Delete {'it' if len(clusters) == 1 else 'them'} first ('capellactl "
+                                               f"cluster delete NAME'), or add --cascade to delete them with the "
+                                               f"project.")
 
     lines = [f"Project {name} · organization {client.org_id}", ""]
     blocked = []
@@ -348,7 +366,9 @@ def project_delete(state: AppState, name: str, cascade: bool, discard_snapshots:
     lines += ["", f"Plan: 0 to add, 0 to change, {len(clusters) - len(blocked) + 1} to delete, {len(blocked)} blocked."]
     out("\n".join(lines))
     if blocked:
-        raise CliExit(ExitCode.BLOCKED, "Nothing was deleted.", topic="safety")
+        raise CliExit(ExitCode.BLOCKED, "Nothing was deleted: deletion protection is on for the clusters marked ! above",
+                      topic="safety", action="Run 'capellactl cluster protect NAME --off' for each of them if you really "
+                                             "mean to delete the project, then run the command again.")
 
     notes = (f"This deletes {len(clusters)} cluster(s) and all their data"
              + ("; snapshot backups are discarded" if discard_snapshots else "; snapshot backups are kept") + "."
@@ -377,10 +397,9 @@ def project_delete(state: AppState, name: str, cascade: bool, discard_snapshots:
     try:
         ep.delete_project(client, pid)
     except Conflict as exc:
-        msg = "Capella refused: project is not empty"
-        if exc.hint:
-            msg += f"\nHint: {exc.hint}"
-        raise CliExit(ExitCode.ERROR, msg) from None
+        raise CliExit(ExitCode.ERROR, "Capella refused to delete the project: it is not empty",
+                      action=f"{exc.hint.rstrip('.')}." if exc.hint else
+                      "Delete what is left in it in the Capella UI, then run the command again.") from None
     out(f"deleted project {name}")
     _remove_from_file(state, name)
 
@@ -504,23 +523,28 @@ def cluster_scale(state: AppState, name: str, nodes: int | None, group: str | No
     """Scale a service group: records the node count in capella.yaml and applies it.
 
     Scale-in (fewer nodes) runs capacity checks first: buckets must still fit in memory and every bucket's replicas
-    need enough data nodes (CAP-016). --step adds or removes one node within --min/--max (CAP-018); at a limit it
+    need enough data nodes. --step adds or removes one node within --min/--max; at a limit it
     exits 0 without changing anything.
     """
     from capellactl.cli.cluster_ops import scale_in_file, step_scale
 
     if step is not None:
         if nodes is not None:
-            raise CliExit(ExitCode.CONFIG_INVALID, "pass either --nodes or --step", topic="scaling")
+            raise CliExit(ExitCode.CONFIG_INVALID, "both --nodes and --step were given", topic="scaling",
+                                                   action="Keep one: --nodes N for a node count, or --step +1|-1 to "
+                                                          "add or remove one node.")
         if step.strip() not in ("+1", "-1", "1"):
-            raise CliExit(ExitCode.CONFIG_INVALID, "--step takes +1 or -1", topic="scaling")
+            raise CliExit(ExitCode.CONFIG_INVALID, "--step takes +1 or -1", topic="scaling",
+                                                   action="Give --step +1 to add a node or --step -1 to remove one.")
         step_scale(state, name, -1 if step.strip() == "-1" else 1, group, min_nodes, max_nodes, all_groups, project,
                    no_apply, skip_capacity_check)
         return
     if min_nodes is not None or max_nodes is not None or all_groups:
-        raise CliExit(ExitCode.CONFIG_INVALID, "--min, --max and --all-groups go with --step", topic="scaling")
+        raise CliExit(ExitCode.CONFIG_INVALID, "--min, --max and --all-groups were given without --step", topic="scaling",
+                                               action="Add --step +1 or --step -1, or remove them.")
     if nodes is None:
-        raise CliExit(ExitCode.CONFIG_INVALID, "pass --nodes N or --step +1|-1", topic="scaling")
+        raise CliExit(ExitCode.CONFIG_INVALID, "nothing to do: neither --nodes nor --step was given", topic="scaling",
+                                               action="Add --nodes N, or --step +1|-1.")
     scale_in_file(state, name, nodes, group, no_apply, project, skip_capacity_check)
 
 

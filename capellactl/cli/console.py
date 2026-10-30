@@ -128,17 +128,46 @@ def is_quiet() -> bool:
     return _quiet
 
 
+def _labelled(label: str, what: str, action: str, topic: str | None = None) -> None:
+    """`[LABEL]: what` (later lines indented under it), then `[ACTION]: action` (CAP-063)."""
+    if topic:
+        action = f"{action.rstrip()} See 'capellactl help {topic}'." if action else f"See 'capellactl help {topic}'."
+    err(f"[{label}]: {_indent(str(what))}")
+    if action:
+        err(f"[ACTION]: {_indent(action)}")
+
+
+def _indent(text: str) -> str:
+    """Lines after the first sit under the label; lines that bring their own indentation keep it."""
+    first, *rest = text.split("\n")
+    return "\n".join([first, *(line if line.startswith(" ") else f"  {line}" for line in rest)])
+
+
+def error(what: str, action: str, topic: str | None = None) -> None:
+    _labelled("ERROR", what, action, topic)
+
+
+def warning(what: Any, action: str = "", topic: str | None = None) -> None:
+    """A warning; `what` may be a Notice, which carries its own action."""
+    if hasattr(what, "action") and not action:
+        what, action = what.what, what.action
+    _labelled("WARNING", what, action, topic)
+
+
 def note(msg: Any = "") -> None:
     """Progress, hints and "previous version kept" notes on stderr; silent with --quiet."""
     if not _quiet:
         err(msg)
 
 
-def err_inline(msg: Any) -> None:
-    """Write to stderr without ending the line; the next out()/err() ends it first. Progress: silent with --quiet."""
+def err_inline(msg: Any, start: bool = False) -> None:
+    """Write to stderr without ending the line; the next out()/err() ends it first. Progress: silent with --quiet.
+    `start`: begin a new line (a new state) instead of continuing the open one (a dot)."""
     global _line_open
     if _quiet:
         return
+    if start:
+        _close_line()
     with _spinner.lock:
         _spinner.erase()
         click.echo(redact(msg), err=True, nl=False)
@@ -154,7 +183,7 @@ def wait_progress(label: str) -> tuple[Callable[[str, float], None], Callable[[]
     def on_state(state: str, elapsed: float) -> None:
         line = f"  {label}: {state} ({format_duration(elapsed)})"
         if state in TRANSITIONAL:
-            err_inline(line + " ")
+            err_inline(line + " ", start=True)
         else:
             note(line)
 
@@ -174,10 +203,10 @@ def is_interactive() -> bool:
 # (tests/unit/cli/test_prompt_helpers.py checks this), so no command can wait for input without a terminal.
 
 def refusal(state: Any, verb: str) -> CliExit:
-    msg = f"refusing to {verb} without approval; pass --auto-approve"
-    if str(state.env.get("CI", "")).lower() in ("true", "1"):
-        msg += "\nadd --auto-approve to this pipeline step"
-    return CliExit(ExitCode.ERROR, msg)
+    in_ci = str(state.env.get("CI", "")).lower() in ("true", "1")
+    return CliExit(ExitCode.ERROR, f"refusing to {verb} without approval: there is no terminal to ask",
+                   action="Add --auto-approve to this pipeline step." if in_ci else
+                   "Add --auto-approve (-y) to approve the change, or run the command in a terminal to be asked.")
 
 
 def confirm(state: Any, question: str, verb: str, notes: str | None = None) -> bool:
@@ -209,8 +238,10 @@ def ask(label: str, default: Any = None, flag: str | None = None, **kwargs: Any)
     if not is_interactive():
         if default is not None:
             return default
-        raise CliExit(ExitCode.CONFIG_INVALID, f"missing {flag or label} (no terminal to ask; pass it on the "
-                                               "command line)")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"missing {flag or label}: there is no terminal to ask for it",
+                                               action=(f"Give it on the command line: {flag} VALUE." if flag else
+                                               f"Run the command in a terminal to be asked for {label}, "
+                                               "or see its --help for the option that sets it."))
     return click.prompt(label, default=default, **kwargs)
 
 

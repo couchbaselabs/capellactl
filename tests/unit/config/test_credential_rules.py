@@ -23,7 +23,7 @@ def _write(tmp_path, privileges):
 def test_credential_validate_ac6_privilege_rejected(tmp_path, run):
     with pytest.raises(ConfigError) as exc:
         load_config(_write(tmp_path, "queryManage"), env={"CAPELLA_ORG_ID": "org-1"})
-    assert ("clusters[0].databaseCredentials[0].access[0].privileges[0]: basic credentials support read/write only; "
+    assert ("credential orders_app › access[0].privileges[0] (line 23)\n    basic credentials support read/write only; "
             "advanced credentials are planned for 1.1") in str(exc.value)
     r = run("validate")
     assert r.exit_code == 3 and "advanced credentials are planned for 1.1" in r.output

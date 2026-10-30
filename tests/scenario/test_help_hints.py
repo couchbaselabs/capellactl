@@ -24,4 +24,4 @@ def test_help_ac5_validation_error_has_topic(run, write_config):
     write_config(MINIMAL + "    hibernation:\n      timezone: US/Pacific\n      weekend: sometimes\n")
     r = run("validate")
     assert r.exit_code == 3
-    assert "See: capellactl help hibernation" in r.output
+    assert "See 'capellactl help hibernation'." in r.output

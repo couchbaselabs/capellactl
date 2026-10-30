@@ -42,7 +42,7 @@ def test_project_delete_ac2_absent_noop(fake, run, two):
 def test_project_delete_ac3_non_empty_blocked(fake, run, two):
     r = run("--auto-approve", "project", "delete", "nova-dev")
     assert r.exit_code == 4
-    assert "project nova-dev contains 1 cluster (nova-dev-01). Delete it first or pass --cascade." in r.output
+    assert "[ERROR]: project nova-dev contains 1 cluster (nova-dev-01)\n[ACTION]: Delete it first" in r.output
     assert fake.writes() == []
 
 
@@ -66,7 +66,7 @@ def test_project_delete_ac4_cascade_respects_protection(fake, run, two):
     fake.clusters[cid]["body"]["deletionProtection"] = True
     r = run("--auto-approve", "project", "delete", "nova-dev", "--cascade")
     assert r.exit_code == 4 and "! cluster nova-dev-01  deletion protection is on" in r.output
-    assert "Nothing was deleted." in r.output and fake.writes() == []
+    assert "[ERROR]: Nothing was deleted: deletion protection is on" in r.output and fake.writes() == []
 
 
 @pytest.mark.story("CAP-010", "AC5")
@@ -77,14 +77,14 @@ def test_project_delete_ac5_wrong_name_cancels(fake, run, two, monkeypatch):
     assert "Cancelled; nothing was deleted." in r.output and fake.writes() == []
     monkeypatch.setattr(console, "is_interactive", lambda: False)
     r = run("project", "delete", "non-prod")
-    assert r.exit_code == 1 and "without approval; pass --auto-approve" in r.output and fake.writes() == []
+    assert r.exit_code == 1 and "without approval: there is no terminal to ask\n[ACTION]: Add --auto-approve" in r.output and fake.writes() == []
 
 
 @pytest.mark.story("CAP-010", "AC6")
 def test_project_delete_ac6_api_409_message(fake, run, two):
     fake.fail_next("DELETE", "*/projects/*", 409, code=1010)
     r = run("--auto-approve", "project", "delete", "non-prod")
-    assert r.exit_code == 1 and "Capella refused: project is not empty" in r.output and "Hint:" in r.output
+    assert r.exit_code == 1 and "[ERROR]: Capella refused to delete the project: it is not empty\n[ACTION]: " in r.output
 
 
 @pytest.mark.story("CAP-010", "AC7")

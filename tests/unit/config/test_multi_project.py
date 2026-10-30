@@ -52,7 +52,7 @@ def test_multi_ac1_validate_and_paths(tmp_path):
     msg = _err(tmp_path, MULTI.replace("numOfNodes: 3\n            services: [data, index, query]\n",
                                        "numOfNodes: 2\n            services: [data, index, query]\n", 2)
                .replace("numOfNodes: 2", "numOfNodes: 3", 1))
-    assert "projects[1].clusters[0].serviceGroups[0].numOfNodes: must be between 3 and 27" in msg
+    assert "project non-prod › cluster main › service group data,index,query › numOfNodes (line 22)\n    must be between 3 and 27" in msg
 
 
 @pytest.mark.story("CAP-040", "AC1")

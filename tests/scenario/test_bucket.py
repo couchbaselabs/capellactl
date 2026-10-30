@@ -173,7 +173,7 @@ def test_bucket_ac6_memory_preflight_blocks(fake, run, write_config):
     write_config(MINIMAL + ORDERS)
     r = run("--auto-approve", "apply")
     assert r.exit_code == 4, r.output
-    assert ("  ! bucket nova-dev-01/orders  needs 1024 MB but the cluster has 512 MB free; scale out (CAP-015) or "
+    assert ("  ! bucket nova-dev-01/orders  needs 1024 MB but the cluster has 512 MB free; scale out with 'capellactl cluster scale' or "
             "reduce memoryAllocationInMb") in r.output
     assert fake.writes() == []
 
@@ -206,7 +206,7 @@ def test_bucket_ac6_replica_preflight_blocks(fake, run, write_config):
     write_config(MINIMAL + ORDERS + "        replicas: 3\n")
     r = run("--auto-approve", "apply")
     assert r.exit_code == 4, r.output
-    assert ("  ! bucket nova-dev-01/orders  replicas: 3 but the cluster supports at most 2; scale out (CAP-015) or "
+    assert ("  ! bucket nova-dev-01/orders  replicas: 3 but the cluster supports at most 2; scale out with 'capellactl cluster scale' or "
             "reduce replicas") in r.output
     assert fake.writes() == []
 

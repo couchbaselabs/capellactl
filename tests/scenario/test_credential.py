@@ -101,7 +101,7 @@ def test_credential_ac5_all_buckets_warning(fake, run, write_config, cluster):
                  "        access:\n          - privileges: [read]\n")
     v = run("validate")
     assert v.exit_code == 0, v.output
-    assert "warning: clusters[0].databaseCredentials[0].access[0]: grants access to ALL buckets" in v.output
+    assert "[WARNING]: project nova-dev › cluster nova-dev-01 › credential ops_ro › access[0] (line 29): grants access to ALL buckets" in v.output
     r = run("plan")
     plan_line = next(line for line in r.output.splitlines() if "credential nova-dev-01/ops_ro" in line)
     assert plan_line.endswith("(all buckets)")

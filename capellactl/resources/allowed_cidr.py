@@ -16,11 +16,13 @@ from typing import Any
 
 from capellactl.api import endpoints as ep
 from capellactl.api.errors import Conflict, NotFound
-from capellactl.config.crossref import normalize_cidr
+from capellactl.config.crossref import (
+    ANY_IP,
+    normalize_cidr,
+)
 from capellactl.engine.context import RunContext
 from capellactl.resources.base import Action, ActionType, Change, Observed, Reconciler
 
-ANY_IP = ("0.0.0.0/0", "::/0")
 REPLACE_NOTE = "(replace: API has no update)"
 
 
@@ -105,13 +107,21 @@ class AllowedCidrReconciler(Reconciler):
 
     def diff(self, ctx: RunContext, desired: Any, observed: Observed | None, parent: Action | None) -> Action:
         key = self.key(desired, parent)
-        if canonical(str(desired["cidr"])) in ANY_IP:
-            ctx.warn(f"allowed CIDR {canonical(str(desired['cidr']))} on {parent.key if parent else '?'} lets any IP "
-                     "address connect (allowAnyIp: true)")
+        cidr = canonical(str(desired["cidr"]))
+        cluster = parent.key if parent else "CLUSTER"
+        confirmed = bool(parent is not None and isinstance(parent.desired, dict) and parent.desired.get("allowAnyIp"))
+        if cidr in ANY_IP and confirmed:
+            ctx.warn(f"allowed CIDR {cidr} on {cluster} lets any IP address connect (allowAnyIp: true)",
+                     "Keep it only if the cluster must be reachable from anywhere; otherwise run 'capellactl cidr "
+                     f"delete {cluster} {cidr}'.")
         if observed is None:
             if is_expired(desired.get("expiresAt"), ctx.clock.now()):
                 return Action(self.kind, key, ActionType.NOOP, self, desired=desired, parent=parent,
                               notes=["(expiresAt is in the past; Capella removed it, not re-created)"])
+            if cidr in ANY_IP and not confirmed:  # CAP-022 AC5: never open a cluster to every address by accident
+                return Action(self.kind, key, ActionType.BLOCKED, self, desired=desired, parent=parent, topic="safety",
+                              reason=f"{cidr} would let every IP address connect; to create it, run 'capellactl cidr "
+                                     f"create {cluster} {cidr} --allow-any-ip'")
             return Action(self.kind, key, ActionType.CREATE, self, desired=desired, parent=parent,
                           summary=summary(desired))
         changes = cidr_changes(desired, observed.body)
@@ -148,7 +158,8 @@ class AllowedCidrReconciler(Reconciler):
             try:
                 new = ep.create_allowed_cidr(ctx.client, pid, cid, body)
             except Conflict:  # Capella does not accept the same CIDR twice: delete first, then create
-                ctx.warn(f"access from {body['cidr']} is briefly interrupted")
+                ctx.warn(f"access from {body['cidr']} is briefly interrupted",
+                         "None needed: Capella replaces the range, and access returns within seconds.")
                 with contextlib.suppress(NotFound):
                     ep.delete_allowed_cidr(ctx.client, pid, cid, old)
                 action.created_id = ep.create_allowed_cidr(ctx.client, pid, cid, body)

@@ -736,7 +736,7 @@
         },
         "backupSchedule": {
           "type": "object",
-          "description": "Cloud snapshot backups of the whole cluster (CAP-056): how often, how long each is kept, copies in other regions. Not available on the free tier.",
+          "description": "Cloud snapshot backups of the whole cluster: how often, how long each is kept, copies in other regions. Not available on the free tier.",
           "additionalProperties": false,
           "properties": {
             "interval": {
@@ -987,7 +987,7 @@
               },
               "backupSchedule": {
                 "type": "object",
-                "description": "Bucket backups (CAP-058): a weekly full backup starts a cycle, followed by incremental backups. Not available on the free tier.",
+                "description": "Bucket backups: a weekly full backup starts a cycle, followed by incremental backups. Not available on the free tier.",
                 "additionalProperties": false,
                 "properties": {
                   "dayOfWeek": {

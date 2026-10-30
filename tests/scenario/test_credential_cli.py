@@ -83,7 +83,7 @@ def test_credential_cli_ac3_create_guards(fake, run, write_config, cluster, tmp_
             extra_env=PW_ENV)
     assert r.exit_code == 4 and "already in capella.yaml" in r.output
     r = run("--auto-approve", "credential", "create", "nova-dev-01", "other", "--privileges", "read", extra_env=PW_ENV)
-    assert r.exit_code == 3 and "pass --bucket NAME (least privilege) or --all-buckets" in r.output
+    assert r.exit_code == 3 and "[ACTION]: Add --bucket NAME (least privilege), or --all-buckets" in r.output
     # exists in Capella with the same access: adopted, zero writes
     seed_user(fake, cid, "adopted", [{"privileges": ["data_reader"], "resources": {"buckets": [{"name": "orders"}]}}])
     r = run("--auto-approve", "credential", "create", "nova-dev-01", "adopted", "--bucket", "orders", extra_env=PW_ENV)

@@ -29,7 +29,7 @@ from capellactl.cli.state import AppState
 from capellactl.engine.clock import get_clock
 from capellactl.engine.waiter import WaitFailed, WaitTimeout, wait_for_cluster
 from capellactl.resources.cluster import is_free
-from capellactl.resources.guards import deletion_protected, protection_message
+from capellactl.resources.guards import deletion_protected
 
 PROJECT_OPT = click.option("--project", metavar="NAME", help="Project of the cluster (only needed when the name repeats).")
 
@@ -44,7 +44,8 @@ PROJECT_OPT = click.option("--project", metavar="NAME", help="Project of the clu
 def cluster_protect(state: AppState, name: str, enable: bool | None, project: str | None) -> None:
     """Turn deletion protection on or off in Capella and record it in capella.yaml."""
     if enable is None:
-        raise CliExit(ExitCode.CONFIG_INVALID, "pass --on or --off", topic="safety")
+        raise CliExit(ExitCode.CONFIG_INVALID, "nothing to do: neither --on nor --off was given", topic="safety",
+                                               action="Add --on to turn the cluster on, or --off to turn it off.")
     client, pid, cl = live_cluster(state, name, project)
     word = "on" if enable else "off"
     owner = project_of_cluster(state, name, project)
@@ -106,8 +107,10 @@ def _find_for_delete(client: Any, pid: str, name: str, pinned: str | None) -> di
     found = [c for c in clusters if c.get("name") == name]
     if len(found) > 1:
         ids = ", ".join(str(c.get("id")) for c in found)
-        raise CliExit(ExitCode.BLOCKED, f"{len(found)} clusters are named {name} (ids: {ids}); pin the one to delete "
-                                        "with id: in capella.yaml", topic="idempotency")
+        raise CliExit(ExitCode.BLOCKED, f"{len(found)} clusters are named {name} (ids: {ids}), so capellactl cannot "
+                                        f"tell which one to delete", topic="idempotency",
+                                        action="Rename one of them in the Capella UI so the names differ, run "
+                                               "'capellactl sync', then run the command again.")
     return found[0] if found else None
 
 
@@ -150,9 +153,11 @@ def _wait_gone(state: AppState, client: Any, pid: str, cl: dict[str, Any]) -> No
         wait_for_cluster(client, pid, str(cl["id"]), "delete", state.timeout, get_clock(), on_state, name=name,
                          getter=ep.get_free_cluster if is_free(cl) else None, on_tick=on_tick)
     except WaitFailed as exc:
-        raise CliExit(ExitCode.ERROR, f"Failed: {exc}", topic="safety") from None
+        raise CliExit(ExitCode.ERROR, f"Failed: {exc.what}", topic="safety",
+                                      action=exc.action) from None
     except WaitTimeout as exc:
-        raise CliExit(ExitCode.TIMEOUT, str(exc)) from None
+        raise CliExit(ExitCode.TIMEOUT, exc.what,
+                                        action=exc.action) from None
 
 
 def _remove_from_file(state: AppState, name: str, project: str | None) -> None:
@@ -184,7 +189,7 @@ def _remove_from_file(state: AppState, name: str, project: str | None) -> None:
 @PROJECT_OPT
 @pass_state
 def cluster_delete(state: AppState, name: str, discard_snapshots: bool, cascade: bool, project: str | None) -> None:
-    """Delete a cluster and all its data, wait until it is gone, and remove it from capella.yaml (CAP-014)."""
+    """Delete a cluster and all its data, wait until it is gone, and remove it from capella.yaml."""
     client = state.client(_file_org(state))
     owner = project_of_cluster(state, name, project)
     pid, _ = _project_id(state, client, owner)
@@ -202,7 +207,9 @@ def cluster_delete(state: AppState, name: str, discard_snapshots: bool, cascade:
             _remove_from_file(state, name, owner)
         return
     if deletion_protected(cl):
-        raise CliExit(ExitCode.BLOCKED, protection_message(name), topic="safety")
+        raise CliExit(ExitCode.BLOCKED, f"deletion protection is on for {name}", topic="safety",
+                                        action=f"Run 'capellactl cluster protect {name} --off' if you really mean to "
+                                               f"delete it, then run the command again.")
 
     for line in _delete_details(client, pid, cl, discard_snapshots):
         out(line)

@@ -129,7 +129,7 @@ def test_multi_ac7_cluster_create_project_choice(fake, run, tmp_path, monkeypatc
     _two_projects(fake)
     run("import")
     r = run("--auto-approve", "cluster", "create", "new-01")
-    assert r.exit_code == 3 and "several projects (nova-dev, non-prod); pass --project NAME" in r.output
+    assert r.exit_code == 3 and "several projects (nova-dev, non-prod)\n[ACTION]: Add --project NAME" in r.output
     monkeypatch.setattr(console, "is_interactive", lambda: True)
     r = run("cluster", "create", "new-01", input="2\n\n\n\n\n\n\ny\n")
     assert r.exit_code == 0, r.output

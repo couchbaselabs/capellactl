@@ -59,7 +59,7 @@ def test_cluster_mds_ac1_plan_lines_per_group(fake, run, imported):
 def test_cluster_mds_ac3_conflicting_flags(fake, run, imported, extra, flags):
     before = imported.read_text(encoding="utf-8")
     r = run("--auto-approve", "cluster", "create", "bad-01", *MDS, *extra)
-    assert r.exit_code == 3 and f"--group sets nodes, size and services per group; remove {flags}" in r.output
+    assert r.exit_code == 3 and f"--group sets nodes, size and services per group, so {flags} cannot be given with it\n[ACTION]: Remove {flags}" in r.output
     assert imported.read_text(encoding="utf-8") == before and fake.writes() == []
 
 

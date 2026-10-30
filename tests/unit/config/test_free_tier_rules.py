@@ -29,9 +29,9 @@ def test_free_tier_ac4_validation(tmp_path):
     assert "configurationType" not in cfg.clusters[0]
     with pytest.raises(ConfigError, match="free-tier clusters on aws are available in: us-east-2, eu-west-1"):
         _check(tmp_path, BASE.replace("us-east-2", "us-west-2"))
-    with pytest.raises(ConfigError, match="availability: not available for free-tier clusters"):
+    with pytest.raises(ConfigError, match=r"availability \(line \d+\)\n    not available for free-tier clusters"):
         _check(tmp_path, BASE + "        availability: {type: single}\n")
-    with pytest.raises(ConfigError, match="support: not available for free-tier clusters"):
+    with pytest.raises(ConfigError, match=r"support \(line \d+\)\n    not available for free-tier clusters"):
         _check(tmp_path, BASE + "        support: {plan: basic}\n")
     two = BASE + BASE.split("    clusters:\n", 1)[1].replace("try-01", "try-02").replace("10.0.0.0", "10.2.0.0")
     with pytest.raises(ConfigError, match="only one free-tier cluster is allowed per organization"):

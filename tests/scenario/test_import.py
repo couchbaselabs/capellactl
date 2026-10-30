@@ -63,6 +63,17 @@ def test_import_ac1_expired_cidr_skipped(fake, run, tmp_path):
 
 
 @pytest.mark.story("CAP-036", "AC1")
+def test_import_ac1_any_ip_cidr_records_allow_any_ip(fake, run, tmp_path):
+    _rich(fake)
+    cid = fake.cidrs["cidr-a"]["_cluster"]
+    fake.cidrs["cidr-c"] = {"id": "cidr-c", "_cluster": cid, "cidr": "0.0.0.0/0", "status": "active"}
+    assert run("import").exit_code == 0
+    cl = file_clusters(tmp_path / "capella.yaml")[0]
+    assert cl["allowAnyIp"] is True and list(cl).index("allowAnyIp") < list(cl).index("hibernation")
+    assert run("validate").exit_code == 0
+
+
+@pytest.mark.story("CAP-036", "AC1")
 def test_import_ac1_advanced_credential_commented(fake, run, tmp_path):
     _rich(fake)
     run("import")
@@ -135,7 +146,7 @@ def test_import_ac4_no_secrets(fake, run, tmp_path):
     _rich(fake)
     r = run("import")
     text = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
-    assert "password:" not in text.replace("add password:", "")
+    assert "password:" not in text
     assert text.count("# password not exported (Capella never returns it)") == 2
     assert_no_secret(text + r.output, PASS, "test-api-key-0123456789")
 
@@ -155,7 +166,7 @@ def test_import_ac5_ambiguous_names_pinned(fake, run, tmp_path):
     pid, a = seed_healthy(fake)
     b = fake.seed_cluster(pid, "nova-dev-01")
     r = run("import")
-    assert r.exit_code == 0 and "2 clusters are named nova-dev-01; each is pinned with id:" in r.output
+    assert r.exit_code == 0 and "[WARNING]: 2 clusters are named nova-dev-01; capella.yaml tells them apart by id" in r.output
     clusters = file_clusters(tmp_path / "capella.yaml")
     assert [c["id"] for c in clusters] == [a, b]
     assert run("plan", "--detailed-exitcode").exit_code == 0
@@ -215,7 +226,7 @@ def test_import_ac8_existing_file_and_stdout(fake, run, tmp_path, monkeypatch):
     seed_healthy(fake)
     (tmp_path / "capella.yaml").write_text("old content\n", encoding="utf-8")
     r = run("import")
-    assert r.exit_code == 1 and "already exists and is not a capellactl file; pass --force" in r.output
+    assert r.exit_code == 1 and "already exists and is not a capellactl file\n[ACTION]: Pass --force" in r.output
     monkeypatch.setattr(console, "is_interactive", lambda: True)
     r = run("import", input="n\n")
     assert "Import cancelled; nothing was written." in r.output
@@ -233,7 +244,7 @@ def test_import_ac9_turned_off_cluster(fake, run, tmp_path):
     fake.fail_next("GET", "*/buckets", 500, times=6)  # what Capella answers while the cluster is off
     r = run("import")
     assert r.exit_code == 0, r.output
-    assert "warning: cluster nova-dev-01: buckets and database credentials not imported (turnedOff)" in r.output
+    assert "[WARNING]: cluster nova-dev-01: buckets and database credentials not imported (turnedOff)\n[ACTION]: Turn it on" in r.output
     assert "retrying" not in r.output  # not even asked
     text = (tmp_path / "capella.yaml").read_text(encoding="utf-8")
     assert "# not imported: buckets and database credentials (the cluster is turnedOff;" in text

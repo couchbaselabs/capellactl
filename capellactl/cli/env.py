@@ -10,7 +10,7 @@ import click
 from capellactl.api import endpoints as ep
 from capellactl.api.errors import Forbidden, ServerError
 from capellactl.cli import console
-from capellactl.cli.console import err, note, out
+from capellactl.cli.console import err, note, out, warning
 from capellactl.cli.exit_codes import CliExit, ExitCode
 from capellactl.cli.state import AppState
 from capellactl.engine.clock import format_duration
@@ -27,17 +27,12 @@ pass_state = click.make_pass_decorator(AppState)
 TREE_FACTORY = build_tree
 
 
-def not_yet(story: str, what: str) -> CliExit:
-    return CliExit(ExitCode.ERROR, f"{what} is not available in this build yet (planned in {story}; see "
-                                   "docs/release-1.0.0/README.md)")
-
-
 # ------------------------------------------------------------------ helpers
 def make_plan(state: AppState, targets: list[str] | None = None, descendants: bool = True,
               prune: bool = False, rotate_passwords: bool = False, all_unmanaged: bool = False,
-              **options: bool) -> tuple[Plan, Any, Any]:
+              warnings: str = "none", **options: bool) -> tuple[Plan, Any, Any]:
     """`options`: RunContext switches such as power_on, allow_service_removal, skip_capacity_check."""
-    cfg = state.load_config()
+    cfg = state.load_config(warnings)
     client = state.client(cfg.organization_id)
     ctx = state.run_context(client, cfg)
     ctx.rotate_passwords = rotate_passwords
@@ -47,9 +42,11 @@ def make_plan(state: AppState, targets: list[str] | None = None, descendants: bo
     try:
         plan = build_plan(ctx, cfg, tree, targets, descendants, prune, all_unmanaged)
     except PlanError as exc:
-        raise CliExit(ExitCode.ERROR, str(exc)) from None
+        raise CliExit(ExitCode.ERROR, str(exc),
+                                      action="Fix the problem named above, then run the command again.") from None
     except ValueError as exc:
-        raise CliExit(ExitCode.CONFIG_INVALID, str(exc)) from None
+        raise CliExit(ExitCode.CONFIG_INVALID, str(exc),
+                                               action="Fix the value named above, then run the command again.") from None
     return plan, cfg, ctx
 
 
@@ -69,7 +66,7 @@ def projects_label(cfg: Any) -> str:
 @pass_state
 def validate(state: AppState) -> None:
     """Validate the config file offline (schema, references, secrets). No API calls."""
-    cfg = state.load_config()
+    cfg = state.load_config("all")
     if state.json:
         out(dumps({"valid": True, "file": str(cfg.path), "counts": cfg.counts()}))
     else:
@@ -84,7 +81,7 @@ def validate(state: AppState) -> None:
 @pass_state
 def plan(state: AppState, targets: tuple[str, ...], detailed_exitcode: bool) -> None:
     """Show what apply would change. Read-only: makes only GET requests."""
-    p, cfg, ctx = make_plan(state, list(targets) or None)
+    p, cfg, ctx = make_plan(state, list(targets) or None, warnings="count")
     if state.json:
         out(dumps(render_plan_json(p)))
     else:
@@ -185,13 +182,13 @@ def apply(state: AppState, targets: tuple[str, ...], prune: bool, rotate_passwor
           allow_service_removal: bool, allow_service_group_removal: bool, skip_capacity_check: bool) -> None:
     """Make Capella match the config file. Shows the plan and asks first."""
     run_apply(state, list(targets) or None, prune=prune, rotate_passwords=rotate_passwords, power_on=power_on,
-              allow_service_removal=allow_service_removal, allow_service_group_removal=allow_service_group_removal,
+              warnings="count", allow_service_removal=allow_service_removal, allow_service_group_removal=allow_service_group_removal,
               skip_capacity_check=skip_capacity_check)
 
 
 def run_apply(state: AppState, targets: list[str] | None, descendants: bool = True, prune: bool = False,
-              rotate_passwords: bool = False, **options: bool) -> None:
-    p, cfg, ctx = make_plan(state, targets, descendants, prune, rotate_passwords, **options)
+              rotate_passwords: bool = False, warnings: str = "none", **options: bool) -> None:
+    p, cfg, ctx = make_plan(state, targets, descendants, prune, rotate_passwords, warnings=warnings, **options)
     apply_plan(state, p, cfg, ctx)
 
 
@@ -233,8 +230,10 @@ def apply_plan(state: AppState, p: Plan, cfg: Any, ctx: Any, after: list[str] | 
             out(dumps(render_plan_json(p)))
         else:
             out(render_plan_text(p, plan_header(cfg, ctx.client)))
-        raise CliExit(ExitCode.BLOCKED, f"Apply refused: {len(p.blocked)} blocked change(s); nothing was changed.",
-                      topic=p.blocked[0].topic)
+        raise CliExit(ExitCode.BLOCKED, f"Apply refused: {len(p.blocked)} blocked change(s); nothing was changed",
+                      topic=p.blocked[0].topic,
+                                        action="Resolve each change marked ! in the plan above (its note says how), "
+                                               "then run the command again.")
     if not p.has_changes:
         if state.json:
             out(dumps({**render_plan_json(p), "result": {"status": "ok", "actions": []}}))
@@ -271,11 +270,18 @@ def apply_plan(state: AppState, p: Plan, cfg: Any, ctx: Any, after: list[str] | 
             out(line)
     if result.interrupted:
         detail = result.failed.error if result.failed and result.failed.error else "Interrupted"
-        raise CliExit(ExitCode.INTERRUPTED, f"{detail}; re-run apply to continue.")
+        raise CliExit(ExitCode.INTERRUPTED, str(detail),
+                      action="Run the command again to continue; completed changes are not repeated.")
     if result.failed:
         failed = result.failed
         code = ExitCode.TIMEOUT if isinstance(result.error, WaitTimeout) else ExitCode.ERROR
         msg = f"Failed: {failed.kind} {failed.key}: {failed.error}"
+        done = [a for a in result.actions if a.status == "done"]
+        if done:
+            msg += "\nCompleted before the failure: " + ", ".join(f"{a.kind} {a.key}" for a in done)
+        undone = on_failure(result) if on_failure else None
+        if undone:
+            msg += f"\n{undone}"
         hint = getattr(result.error, "hint", None)
         if isinstance(result.error, ServerError) and result.error.method in ("POST", "PUT"):
             # Capella answers some unsupported values with a bare 500 ("something went wrong on our end").
@@ -283,18 +289,14 @@ def apply_plan(state: AppState, p: Plan, cfg: Any, ctx: Any, after: list[str] | 
                     f"Capella does not support (for example a region, size or disk not offered for the provider) "
                     f"rather than an outage: check the values in the plan above and try again; if they are correct, "
                     f"retry later or contact Capella support.")
-        if hint:
-            msg += f"\nHint: {hint}"
+        steps = [f"{hint.rstrip('.')}."] if hint else []
         if isinstance(result.error, Forbidden):
             roles = ep.required_roles(result.error.method, result.error.path)
             if roles:
-                msg += f"\nrequired role: {roles}"
-        done = [a for a in result.actions if a.status == "done"]
-        if done:
-            msg += "\nCompleted before the failure: " + ", ".join(f"{a.kind} {a.key}" for a in done)
-        undone = on_failure(result) if on_failure else None
-        msg += f"\n{undone}" if undone else "\nFix the problem and re-run apply; completed changes are not repeated."
-        raise CliExit(code, msg)
+                steps.append(f"Ask an Organization Owner to give the API key the {roles} role.")
+        steps.append("Then run the command again; completed changes are not repeated." if steps else
+                     "Fix the problem, then run the command again; completed changes are not repeated.")
+        raise CliExit(code, msg, action=" ".join(steps))
     for line in after or []:
         note(line)
     if not state.json:
@@ -365,14 +367,15 @@ def destroy_plan(ctx: Any, plan: Plan, discard_snapshots: bool) -> tuple[Plan, l
 @click.option("--discard-snapshots", is_flag=True, help="Also delete the clusters' snapshot backups (kept by default).")
 @pass_state
 def destroy(state: AppState, discard_snapshots: bool) -> None:
-    """Delete every resource the file declares, in reverse order (CAP-030). capella.yaml is kept (only the ids of
+    """Delete every resource the file declares, in reverse order. capella.yaml is kept (only the ids of
     what was deleted are dropped), so 'apply' builds it all again."""
-    from capellactl.resources.guards import protection_message
 
     protected = protected_clusters(state)
     if protected:  # checked before anything else (CAP-013 AC4, CAP-030 AC5)
-        raise CliExit(ExitCode.BLOCKED, "\n".join(protection_message(n) for n in protected) + "\nNothing was deleted.",
-                      topic="safety")
+        raise CliExit(ExitCode.BLOCKED,
+                      "\n".join(f"deletion protection is on for {n}" for n in protected) + "\nNothing was deleted.",
+                      topic="safety", action="Run 'capellactl cluster protect NAME --off' for each cluster above if "
+                                             "you really mean to destroy it, then run 'capellactl destroy' again.")
     p, cfg, ctx = make_plan(state)
     deletes, kept = destroy_plan(ctx, p, discard_snapshots)
     if not deletes.actions:
@@ -406,7 +409,8 @@ def destroy(state: AppState, discard_snapshots: bool) -> None:
         failed = result.failed
         detail = f"{failed.kind} {failed.key}: {failed.error}" if failed else "interrupted"
         raise CliExit(ExitCode.TIMEOUT if isinstance(result.error, WaitTimeout) else ExitCode.ERROR,
-                      f"Failed: {detail}\nRe-run destroy to continue; what is already deleted is skipped.")
+                      f"Failed: {detail}", action="Fix the problem, then run 'capellactl destroy' again; what is "
+                                                  "already deleted is skipped.")
     for line in kept:
         err(line)
     unpin_deleted(cfg, result.actions)
@@ -447,7 +451,7 @@ def unpin_deleted(cfg: Any, actions: list[Any]) -> None:
 @click.option("--detailed-exitcode", is_flag=True, help="Exit 2 when Capella and capella.yaml differ, 0 when not.")
 @pass_state
 def drift(state: AppState, detailed_exitcode: bool) -> None:
-    """Report what differs between Capella and capella.yaml, including resources made outside capellactl (CAP-031).
+    """Report what differs between Capella and capella.yaml, including resources made outside capellactl.
 
     Read-only: only GET requests. Changed and missing items are fixed by 'apply'; unmanaged ones are removed by
     'apply --prune' (never clusters or projects) or brought into the file by 'sync'."""
@@ -490,26 +494,31 @@ def _choose_project(client: Any, name: str | None, project_id: str | None) -> di
     if project_id:
         found = [p for p in projects if p.get("id") == project_id]
         if not found:
-            raise CliExit(ExitCode.ERROR, f"project {project_id} not found")
+            raise CliExit(ExitCode.ERROR, f"project {project_id} not found",
+                                          action="Check the ID with 'capellactl project list', then run the command "
+                                                 "again.")
         return found[0]
     if name:
         found = [p for p in projects if p.get("name") == name]
         if not found:
             names = ", ".join(sorted(str(p.get("name")) for p in projects)) or "none"
-            raise CliExit(ExitCode.ERROR, f"project {name} not found (projects: {names})")
+            raise CliExit(ExitCode.ERROR, f"project {name} not found (projects: {names})",
+                                          action="Use one of the projects listed, then run the command again.")
         if len(found) > 1:
             ids = ", ".join(str(p["id"]) for p in found)
-            raise CliExit(ExitCode.BLOCKED, f"{len(found)} projects are named {name} (ids: {ids}); pass --project-id",
-                          topic="idempotency")
+            raise CliExit(ExitCode.BLOCKED, f"{len(found)} projects are named {name} (ids: {ids})",
+                          topic="idempotency",
+                                            action="Add --project-id with the ID of the one to use.")
         return found[0]
     if not projects:
-        raise CliExit(ExitCode.ERROR, "this organization has no projects yet; create one with "
-                                      "'capellactl project create NAME'")
+        raise CliExit(ExitCode.ERROR, "this organization has no projects yet",
+                                      action="Create one with 'capellactl project create NAME'.")
     if len(projects) == 1:
         return projects[0]
     if not console.is_interactive():
         names = ", ".join(sorted(str(p.get("name")) for p in projects))
-        raise CliExit(ExitCode.CONFIG_INVALID, f"several projects ({names}); pass --project NAME")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"several projects ({names})",
+                                               action="Add --project NAME to choose one.")
     out("Projects:")
     for i, p in enumerate(projects, 1):
         out(f"  {i}. {p.get('name')}")
@@ -521,8 +530,8 @@ def _choose_project(client: Any, name: str | None, project_id: str | None) -> di
 def _select_projects(client: Any, names: tuple[str, ...], project_id: str | None) -> list[dict[str, Any]]:
     projects = ep.list_projects(client)
     if not projects:
-        raise CliExit(ExitCode.ERROR, "this organization has no projects yet; create one with "
-                                      "'capellactl project create NAME'")
+        raise CliExit(ExitCode.ERROR, "this organization has no projects yet",
+                                      action="Create one with 'capellactl project create NAME'.")
     if project_id:
         return [_choose_project(client, None, project_id)]
     if names:
@@ -560,13 +569,14 @@ def run_import(state: AppState, client: Any = None, projects: tuple[str, ...] = 
             file_org = declared_org_id(path, state.env)
             if file_org and client.org_id and file_org != client.org_id:  # never mix two organizations (CAP-047)
                 raise CliExit(ExitCode.CONFIG_INVALID,
-                              f"{path} is for organization {file_org}, not {client.org_id}; nothing was written. "
-                              f"Pass --force to rewrite it for {client.org_id} (the current file is kept as "
-                              f"{path.name}.bak), or --file PATH to write a separate file.")
+                              f"{path} is for organization {file_org}, not {client.org_id}; nothing was written",
+                              action=f"Pass --force to rewrite it for {client.org_id} (the current file is kept as "
+                                     f"{path.name}.bak), or --file PATH to write a separate file.")
             editor = ConfigEditor(path)
         elif not console.is_interactive():
-            raise CliExit(ExitCode.ERROR, f"{path} already exists and is not a capellactl file; pass --force to "
-                                          f"overwrite it (the current file is kept as {path.name}.bak)")
+            raise CliExit(ExitCode.ERROR, f"{path} already exists and is not a capellactl file",
+                                          action=f"Pass --force to overwrite it (the current file is kept as "
+                                                 f"{path.name}.bak), or --file PATH to write a separate file.")
         elif not console.ask_yes_no(f"{path} exists. Overwrite it (a backup is kept as {path.name}.bak)?", False):
             out("Import cancelled; nothing was written.")
             return
@@ -592,7 +602,9 @@ def run_import(state: AppState, client: Any = None, projects: tuple[str, ...] = 
     missing = [n for n in (*clusters, *cluster_ids) if n not in matched]
     if missing:
         names = ", ".join(str(p.get("name")) for p in to_add)
-        raise CliExit(ExitCode.ERROR, f"not found in project {names}: {', '.join(missing)}")
+        raise CliExit(ExitCode.ERROR, f"not found in project {names}: {', '.join(missing)}",
+                                      action="Check the names with 'capellactl cluster list', then run the command "
+                                             "again.")
     combined = combine(results, client.org_id)
     try:
         org_name = ep.get_organization(client)[0].get("name")
@@ -618,7 +630,7 @@ def run_import(state: AppState, client: Any = None, projects: tuple[str, ...] = 
             note(f"previous file saved as {backup}")
         path.write_text(text, encoding="utf-8")
     for w in combined.warnings:
-        err(f"warning: {w}")
+        warning(w)
     verb = "Added" if editor is not None else "Imported"
     out(f"{summary(combined).replace('Imported', verb, 1)} into {path}")
     if skipped:
@@ -642,7 +654,7 @@ def run_import(state: AppState, client: Any = None, projects: tuple[str, ...] = 
 @pass_state
 def import_cmd(state: AppState, projects: tuple[str, ...], project_id: str | None, clusters: tuple[str, ...],
                cluster_ids: tuple[str, ...], file: str | None, full: bool, to_stdout: bool, force: bool) -> None:
-    """Alias of 'capellactl sync' (CAP-054), kept for one release."""
+    """Alias of 'capellactl sync', kept for one release."""
     from pathlib import Path
 
     from capellactl.cli.sync import sync_or_create

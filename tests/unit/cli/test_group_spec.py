@@ -31,7 +31,7 @@ def test_cluster_mds_ac2_parse_group_spec(spec, expected):
     ("data:3x8/32x", "expected NODESxCPU/RAM"),
     ("data:3*8/32", "expected NODESxCPU/RAM"),
     ("data:3x8/32:size=abc", "size must be a whole number (got 'abc')"),
-    ("data:3x8/32:speed=1", "unknown disk option 'speed'; use type, size, iops, auto-expansion"),
+    ("data:3x8/32:speed=1", "unknown disk option 'speed'"),
     ("data:3x8/32:auto-expansion=maybe", "auto-expansion is true or false"),
     ("cache:3x8/32", "unknown service 'cache'"),
     ("dat:3x8/32", "unknown service 'dat'; did you mean data?"),

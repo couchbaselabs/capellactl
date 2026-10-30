@@ -21,6 +21,7 @@ from capellactl.api import endpoints as ep
 from capellactl.api.client import CapellaClient
 from capellactl.api.errors import CapellaApiError, Forbidden, NotFound
 from capellactl.config.loader import BUCKET_DEFAULTS
+from capellactl.output.notice import Notice
 
 NEW_CLUSTER_TEMPLATE = """\
 # This project has no clusters yet. To create one, run: capellactl cluster create NAME
@@ -42,7 +43,7 @@ class ImportResult:
     data: dict[str, Any]
     comments: dict[str, str] = field(default_factory=dict)   # placeholder key -> comment text
     blocks: dict[str, str] = field(default_factory=dict)     # placeholder key -> commented-out YAML block
-    warnings: list[str] = field(default_factory=list)
+    warnings: list[Notice] = field(default_factory=list)
     counts: dict[str, int] = field(default_factory=dict)
     # cluster id -> {"name", "reason", "fields"}: parts Capella could not return now (powered off, or an error), so
     # sync keeps them from the previous file instead of dropping them. "scopes:B" = the scopes of bucket B.
@@ -132,8 +133,10 @@ def _day_value(d: dict[str, Any]) -> str:
     return f"{_hhmm(d.get('from'))}-{_hhmm(d.get('to'), end=True)}"
 
 
-BACKUP_ROLE_WARNING = ("backup schedules not read: the API key needs the Organization Owner or Project Owner role; "
-                       "capella.yaml keeps the ones it has")
+RETRY_SYNC = "Run 'capellactl sync' again later; capella.yaml keeps what it had until then."
+BACKUP_ROLE_WARNING = Notice("backup schedules not read: the API key does not have the Organization Owner or Project "
+                             "Owner role, so capella.yaml keeps the ones it has",
+                             "Give the API key one of those roles in the Capella UI, then run 'capellactl sync'.")
 
 
 def export_snapshot_schedule(body: dict[str, Any]) -> dict[str, Any]:
@@ -173,6 +176,9 @@ def export_schedule(body: dict[str, Any]) -> dict[str, Any]:
     if body.get("activationStatus") == "paused":
         out["paused"] = True
     return out
+
+
+ANY_IP = ("0.0.0.0/0", "::/0")
 
 
 def export_cidr(c: dict[str, Any]) -> dict[str, Any]:
@@ -281,7 +287,9 @@ def build_document(
         free = _is_free(c)
         body, _ = (ep.get_free_cluster if free else ep.get_cluster)(client, pid, cid)
         ambiguous = name_counts[body["name"]] > 1
-        msg = f"{name_counts[body['name']]} clusters are named {body['name']}; each is pinned with id:"
+        msg = Notice(f"{name_counts[body['name']]} clusters are named {body['name']}; capella.yaml tells them apart "
+                     "by id", "None needed. To avoid confusion, give one of them another name in the Capella UI, then "
+                           "run 'capellactl sync'.")
         if ambiguous and msg not in res.warnings:
             res.warnings.append(msg)
         cl = export_cluster(body, full, pin_id=True)
@@ -301,8 +309,15 @@ def build_document(
                 note = ids.next("comment")
                 _cl[note] = (f"not imported: {what} (Capella returned {exc.http_status} while the cluster is "
                              f"{_state or 'unavailable'};\nrun capellactl sync again when it is on)")
-                res.warnings.append(f"cluster {_name}: {what} not imported ({exc.http_status})")
+                res.warnings.append(Notice(f"cluster {_name}: {what} not imported (Capella returned "
+                                           f"{exc.http_status})", RETRY_SYNC))
                 return None
+
+        # Read before the schedules: allowAnyIp goes ahead of them in the file (editor.CLUSTER_KEY_ORDER).
+        cidrs = guarded("allowed CIDRs", ep.list_allowed_cidrs, client, pid, cid, key="allowedCidrs")
+        active_cidrs = [export_cidr(x) for x in cidrs or [] if x.get("status", "active") != "expired"]
+        if any(x["cidr"].strip() in ANY_IP for x in active_cidrs):
+            cl["allowAnyIp"] = True  # already open in Capella; without it the imported file would not validate
 
         try:
             if free:  # no on/off schedule on the free tier
@@ -314,7 +329,8 @@ def build_document(
             sched = None
             if exc.http_status != 404:
                 not_read("hibernation", f"Capella returned {exc.http_status}")
-                res.warnings.append(f"cluster {body['name']}: hibernation schedule not imported ({exc.http_status})")
+                res.warnings.append(Notice(f"cluster {body['name']}: hibernation schedule not imported (Capella "
+                                           f"returned {exc.http_status})", RETRY_SYNC))
         if sched:
             cl["hibernation"] = export_schedule(sched)
             counts["hibernation schedule"] += 1
@@ -331,23 +347,23 @@ def build_document(
             except CapellaApiError as exc:
                 snap = None
                 not_read("backupSchedule", f"Capella returned {exc.http_status}")
-                res.warnings.append(f"cluster {body['name']}: backup schedule not imported ({exc.http_status})")
+                res.warnings.append(Notice(f"cluster {body['name']}: backup schedule not imported (Capella "
+                                           f"returned {exc.http_status})", RETRY_SYNC))
             if snap:
                 cl["backupSchedule"] = export_snapshot_schedule(snap)
         elif not free:
             not_read("backupSchedule", state)
 
-        cidrs = guarded("allowed CIDRs", ep.list_allowed_cidrs, client, pid, cid, key="allowedCidrs")
-        if cidrs:
-            active = [export_cidr(x) for x in cidrs if x.get("status", "active") != "expired"]
-            if active:
-                cl["allowedCidrs"] = active
-                counts["allowed CIDR"] += len(active)
+        if active_cidrs:
+            cl["allowedCidrs"] = active_cidrs
+            counts["allowed CIDR"] += len(active_cidrs)
 
         if state in POWERED_OFF:  # Capella answers 500 (retried) for buckets and 422 for credentials: don't ask
             cl[ids.next("comment")] = (f"not imported: buckets and database credentials (the cluster is {state};\n"
                                        "run capellactl sync again when it is on)")
-            res.warnings.append(f"cluster {body['name']}: buckets and database credentials not imported ({state})")
+            res.warnings.append(Notice(f"cluster {body['name']}: buckets and database credentials not imported "
+                                       f"({state})", f"Turn it on ('capellactl cluster power {body['name']} --on'), then "
+                                                     "run 'capellactl sync' again."))
             not_read("buckets", state)
             not_read("databaseCredentials", state)
             exported_clusters.append(cl)
@@ -412,8 +428,9 @@ def build_document(
                                               "`capellactl apply` to restore it.")
                         creds.append({note: "", "name": u["name"], **({"password": kept_access[1]} if kept_access[1] else {}),
                                       "access": kept_access[0]})
-                        res.warnings.append(f"credential {body['name']}/{u['name']} has no access in Capella; kept its "
-                                            "access from capella.yaml (run 'capellactl apply' to restore it)")
+                        res.warnings.append(Notice(f"credential {body['name']}/{u['name']} has no access in Capella; "
+                                                   "capella.yaml keeps the access it had",
+                                                   "Run 'capellactl apply' to give it that access again."))
                         counts["credential"] += 1
                         continue
                     key = ids.next("block")
@@ -427,8 +444,9 @@ def build_document(
                 entry = {note: "", **export_credential(u)}
                 res.comments[note] = (
                     "password not exported (Capella never returns it); the existing password is unchanged.\n"
-                    f"To rotate later: add password: ${{{u['name'].upper()}_PASSWORD}} and run\n"
-                    f"  capellactl credential update {body['name']} {u['name']} --rotate-password")
+                    f"To rotate later, put the new password in {u['name'].upper()}_PASSWORD and run\n"
+                    f"  capellactl credential update {body['name']} {u['name']} --password-env "
+                    f"{u['name'].upper()}_PASSWORD --rotate-password")
                 creds.append(entry)
                 counts["credential"] += 1
             cl["databaseCredentials"] = creds

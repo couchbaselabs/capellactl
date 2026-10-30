@@ -58,7 +58,7 @@ def test_bucket_delete_ac2_protection_blocks(fake, run, orders):
     fake.clusters[cid]["body"]["deletionProtection"] = True
     r = run("--auto-approve", "bucket", "delete", "nova-dev-01", "orders")
     assert r.exit_code == 4
-    assert "deletion protection is on for nova-dev-01; run 'capellactl cluster protect nova-dev-01 --off' first" \
+    assert "[ERROR]: deletion protection is on for nova-dev-01\n[ACTION]: Run 'capellactl cluster protect nova-dev-01 --off'" \
         in r.output
     assert fake.writes() == []
 

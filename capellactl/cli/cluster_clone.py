@@ -54,13 +54,18 @@ def find_source(client: Any, name: str | None, project: str | None) -> tuple[dic
     if project:
         org = [(p, cs) for p, cs in org if p.get("name") == project]
         if not org:
-            raise CliExit(ExitCode.CONFIG_INVALID, f"project {project} not found in Capella")
+            raise CliExit(ExitCode.CONFIG_INVALID, f"project {project} not found in Capella",
+                                                   action="Check the name with 'capellactl project list', then run "
+                                                          "the command again.")
     if name is None:
         if not console.is_interactive():
-            raise CliExit(ExitCode.CONFIG_INVALID, "missing SOURCE (no terminal to ask; pass it on the command line)")
+            raise CliExit(ExitCode.CONFIG_INVALID, "missing SOURCE: there is no terminal to ask for it",
+                                                   action="Give the cluster to copy: 'capellactl cluster clone "
+                                                          "SOURCE NEW_NAME --region REGION'.")
         with_clusters = [(p, cs) for p, cs in org if cs]
         if not with_clusters:
-            raise CliExit(ExitCode.ERROR, "this organization has no clusters to clone")
+            raise CliExit(ExitCode.ERROR, "this organization has no clusters to clone",
+                                          action="Create a cluster first with 'capellactl cluster create NAME'.")
         if len(with_clusters) == 1:
             p, cs = with_clusters[0]
         else:
@@ -71,12 +76,14 @@ def find_source(client: Any, name: str | None, project: str | None) -> tuple[dic
     found = [(p, c) for p, cs in org for c in cs if c.get("name") == name]
     if not found:
         where = f" in project {project}" if project else ""
-        raise CliExit(ExitCode.CONFIG_INVALID, f"cluster {name} not found{where}")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"cluster {name} not found{where}",
+                                               action="Check the name with 'capellactl cluster list', then run the "
+                                                      "command again.")
     if len(found) > 1:
         names = ", ".join(sorted({str(p.get("name")) for p, _ in found}))
         if not console.is_interactive():
-            raise CliExit(ExitCode.CONFIG_INVALID, f"several clusters are named {name} (projects {names}); pass "
-                                                   "--project NAME")
+            raise CliExit(ExitCode.CONFIG_INVALID, f"several clusters are named {name} (projects {names})",
+                                                   action="Add --project NAME to choose one.")
         out(f"Several clusters are named {name}:")
         chosen: tuple[dict[str, Any], dict[str, Any]] = _choose(
             "Source cluster", found, lambda pc: f"{pc[0].get('name')} / {_cluster_line(pc[1])}", "--project")
@@ -89,8 +96,8 @@ def _ensure_target_project(state: AppState, ed: ConfigEditor, client: Any, name:
     if name in ed.project_names():
         return ed
     if not any(p.get("name") == name for p in ep.list_projects(client)):
-        raise CliExit(ExitCode.CONFIG_INVALID, f"project {name} does not exist; create it first with "
-                                               f"'capellactl project create {name}'")
+        raise CliExit(ExitCode.CONFIG_INVALID, f"project {name} does not exist",
+                                               action=f"Create it first with 'capellactl project create {name}'.")
     from capellactl.cli.env import run_import
 
     run_import(state, client, projects=(name,))
@@ -207,10 +214,13 @@ def cluster_clone(state: AppState, source: str | None, new_name: str | None, reg
     src_project, src = find_source(client, source, project)
     name, pname = str(src.get("name")), str(src_project.get("name"))
     if is_free(src):
-        raise CliExit(ExitCode.BLOCKED, "free-tier clusters cannot be cloned (one per organization); use "
-                                        "'cluster create' instead")
+        raise CliExit(ExitCode.BLOCKED, "free-tier clusters cannot be cloned (one per organization)",
+                                        action="Create a provisioned cluster with 'capellactl cluster create' "
+                                               "instead.")
     if src.get("currentState") not in CLONABLE_STATES:
-        raise CliExit(ExitCode.BLOCKED, f"cluster {name} is {src.get('currentState')}; clone it once it is healthy")
+        raise CliExit(ExitCode.BLOCKED, f"cluster {name} is {src.get('currentState')}",
+                                        action=f"Wait until it is healthy ('capellactl cluster get {name}' shows its "
+                                               f"state), then run the command again.")
     src_cp = src.get("cloudProvider") or {}
     provider, src_region = str(src_cp.get("type")), str(src_cp.get("region"))
 
@@ -230,7 +240,8 @@ def cluster_clone(state: AppState, source: str | None, new_name: str | None, reg
     target_clusters = ep.list_clusters(client, str(target_capella["id"])) if target_capella else []
     in_file = [c for c in proj_node.get("clusters") or [] if isinstance(c, dict)]
     if any(c.get("name") == new_name for c in [*target_clusters, *in_file]):
-        raise CliExit(ExitCode.BLOCKED, f"cluster {new_name} already exists in project {target}")
+        raise CliExit(ExitCode.BLOCKED, f"cluster {new_name} already exists in project {target}",
+                                        action="Choose another name for the copy.")
 
     used = [(str(c.get("name")), str((c.get("cloudProvider") or {}).get("cidr", "")))
             for c in [*target_clusters, *in_file, *ep.list_clusters(client, str(src_project["id"]))]]
@@ -240,7 +251,9 @@ def cluster_clone(state: AppState, source: str | None, new_name: str | None, reg
             if console.is_interactive() and source is None else default
     clash = _overlap(cidr, used)
     if clash:
-        raise CliExit(ExitCode.CONFIG_INVALID, clash)
+        raise CliExit(ExitCode.CONFIG_INVALID, clash,
+                                               action="Pass --cidr with a free range, or leave it out to get one "
+                                                      "that does not overlap.")
 
     if region == src_region and target == pname and not console.confirm(
             state, f"{new_name} would be in the same region and project as {name}. Clone into the same region?",

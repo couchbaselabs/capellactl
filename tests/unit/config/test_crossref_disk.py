@@ -53,4 +53,4 @@ def test_disk_types_ac4_accepted(tmp_path, provider, disk):
 def test_disk_types_ac4_below_recommended_warns(tmp_path):
     """Existing disks may have fewer IOPS than today's recommendation, so it is a warning, not an error."""
     cfg = _load(tmp_path, _text("disk: { type: gp3, storage: 500, iops: 3000 }"))
-    assert any("3000 IOPS is below Capella's recommended 9850 for 500 GB" in w for w in config_warnings(cfg))
+    assert any("3000 IOPS is below Capella's recommended 9850 for 500 GB" in w.what for w in config_warnings(cfg))

@@ -104,7 +104,8 @@ def not_git_ignored(path: str | Path) -> bool:
         return False
 
 
-def git_warning(directory: str | Path) -> str | None:
+def git_warning(directory: str | Path) -> tuple[str, str] | None:
+    """(what, action) when generated passwords could end up in Git (CAP-063)."""
     if not_git_ignored(directory):
-        return f"warning: {directory} is not git-ignored; add .capellactl/ to .gitignore"
+        return f"{directory} is not git-ignored", "Add .capellactl/ to .gitignore so the saved password is never committed."
     return None

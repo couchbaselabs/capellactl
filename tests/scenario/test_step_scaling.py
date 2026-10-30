@@ -93,7 +93,7 @@ def test_step_ac5_no_wait_busy_exit_4(fake, run, write_config):
     fake.set_transition(cid, ["scaling", "healthy"])
     write_config(MINIMAL)
     r = run("--auto-approve", "--no-wait", "cluster", "scale", "nova-dev-01", "--step", "+1")
-    assert r.exit_code == 4 and "cluster is scaling; try again later" in r.output
+    assert r.exit_code == 4 and "[ERROR]: cluster is scaling\n[ACTION]: Wait until it is healthy" in r.output
     assert fake.writes() == []
 
 

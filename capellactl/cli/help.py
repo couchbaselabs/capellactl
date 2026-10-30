@@ -213,7 +213,8 @@ def help_cmd(ctx: click.Context, words: tuple[str, ...]) -> None:
         msg = f"unknown config field '{w[1]}'."
         if close:
             msg += " Did you mean: " + ", ".join(close) + "?"
-        raise CliExit(ExitCode.CHANGES, msg)
+        raise CliExit(ExitCode.CHANGES, msg,
+                                        action="Run 'capellactl help config' to list every field.")
     resolved = _resolve_command(ctx, w)
     if resolved is not None:
         cmd, sub_ctx = resolved
@@ -233,7 +234,9 @@ def help_cmd(ctx: click.Context, words: tuple[str, ...]) -> None:
     match = difflib.get_close_matches(w[-1], candidates, n=1)
     hint = f" Did you mean '{match[0]}'?" if match else ""
     kind = "command or topic"
-    raise CliExit(ExitCode.CHANGES, f"unknown {kind} '{' '.join(w)}'.{hint} Topics: {', '.join(TOPICS)}")
+    raise CliExit(ExitCode.CHANGES, f"unknown {kind} '{' '.join(w)}'.{hint}",
+                                    action=f"Run 'capellactl help topics' to list the topics ({', '.join(TOPICS)}), "
+                                           f"or 'capellactl --help' for the commands.")
 
 
 @click.command(epilog="\b\nExamples:\n  capellactl completion zsh >> ~/.zshrc\n"
